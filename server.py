@@ -7,9 +7,13 @@ import time
 import reader
 from encode import *
 from threading import Thread
-
+import signal, os
+from mylog import *
 
 ADDRESS = ('127.0.0.1', 8712)  # 绑定地址
+
+# 终止进程信号处理
+global_process_list = []
 
 def init(ip, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -27,11 +31,11 @@ def message_handle(client, task_queue):
 
         data = decode(bts)
         task_queue.put(data)
-        print(data)
 
 def accept_client(s, task_queue):
     while True:
         client, addr = s.accept()
+        logging.info("server accept a client: %s", addr)
         thread = Thread(target=message_handle, args=(client, task_queue))
         thread.start()
 
@@ -52,19 +56,18 @@ def stop_process(p):
     time.sleep(0.1)
     p.close()
 
-
-
 if __name__ == '__main__':
     # start a Sampler process
     task_queue = Queue()
-    idx_queue = Queue()
+    idx_queue = Manager().Queue()
     data_queue = Manager().Queue()
 
-    start_sampler(task_queue, idx_queue, data_queue)
-    start_reader(idx_queue, data_queue)
+    sampler = start_sampler(task_queue, idx_queue, data_queue)
+    reader = start_reader(idx_queue, data_queue)
     # start server to listen socket
     s = init(ADDRESS[0], ADDRESS[1])
-    accept_client(s, task_queue)
-    s.close()
 
-    stop_sampler(p)
+    accept_client(s, task_queue)
+
+    
+    

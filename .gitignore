@@ -1,0 +1,3 @@
+*.log
+parse_tools/
+__pycache__/

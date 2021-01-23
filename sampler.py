@@ -4,11 +4,8 @@ import threading
 import os
 from cache import Cache
 import copy
-import logging
 from encode import *
-
-LOG_FORMAT = "[%(asctime)s]%(levelname)s : %(message)s"
-logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
+from mylog import *
 
 class SubSampler(object):
     def __init__(self, name, idx_list=[]):
@@ -19,13 +16,13 @@ class SubSampler(object):
 
         self.name = name
         self.path = "/tmp/"+self.name
-        if os.path.exists(self.path):
-            #TODO : 报错
-            os.remove(self.path)
         logging.info("create subs: { %s: %s} ", name, self.path)
+        if os.path.exists(self.path):
+            os.remove(self.path)
         os.mkfifo(self.path)
+        assert(os.path.exists(self.path))
+        self.wf = os.open(self.path, os.O_SYNC | os.O_CREAT | os.O_RDWR )
 
-        self.wf = os.open(self.path, os.O_SYNC | os.O_CREAT | os.O_RDWR)
     def set_idxlist(self, idx_list):
         self.undecided = idx_list
     
@@ -37,8 +34,6 @@ class SubSampler(object):
         self.pending_idx = []
     
     def next_idx(self, idx):
-        if (len(self.pending_idx) + len(self.undecided) == 0):
-            return -2
         if (len(self.undecided) == 0):
             return -1
         if idx in self.undecided:
@@ -51,182 +46,163 @@ class SubSampler(object):
         
         return idx
     
-    def put_data(self, cache, thresh=25*1024*1024,): # 25M
-        for idx in self.pending_idx:
-            if os.path.getsize(self.path) > thresh:
-                break
-            if cache.has(idx):
-                data = cache.get(idx)
-                assert (data is not None)
-                data = encode(data)
-                logging.info("sampler put data idx %d", idx)
-                os.write(self.wf, data)
-                self.decided.append(idx)
-                self.pending_idx.remove(idx)
-    
-    def __len__():
+    def send_data(self, idx, data):
+        if len(self.pending_idx) == 0:
+            return -1
+        
+        if idx in self.pending_idx:
+            assert (data is not None)
+            data = encode(data)
+            size = len(data)
+            #TODO: hard code
+            size_byte = size.to_bytes(4, byteorder='big')
+        
+            logging.critical("sampler put data %d length %d", idx, size)
+            os.write(self.wf, size_byte)
+            os.write(self.wf, data)
+            
+            self.decided.append(idx)
+            self.pending_idx.remove(idx)
+
+    def __len__(self):
         return len(self.undecided)
     
-    def __del__(self):
+    def delete(self):
         os.close(self.wf)
         os.remove(self.path)
 
 class Sampler(object):
-    def __init__(self, idx_queue, data_queue):
-        self.subsampler_list = []
-        self.idx_dict = {} # name: idx
+    def __init__(self, idx_queue, data_queue, cap = 100):
+        # TODO: 存在许多竞争，待修复    
+        self.alive_subsampler = []
+        self.zombie_subsampler = []
+        self.subsampler_lock = threading.Lock()
 
-        # 当插入新的subs到list中去的时候，先不立即插入而是放入缓存区内
-        self.pending_subs = []
-        self.pending_name = []
-        self.pending_lock = threading.Lock()
+        # idx -> subs
+        self.pending_idx = {}
+        self.pending_idx_lock = threading.Lock()
         
-        self.free_list = []
-        
-        self.cache = Cache()
-
         # 进程通信管道
         self.idx_queue = idx_queue
         self.data_queue = data_queue
 
-    def try_add_subsampler(self, subs):
-        with self.pending_lock:
-            logging.info("sampler append to pending subs: %s", subs.name)
-            self.pending_subs.append(subs)
-    def try_add_subsamplername(self, name):
-        with self.pending_lock:
-            logging.info("sampler append to pending name: %s", name)
-            self.pending_name.append(name)
-    
-    def get_idx_byname(self, subs_list, name):
-        for i in range(len(subs_list)):
-            if subs.name == name:
-                return i
-        return -1
-    
-    def _add_allsampler(self):
-        pending_subs = []
-        # TODO: 待优化，批量合并？
-        with self.pending_lock:
-            for subs in self.pending_subs:
-                logging.info("add subs %s", subs.name)
-                self.subsampler_list, self.idx_dict = self._add_subsampler(subs)
-            for name in self.pending_name:
-                i = self.get_idx_byname(self.free_list, name)
-                subs = self.free_list[i]
-                self.subsampler_list, self.idx_dict = self._add_subsampler(subs)
-                self.free_list.pop(i)
-            
-            self.pending_name = []
-            self.pending_subs = []
-
-
-    def _add_subsampler(self, subs):
-        # insert sort
-        _dict = {}
-        _subsampler_list = []
-
-        for i in range(len(self.subsampler_list)):
-            if len(subs) < len(self.subsampler_list[i]):
-                _subsampler_list.append(subs)
-                _dict[subs.name] = i
-                for j in range(i, len(self.subsampler_list)):
-                    _subsampler_list.append(subsampler_list[i])
-                    _dict[subsampler_list[i].name] = j+1
-                return _subsampler_list, _dict
-            
-            _subsampler_list.append(subsampler_list[i])
-            _dict[subsampler_list[i].name] = i
+        # 负载均衡
+        self.cache_cap = threading.Semaphore(cap)
+        # 当所有进程都已经blocking完毕，就block住，防止空转
+        self.blocking_sampling = threading.Condition() 
+    def add_subsampler(self, subs):
+        with self.subsampler_lock:
+            _subsampler_list = []
+            for i in range(len(self.alive_subsampler)):
+                if len(subs) < len(self.alive_subsampler[i]):
+                    _subsampler_list.append(subs)
+                    _subsampler_list.extend(self.alive_subsampler[i:])
+                    return _subsampler_list, _dict
+                _subsampler_list.append(self.alive_subsampler[i])
+            _subsampler_list.append(subs)
         
-        _subsampler_list.append(subs)
-        _dict[subs.name] = len(_subsampler_list)-1
-    
-        return _subsampler_list, _dict
-    
-    def delete(self, i):
-        subs = self.subsampler_list[i]
-        subs.reset()
-        self.free_list.append(subs)
-        self.subsampler_list.pop(i)
+            self.alive_subsampler = _subsampler_list
 
-    def release(self, name):
-        i = self.get_idx_byname(self.free_list, name)
-        if i != -1:
-            self.free_list.pop(i)
+    def restore_subs(self, name):
+        with self.subsampler_lock:
+            restore_subs = None
+            for i in range(len(self.zombie_subsampler)):
+                if self.zombie_subsampler[i].name == name:
+                    self._add_subsampler(self.zombie_subsampler[i])
+                    del self.zombie_subsampler[i]
+                    return
+    
+    def _name2subs(self, subsampler_list, name):
+        for i in range(len(self.zombie_subsampler)):
+            if self.zombie_subsampler[i].name == name:
+                return self.zombie_subsampler[i]
 
-    def next_idx(self):
-        l = len(self.subsampler_list)
-        idx = -1
+    def delete_subs(self, name):
+        with self.subsampler_lock:
+            for i in range(len(self.zombie_subsampler)):
+                if self.zombie_subsampler[i].name == name:
+                    self.zombie_subsampler[i].delete()
+                    del self.zombie_subsampler[i]
+                    return
+
+    def _next_idx(self):
+        l = len(self.alive_subsampler)
         idx_dict = {}
-        self._add_allsampler()
+        idx = -1
         for i in range(l):
-            idx = self.subsampler_list[i].next_idx(idx)
-            # idx = -2: 已经读完一个epoch
-            # idx = -1: 读完idx，但是还没有读完数据
-            # idx >= 0: 未读完
-            if idx == -2:
-                self.delete(i)
-            elif idx >= 0:
+            idx = self.alive_subsampler[i].next_idx(idx)
+            # idx = -1: idx全部消耗完毕
+            if idx >= 0:
                 if idx in idx_dict.keys():
-                    idx_dict[idx] += 1
+                    idx_dict[idx].append(self.alive_subsampler[i])
                 else:
-                    idx_dict[idx] = 0
+                    idx_dict[idx] = [self.alive_subsampler[i]]
         return idx_dict
 
-    def put_data(self):
+    def _merge_idx(self, idx_dict):
+        with self.pending_idx_lock:
+            for i in idx_dict.keys():
+                if i in self.pending_idx.keys():
+                    self.pending_idx[i].extend(idx_dict[i])
+                else:
+                    self.pending_idx[i] = idx_dict[i]
+
+    def dispatch_data(self, ):
         while True:
-            l = len(self.subsampler_list)
-            for i in range(l):
-                self.subsampler_list[i].put_data(self.cache)
-            time.sleep(0.5)
+            item = self.data_queue.get(True)
+            idx, data = item
+            self.cache_cap.release()
+            with self.pending_idx_lock:
+                logging.info("dispating data idx %d", idx)
+                for subs in self.pending_idx[idx]:
+                    subs.send_data(idx, data)
 
     def sampling_idx(self):
         while True:
-            idx_dict = self.next_idx()
-            self.cache.merge_index(idx_dict)
+            self.cache_cap.acquire()
+            with self.subsampler_lock:
+                idx_dict = self._next_idx()
+            
+            if len(idx_dict.keys()) == 0:
+                with self.blocking_sampling:
+                    logging.info("sampling idx blocking")
+                    self.blocking_sampling.wait()
+                logging.info("sampling idx resuming")
+
+            self._merge_idx(idx_dict)
 
             for i in idx_dict.keys():
+                logging.critical("sampler put idx %d", i)
                 self.idx_queue.put(i)
-            
-            time.sleep(0.5)
-    
-    def fetch_data(self, ):
-        while True:
-            item = self.data_queue.get(True)
-            idx = item[0]
-            data = item[1]
-            logging.info("sampler fetch idx %d", idx)
-            self.cache.set(idx, data)
 
     @staticmethod
     def sampler(task_queue, idx_queue, data_queue):
+        logging.info("start sampler")
         sa = Sampler(idx_queue, data_queue)
         
         # start a thread to put index
         idx_sampler = threading.Thread(target=sa.sampling_idx, args=())
         idx_sampler.start()
 
-        data_fetcher = threading.Thread(target=sa.fetch_data, args=())
+        data_fetcher = threading.Thread(target=sa.dispatch_data, args=())
         data_fetcher.start()
 
-        data_putter = threading.Thread(target=sa.put_data, args=())
-        data_putter.start()
-
         while True:
-            
             task = task_queue.get(True)
             name = list(task.keys())[0]
             data = list(task.values())[0]
-            logging.info("sampler receive a task from data queue: %s", name)
+            logging.info("sampler receive a task : %s", name)
             if (type(data) == list):
                 subs = SubSampler(name, data)
-                sa.try_add_subsampler(subs)
+                sa.add_subsampler(subs)
+                with sa.blocking_sampling:
+                    sa.blocking_sampling.notify()
             elif (type(data) == int):
                 if data >= 0:
                     # TODO: error process
-                    sa.try_add_subsamplername(name)
+                    sa.restore_subs(name)
                 else:
-                    sa.release(name)
+                    sa.delete_subs(name)
 
 # def test():
 #     s = SubSampler([1,2,3,4,5,6])

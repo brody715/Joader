@@ -9,10 +9,17 @@ import re
 from threading import RLock, Lock
 import time
 import sys
-import logging
+from mylog import *
 
-LOG_FORMAT = "[%(asctime)s]%(levelname)s : %(message)s"
-logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
+class HashTable():
+    def __init__(self, cap = 100):
+        self.table = [None]*cap
+    def hash(self, key):
+        return key%self.cap
+    def get(key):
+        return self.table[self.hash(key)]
+    def delete(key):
+        self.table[self.hash[key]] = None
 
 class Cache(object):
     def __init__(self, maxsize=None):
