@@ -21,11 +21,14 @@ s.connect(ADDRESS)
 name = "xiejian"
 n = 100
 idx = list(range(n))
-seq = encode({name:idx})
-s.send(seq)
+size_byte, data_byte = encode({name:idx})
+s.send(size_byte)
+s.send(data_byte)
+
+resp = s.recv(1)
+print(resp)
 
 import os
-time.sleep(1)
 path = "/tmp/"+name
 print(path)
 
@@ -37,14 +40,23 @@ at = AvgTime()
 
 while True:
     idx += 1
-    now = time.time()
+    
     
     if idx > n:
-        s.send(encode({name:-1}))
+        print("try delete")
+        size_byte, data_byte = encode({name: -1})
+        s.send(size_byte)
+        s.send(data_byte)
+        resp = s.recv(1)
+        print(resp)
+        if resp == b'1':
+            print("delete succ")
         break
     
-    size = int.from_bytes(os.read(f, 4), byteorder='big')
-    stream = os.read(f, size)
-    data = decode(stream)
+    now = time.time()
+    size_byte = os.read(f, 4)
+    size = decode_size(size_byte)
+    data_byte = os.read(f, size)
+    data = decode_data(data_byte)
     at.add(time.time()-now)
 print(" time %f"%(at.avg()))

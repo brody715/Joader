@@ -1,12 +1,11 @@
 import socket
-import cache
 import sampler
 import numpy
-from multiprocessing import Process, Queue, Manager
+from multiprocessing import Process, Queue, Manager, Pipe
 import time
-import reader
+import loader
 from encode import *
-from threading import Thread
+import threading
 import signal, os
 from mylog import *
 
@@ -21,22 +20,33 @@ def init(ip, port):
     s.listen(5)
     return s
 
-def message_handle(client, task_queue):
+def message_handle(client, task_queue, task_lock):
     idx_list = []
     while True:
-        bts = client.recv(1024*1024)
+        size_byte = client.recv(SIZE_CNT)
+
+        size = decode_size(size_byte)
+        task_byte = client.recv(size)
         
-        if (len(bts) == 0):
+        if (len(task_byte) == 0):
             break
 
-        data = decode(bts)
-        task_queue.put(data)
+        task = decode_data(task_byte)
+        
+        
+        with task_lock:
+            task_queue.put(task)
+            resp = task_queue.get()
+        client.send(resp)
 
-def accept_client(s, task_queue):
+        if list(task.values())[0] == -1 or resp == b'0':
+            break
+
+def accept_client(s, task_queue, task_lock):
     while True:
         client, addr = s.accept()
         logging.info("server accept a client: %s", addr)
-        thread = Thread(target=message_handle, args=(client, task_queue))
+        thread = threading.Thread(target=message_handle, args=(client, task_queue, task_lock))
         thread.start()
 
 def start_sampler(task_queue, idx_queue, data_queue):
@@ -45,8 +55,8 @@ def start_sampler(task_queue, idx_queue, data_queue):
     assert(p.is_alive() == True)
     return p
 
-def start_reader(idx_queue, data_queue):
-    p = Process(target=reader.Reader.reader, args=(idx_queue, data_queue))
+def start_loader(idx_queue, data_queue):
+    p = Process(target=loader.Loader.loading, args=(idx_queue, data_queue))
     p.start()
     assert(p.is_alive() == True)
     return p
@@ -59,15 +69,17 @@ def stop_process(p):
 if __name__ == '__main__':
     # start a Sampler process
     task_queue = Queue()
+    task_lock = threading.Lock()
+
     idx_queue = Manager().Queue()
     data_queue = Manager().Queue()
 
     sampler = start_sampler(task_queue, idx_queue, data_queue)
-    reader = start_reader(idx_queue, data_queue)
+    loader = start_loader(idx_queue, data_queue)
+    
     # start server to listen socket
     s = init(ADDRESS[0], ADDRESS[1])
-
-    accept_client(s, task_queue)
+    accept_client(s, task_queue, task_lock)
 
     
     

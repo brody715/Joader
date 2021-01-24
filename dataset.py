@@ -69,7 +69,7 @@ class lmdbDataset(Dataset):
         
         process_time = time.time()-begin
         
-        print("%f"%(process_time))
+        # print("%f"%(process_time))
         
         return image_content,label
 

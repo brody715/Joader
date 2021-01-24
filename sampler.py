@@ -2,7 +2,6 @@ import random
 import time
 import threading
 import os
-from cache import Cache
 import copy
 from encode import *
 from mylog import *
@@ -16,10 +15,13 @@ class SubSampler(object):
 
         self.name = name
         self.path = "/tmp/"+self.name
+        
         logging.info("create subs: { %s: %s} ", name, self.path)
-        if os.path.exists(self.path):
-            os.remove(self.path)
+        
+        assert(not os.path.exists(self.path))
+        
         os.mkfifo(self.path)
+        
         assert(os.path.exists(self.path))
         self.wf = os.open(self.path, os.O_SYNC | os.O_CREAT | os.O_RDWR )
 
@@ -47,22 +49,21 @@ class SubSampler(object):
         return idx
     
     def send_data(self, idx, data):
-        if len(self.pending_idx) == 0:
-            return -1
-        
         if idx in self.pending_idx:
             assert (data is not None)
-            data = encode(data)
-            size = len(data)
-            #TODO: hard code
-            size_byte = size.to_bytes(4, byteorder='big')
-        
-            logging.critical("sampler put data %d length %d", idx, size)
+            size_byte, data_byte = encode(data)
+
+            logging.critical("sampler put data %d length %d", idx, len(data))
+            
             os.write(self.wf, size_byte)
-            os.write(self.wf, data)
+            os.write(self.wf, data_byte)
             
             self.decided.append(idx)
             self.pending_idx.remove(idx)
+        
+        if len(self.pending_idx)+len(self.undecided) == 0:
+            return -1
+        return 0
 
     def __len__(self):
         return len(self.undecided)
@@ -88,10 +89,20 @@ class Sampler(object):
 
         # 负载均衡
         self.cache_cap = threading.Semaphore(cap)
-        # 当所有进程都已经blocking完毕，就block住，防止空转
-        self.blocking_sampling = threading.Condition() 
+
+        # 当所有进程都已经sampling完毕，就block住，防止空转
+        self.blocking_sampling = threading.Condition()
+    
     def add_subsampler(self, subs):
         with self.subsampler_lock:
+            # check repeated
+            for i in range(len(self.alive_subsampler)):
+                if self.alive_subsampler[i].name == subs.name:
+                    return False
+            for i in range(len(self.zombie_subsampler)):
+                if self.zombie_subsampler[i].name == subs.name:
+                    return False
+                
             _subsampler_list = []
             for i in range(len(self.alive_subsampler)):
                 if len(subs) < len(self.alive_subsampler[i]):
@@ -102,28 +113,34 @@ class Sampler(object):
             _subsampler_list.append(subs)
         
             self.alive_subsampler = _subsampler_list
+        return True
 
-    def restore_subs(self, name):
+    def restore_subsampler(self, name):
+        logging.info("sampler restore subs %s", name)
         with self.subsampler_lock:
             restore_subs = None
             for i in range(len(self.zombie_subsampler)):
                 if self.zombie_subsampler[i].name == name:
+                    self.zombie_subsampler[i].reset()
                     self._add_subsampler(self.zombie_subsampler[i])
                     del self.zombie_subsampler[i]
-                    return
+                    return True
+        return False
     
     def _name2subs(self, subsampler_list, name):
         for i in range(len(self.zombie_subsampler)):
             if self.zombie_subsampler[i].name == name:
                 return self.zombie_subsampler[i]
 
-    def delete_subs(self, name):
+    def delete_subsampler(self, name):
+        logging.info("sampler delete subs %s", name)
         with self.subsampler_lock:
             for i in range(len(self.zombie_subsampler)):
                 if self.zombie_subsampler[i].name == name:
                     self.zombie_subsampler[i].delete()
                     del self.zombie_subsampler[i]
-                    return
+                    return True
+        return False
 
     def _next_idx(self):
         l = len(self.alive_subsampler)
@@ -147,6 +164,14 @@ class Sampler(object):
                 else:
                     self.pending_idx[i] = idx_dict[i]
 
+    def alive2zombie(self, subs):
+        with self.subsampler_lock:
+            for i in range(len(self.alive_subsampler)):
+                if subs.name == self.alive_subsampler[i].name:
+                    self.zombie_subsampler.append(self.alive_subsampler[i])
+                    del self.alive_subsampler[i]
+                    break
+
     def dispatch_data(self, ):
         while True:
             item = self.data_queue.get(True)
@@ -155,7 +180,11 @@ class Sampler(object):
             with self.pending_idx_lock:
                 logging.info("dispating data idx %d", idx)
                 for subs in self.pending_idx[idx]:
-                    subs.send_data(idx, data)
+                    err = subs.send_data(idx, data)
+                    if err == -1:
+                        print("zombie.......")
+                        self.alive2zombie(subs)
+
 
     def sampling_idx(self):
         while True:
@@ -192,17 +221,24 @@ class Sampler(object):
             name = list(task.keys())[0]
             data = list(task.values())[0]
             logging.info("sampler receive a task : %s", name)
+
+            # 如果出现重复的name，或者name找不到，返回succ = False
             if (type(data) == list):
                 subs = SubSampler(name, data)
-                sa.add_subsampler(subs)
+                succ = sa.add_subsampler(subs)
                 with sa.blocking_sampling:
                     sa.blocking_sampling.notify()
             elif (type(data) == int):
                 if data >= 0:
                     # TODO: error process
-                    sa.restore_subs(name)
+                    succ = sa.restore_subsampler(name)
                 else:
-                    sa.delete_subs(name)
+                    succ = sa.delete_subsampler(name)
+            
+            if succ:
+                task_queue.put(b'1')
+            else:
+                task_queue.put(b'0')
 
 # def test():
 #     s = SubSampler([1,2,3,4,5,6])
