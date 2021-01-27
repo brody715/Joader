@@ -11,12 +11,13 @@ class SubSampler(object):
         #TODO: 策略待选择
         self.independent = independent
 
+        self.idx_lock = threading.Lock()
         self.undecided = idx_list
         self.decided = []
         self.pending_idx = []
         
         self.data_size = len(idx_list)
-        
+
         self.name = name
         self.path = "/tmp/"+self.name
         
@@ -27,7 +28,8 @@ class SubSampler(object):
         os.mkfifo(self.path)
 
         assert(os.path.exists(self.path))
-        self.wf = os.open(self.path, os.O_SYNC | os.O_CREAT | os.O_RDWR )
+        self.wf_lock = threading.Lock()
+        self.wf = os.open(self.path, os.O_SYNC | os.O_CREAT | os.O_RDWR)
         
         self.alive_tiker = time.time()
 
@@ -38,15 +40,17 @@ class SubSampler(object):
         return (time.time()-self.alive_tiker) > ttl
     
     def set_idxlist(self, idx_list):
-        self.undecided = idx_list
+        with self.idx_lock:
+            self.undecided = idx_list
 
     def reset(self):
-        self.undecided = []
-        self.undecided.extend(self.decided)
-        self.undecided.extend(self.pending_idx)
-        self.decided = []
-        self.pending_idx = []
-        self.update_tiker()
+        with self.idx_lock:
+            self.undecided = []
+            self.undecided.extend(self.decided)
+            self.undecided.extend(self.pending_idx)
+            self.decided = []
+            self.pending_idx = []
+            self.update_tiker()
     
     def _random_sampling(self):
         random.seed(time.time())
@@ -61,36 +65,46 @@ class SubSampler(object):
         if not self.independent:
             for idx in idx_list:
                 if idx in self.undecided:
-                    self.undecided.remove(idx)
-                    self.pending_idx.append(idx)
-                    self.update_tiker()
+                    with self.idx_lock:
+                        self.undecided.remove(idx)
+                        self.pending_idx.append(idx)
+                        self.update_tiker()
                     return False, idx
         
         idx = self._random_sampling()
-        self.undecided.remove(idx)
-        self.pending_idx.append(idx)
-        self.update_tiker()
+        with self.idx_lock:
+            self.undecided.remove(idx)
+            self.pending_idx.append(idx)
+            self.update_tiker()
         return True, idx
     
+    def write(self, size_byte, data_byte):
+        try:
+            with self.wf_lock:
+                os.write(self.wf, size_byte)
+                os.write(self.wf, data_byte)
+        except:
+            return
+        
     def send_data(self, idx, data):
+        res = 0
+
         if idx in self.pending_idx:
             assert (data is not None)
             size_byte, data_byte = encode(data)
-
             logging.critical("sampler put data %d length %d", idx, len(data))
             
-            os.write(self.wf, size_byte)
-            os.write(self.wf, data_byte)
-            
-            self.decided.append(idx)
-            self.pending_idx.remove(idx)
-            self.update_tiker()
+            thread = threading.Thread(target=self.write, args=(size_byte, data_byte))
+            thread.start()
 
-            if len(self.pending_idx)+len(self.undecided) == 0:
-                return -1
-            return 0
-        return -2
-    
+            with self.idx_lock:
+                self.decided.append(idx)
+                self.pending_idx.remove(idx)
+                self.update_tiker()
+                if len(self.pending_idx)+len(self.undecided) == 0:
+                    res = -1
+        
+        return res
 
     def __len__(self):
         return len(self.undecided)
@@ -100,11 +114,11 @@ class SubSampler(object):
         os.remove(self.path)
 
 class Sampler(object):
-    def __init__(self, idx_queue, data_queue, cap = 100):
+    def __init__(self, idx_queue, data_queue, cap = 64):
         # TODO: 存在许多竞争，待修复    
         self.alive_subsampler = []
         self.zombie_subsampler = []
-        self.subsampler_lock = threading.Lock()
+        self.subsampler_list_lock = threading.Lock()
 
         # idx -> subs
         self.pending_idx = {}
@@ -121,7 +135,8 @@ class Sampler(object):
         self.blocking_sampling = threading.Condition()
     
     def check_exist(self, name):
-        with self.subsampler_lock:
+        with self.subsampler_list_lock:
+            logging.info("check_exist")
             for i in range(len(self.alive_subsampler)):
                 if self.alive_subsampler[i].name == name:
                     return True
@@ -131,7 +146,7 @@ class Sampler(object):
         return False
     
     def add_subsampler(self, subs):
-        with self.subsampler_lock:
+        with self.subsampler_list_lock:
             _subsampler_list = []
             for i in range(len(self.alive_subsampler)):
                 if len(subs) < len(self.alive_subsampler[i]):
@@ -152,7 +167,7 @@ class Sampler(object):
     def restore_subsampler(self, name):
         logging.info("sampler restore subs %s", name)
         subs = None
-        with self.subsampler_lock:
+        with self.subsampler_list_lock:
             restore_subs = None
             for i in range(len(self.zombie_subsampler)):
                 if self.zombie_subsampler[i].name == name:
@@ -173,7 +188,7 @@ class Sampler(object):
 
     def delete_subsampler(self, name):
         logging.info("sampler delete subs %s", name)
-        with self.subsampler_lock:
+        with self.subsampler_list_lock:
             for i in range(len(self.zombie_subsampler)):
                 if self.zombie_subsampler[i].name == name:
                     self.zombie_subsampler[i].delete()
@@ -208,30 +223,30 @@ class Sampler(object):
                     self.pending_idx[i] = idx_dict[i]
 
     def alive2zombie(self, subs):
-        for i in range(len(self.alive_subsampler)):
-            if subs.name == self.alive_subsampler[i].name:
-                self.zombie_subsampler.append(self.alive_subsampler[i])
-                del self.alive_subsampler[i]
-                break
+        with self.subsampler_list_lock:
+            for i in range(len(self.alive_subsampler)):
+                if subs.name == self.alive_subsampler[i].name:
+                    self.zombie_subsampler.append(self.alive_subsampler[i])
+                    del self.alive_subsampler[i]
+                    break
 
     def dispatch_data(self, ):
         while True:
             item = self.data_queue.get(True)
             idx, data = item
             self.cache_cap.release()
+            
             with self.pending_idx_lock:
-                with self.subsampler_lock:
-                    logging.info("dispating data idx %d", idx)
-                    for subs in self.pending_idx[idx]:
-                            err = subs.send_data(idx, data)
-                            if err == -1:
-                                self.alive2zombie(subs)
+                for subs in self.pending_idx[idx]:
+                    err = subs.send_data(idx, data)
+                    if err == -1:
+                        self.alive2zombie(subs)
 
 
     def sampling_idx(self):
         while True:
             self.cache_cap.acquire()
-            with self.subsampler_lock:
+            with self.subsampler_list_lock:
                 idx_dict = self._next_idx()
             
             if len(idx_dict.keys()) == 0:
@@ -247,21 +262,26 @@ class Sampler(object):
                 self.idx_queue.put(i)
     
     def check_expired(self, ttl = 5):
-        with self.subsampler_lock:
-            for i in range(len(self.alive_subsampler)):
+        with self.subsampler_list_lock:
+            i = 0
+            while i < len(self.alive_subsampler):
                 if self.alive_subsampler[i].expired(ttl):
                     logging.info("sampler %s expired", self.alive_subsampler[i].name)
                     self.alive_subsampler[i].delete()
                     del self.alive_subsampler[i]
-            
-            for i in range(len(self.zombie_subsampler)):
+                else:
+                    i += 1
+            i = 0
+            while i < len(self.zombie_subsampler):
                 if self.zombie_subsampler[i].expired(ttl):
                     logging.info("sampler %s expired", self.zombie_subsampler[i].name)
                     self.zombie_subsampler[i].delete()
                     del self.zombie_subsampler[i]
+                else:
+                    i += 1
     
     def delete(self):
-        with self.subsampler_lock:
+        with self.subsampler_list_lock:
             for i in range(len(self.alive_subsampler)):
                 self.alive_subsampler[i].delete()
                 del self.alive_subsampler[i]
@@ -317,6 +337,8 @@ class Sampler(object):
                 print("sampler is exiting ......")
                 return
 
+# sa = SubSampler("xx", [1,2,3,4])
+# sa.delete()
 # def test():
 #     s = SubSampler([1,2,3,4,5,6])
 #     print(s.next_idx())

@@ -37,8 +37,6 @@ def message_handle(client, task_queue, task_lock, response_queue):
             name = list(task.keys())[0]
             
             with task_lock:
-                
-                print("SEND TASK")
                 task_queue.put(task)
                 resp = response_queue.get()
                 if list(resp.keys())[0] == name:
