@@ -6,6 +6,7 @@ import queue
 import threading
 from mylog import *
 import torch
+import signal, os, sys
 
 
 #TODO：这个需要手动定义，有点丑陋
@@ -23,23 +24,23 @@ class Loader(object):
             data_queue.put((idx, data))
 
     @staticmethod
-    def stop_pool(mp):
-        mp.close()
-        mp.join()
-    @staticmethod
     #TODO: hard code workers
     def loading(idx_queue, data_queue, workers=8, s=0):
         logging.info("start loader")
-        
         # middle_queue = queue.Queue()
         if workers == 0:
             workers = multiprocessing.cpu_count()
         if s == 0:
             s = 2*workers
-        p = multiprocessing.Pool(processes = workers)
-        sem = multiprocessing.Semaphore(s)
-        
-        for i in range(workers):
-            p.apply_async(Loader.process, (idx_queue, data_queue))
-        p.close()
-        p.join()
+        try:
+            p = multiprocessing.Pool(processes = workers)
+            sem = multiprocessing.Semaphore(s)
+            
+            for i in range(workers):
+                p.apply_async(Loader.process, (idx_queue, data_queue))
+            p.close()
+            p.join()
+        except:
+            print("loader is exiting ......")
+            p.terminate()
+            return
