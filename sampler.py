@@ -127,6 +127,7 @@ class SubSampler(object):
         self.cache.put(-1)
 
     def delete(self):
+        self.zombie()
         os.close(self.wf)
         os.remove(self.path)
 
@@ -175,10 +176,9 @@ class Sampler(object):
         
             self.alive_subsampler = _subsampler_list
         
-        logging.info("add subsampler name %s", subs.name)
         with self.blocking_sampling:
             self.blocking_sampling.notify()
-        
+        logging.info("add subsampler name %s", subs.name)
         return True
 
     def restore_subsampler(self, name):
@@ -206,6 +206,11 @@ class Sampler(object):
     def delete_subsampler(self, name):
         logging.info("sampler delete subs %s", name)
         with self.subsampler_list_lock:
+            for i in range(len(self.alive_subsampler)):
+                if self.alive_subsampler[i].name == name:
+                    self.alive_subsampler[i].delete()
+                    del self.alive2zombie[i]
+                    return True
             for i in range(len(self.zombie_subsampler)):
                 if self.zombie_subsampler[i].name == name:
                     self.zombie_subsampler[i].delete()

@@ -31,6 +31,7 @@ class GlobalDataSet(torch.utils.data.IterableDataset):
         return self
 
     def __next__(self):
+        self.s.send(b'1')
         self.cnt += 1
         if self.cnt >= self.length:
             raise StopIteration
@@ -68,13 +69,13 @@ class AvgTime():
 
 def test():
     ADDRESS = ('127.0.0.1', 8712)
-    gd = GlobalDataSet(address=ADDRESS, idx_list = list(range(12)), name="lmdbdataset"+str(time.time()))
+    gd = GlobalDataSet(address=ADDRESS, idx_list = list(range(1200)), name="lmdbdataset"+str(time.time()))
     avg = AvgTime()
-    loader = torch.utils.data.DataLoader(gd, batch_size=4)
+    loader = torch.utils.data.DataLoader(gd, batch_size=32)
     now = time.time()
     for input, target in loader:
         # avg.add(time.time()-now)
         print(input.shape, time.time()-now)
         time.sleep(1)
         now = time.time()
-# test()
+test()

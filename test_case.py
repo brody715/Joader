@@ -18,7 +18,7 @@ class AvgTime():
 
 
 def create_socket():
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.connect(ADDRESS)
     return s
 
