@@ -1,4 +1,5 @@
 import random
+import queue
 import time
 import threading
 import copy
@@ -7,8 +8,10 @@ from mylog import *
 import signal, os, sys
 
 class SubSampler(object):
-    def __init__(self, name, idx_list=[], independent=False):
+    def __init__(self, name, idx_list=[], independent=False, cap=64):
         #TODO: 策略待选择
+        self.cache = queue.Queue(maxsize=cap)
+
         self.independent = independent
 
         self.idx_lock = threading.Lock()
@@ -16,6 +19,9 @@ class SubSampler(object):
         self.decided = []
         self.pending_idx = []
         
+        self.writer = threading.Thread(target=self.write, args=())
+        self.writer.start()
+
         self.data_size = len(idx_list)
 
         self.name = name
@@ -28,8 +34,7 @@ class SubSampler(object):
         os.mkfifo(self.path)
 
         assert(os.path.exists(self.path))
-        self.wf_lock = threading.Lock()
-        self.wf = os.open(self.path, os.O_SYNC | os.O_CREAT | os.O_RDWR)
+        self.wf = os.open(self.path, os.O_CREAT | os.O_RDWR)
         
         self.alive_tiker = time.time()
 
@@ -44,6 +49,8 @@ class SubSampler(object):
             self.undecided = idx_list
 
     def reset(self):
+        self.writer = threading.Thread(target=self.write, args=())
+        self.writer.start()
         with self.idx_lock:
             self.undecided = []
             self.undecided.extend(self.decided)
@@ -78,24 +85,31 @@ class SubSampler(object):
             self.update_tiker()
         return True, idx
     
-    def write(self, size_byte, data_byte):
+    def write(self):
         try:
-            with self.wf_lock:
+            cnt = 0
+            while True:
+                data = self.cache.get(block=True)
+                logging.critical("writing data")
+                if data == -1:
+                    break
+                size_byte, data_byte = encode(data)
                 os.write(self.wf, size_byte)
                 os.write(self.wf, data_byte)
         except:
             return
         
-    def send_data(self, idx, data):
+    def send_data(self, idx, data, ttl=5):
         res = 0
 
         if idx in self.pending_idx:
             assert (data is not None)
-            size_byte, data_byte = encode(data)
-            logging.critical("sampler put data %d length %d", idx, len(data))
             
-            thread = threading.Thread(target=self.write, args=(size_byte, data_byte))
-            thread.start()
+            try:
+                logging.critical("sampler put data %d length %d", idx, len(data))
+                self.cache.put(data, block=True, timeout=ttl)
+            except:
+                return -1
 
             with self.idx_lock:
                 self.decided.append(idx)
@@ -109,6 +123,9 @@ class SubSampler(object):
     def __len__(self):
         return len(self.undecided)
     
+    def zombie(self):
+        self.cache.put(-1)
+
     def delete(self):
         os.close(self.wf)
         os.remove(self.path)
@@ -223,6 +240,7 @@ class Sampler(object):
                     self.pending_idx[i] = idx_dict[i]
 
     def alive2zombie(self, subs):
+        subs.zombie()
         with self.subsampler_list_lock:
             for i in range(len(self.alive_subsampler)):
                 if subs.name == self.alive_subsampler[i].name:

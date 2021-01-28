@@ -74,8 +74,9 @@ def start_loader(idx_queue, data_queue):
 
 def stop_process(p):
     p.terminate()
-    time.sleep(0.1)
-    assert(p.is_alive() != True)
+    while p.is_alive == True:
+        time.sleep(0.1)
+    # assert(p.is_alive() != True)
     p.close()
 
 if __name__ == '__main__':
