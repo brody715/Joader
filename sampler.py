@@ -6,7 +6,8 @@ import copy
 from encode import *
 from mylog import *
 import signal, os, sys
-
+import multiprocessing
+from loader import Loader
 class SubSampler(object):
     def __init__(self, name, idx_list=[], independent=False, cap=64):
         #TODO: 策略待选择
@@ -132,8 +133,16 @@ class SubSampler(object):
         os.remove(self.path)
 
 class Sampler(object):
-    def __init__(self, idx_queue, data_queue, cap = 64):
-        # TODO: 存在许多竞争，待修复    
+    def __init__(self, idx_queue=None, data_queue=None, cap = 64):
+        if idx_queue is None:
+            idx_queue = multiprocessing.Manager().Queue(maxsize=cap)
+        if data_queue is None:
+            data_queue = multiprocessing.Manager().Queue(maxsize=cap)
+        
+        # 进程通信管道
+        self.data_queue = data_queue
+        self.idx_queue = idx_queue
+        
         self.alive_subsampler = []
         self.zombie_subsampler = []
         self.subsampler_list_lock = threading.Lock()
@@ -142,12 +151,8 @@ class Sampler(object):
         self.pending_idx = {}
         self.pending_idx_lock = threading.Lock()
         
-        # 进程通信管道
-        self.idx_queue = idx_queue
-        self.data_queue = data_queue
-
         # 负载均衡
-        self.cache_cap = threading.Semaphore(cap)
+        # self.cache_cap = threading.Semaphore(cap)
 
         # 当所有进程都已经sampling完毕，就block住，防止空转
         self.blocking_sampling = threading.Condition()
@@ -257,7 +262,7 @@ class Sampler(object):
         while True:
             item = self.data_queue.get(True)
             idx, data = item
-            self.cache_cap.release()
+            # self.cache_cap.release()
             
             with self.pending_idx_lock:
                 for subs in self.pending_idx[idx]:
@@ -268,7 +273,7 @@ class Sampler(object):
 
     def sampling_idx(self):
         while True:
-            self.cache_cap.acquire()
+            # self.cache_cap.acquire()
             with self.subsampler_list_lock:
                 idx_dict = self._next_idx()
             
@@ -314,13 +319,16 @@ class Sampler(object):
                 del self.zombie_subsampler[i]
 
     @staticmethod
-    def sampler(task_queue, response_queue, idx_queue, data_queue):
+    def sampler(task_queue, response_queuee):
         logging.info("start sampler")
-        
-        # signal.signal(signal.SIGTERM, _signal_handler)
 
-        sa = Sampler(idx_queue, data_queue)
+        sa = Sampler()
         
+        # start loader process
+        loader = multiprocessing.Process(target=Loader.loading, args=(sa.idx_queue, sa.data_queue))
+        loader.start()
+        assert(loader.is_alive() == True)
+
         # start a thread to put index
         idx_sampler = threading.Thread(target=sa.sampling_idx, args=())
         idx_sampler.start()
@@ -357,6 +365,11 @@ class Sampler(object):
                     response_queue.put({name:b'0'})
             except:
                 sa.delete()
+                loader.terminate()
+                while loader.is_alive == True:
+                    time.sleep(0.1)
+                # assert(p.is_alive() != True)
+                loader.close()
                 print("sampler is exiting ......")
                 return
 
