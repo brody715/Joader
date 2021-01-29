@@ -18,7 +18,7 @@ class AvgTime():
 
 
 def create_socket():
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.connect(ADDRESS)
     return s
 
@@ -110,7 +110,7 @@ def test_expired(name, n):
 
 # test_create_restore_del("xiejian", 100)
 # test_expired("xiejian", 100)
-n = 10
+n = 5
 name_list = []
 n_list = []
 for i in range(n):
