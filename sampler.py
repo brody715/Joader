@@ -91,6 +91,8 @@ class SubSampler(object):
             cnt = 0
             while True:
                 data = self.cache.get(block=True)
+                print(data)
+                assert (data is not None)
                 logging.critical("writing data")
                 if data == -1:
                     break
