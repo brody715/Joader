@@ -48,7 +48,7 @@ def message_handle(client, task_queue, task_lock, response_queue):
             if list(task.values())[0] == -1 or resp == b'0':
                 break
         except:
-            task_queue.put({name:-1})
+            # task_queue.put({name:-1})
             break
 
 def accept_client(s, task_queue, task_lock, response_queue):
@@ -61,14 +61,8 @@ def accept_client(s, task_queue, task_lock, response_queue):
         except:
             break
 
-def start_sampler(task_queue, response_queue, idx_queue, data_queue):
-    p = Process(target=sampler.Sampler.sampler, args=(task_queue, response_queue, idx_queue, data_queue))
-    p.start()
-    assert(p.is_alive() == True)
-    return p
-
-def start_loader(idx_queue, data_queue):
-    p = Process(target=loader.Loader.loading, args=(idx_queue, data_queue))
+def start_sampler(task_queue, response_queue):
+    p = Process(target=sampler.Sampler.sampler, args=(task_queue, response_queue))
     p.start()
     assert(p.is_alive() == True)
     return p
@@ -87,17 +81,12 @@ if __name__ == '__main__':
     response_queue = Queue()
     task_lock = threading.Lock()
 
-    idx_queue = Manager().Queue()
-    data_queue = Manager().Queue()
-
-    sampler = start_sampler(task_queue, response_queue, idx_queue, data_queue)
-    loader = start_loader(idx_queue, data_queue)
+    sampler = start_sampler(task_queue, response_queue)
     
     # start server to listen socket
     s = init(ADDRESS[0], ADDRESS[1])
     accept_client(s, task_queue, task_lock, response_queue)
-    
+
     s.close()
     stop_process(sampler)
-    stop_process(loader)
     print("---------- exited ----------")
