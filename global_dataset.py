@@ -69,7 +69,7 @@ class AvgTime():
 
 def test():
     ADDRESS = ('127.0.0.1', 8712)
-    gd = GlobalDataSet(address=ADDRESS, idx_list = list(range(1200)), name="lmdbdataset"+str(time.time()))
+    gd = GlobalDataSet(address=ADDRESS, idx_list = list(range(2)), name="lmdbdataset"+str(time.time()))
     avg = AvgTime()
     loader = torch.utils.data.DataLoader(gd, batch_size=32)
     now = time.time()

@@ -209,7 +209,7 @@ class Sampler(object):
             for i in range(len(self.alive_subsampler)):
                 if self.alive_subsampler[i].name == name:
                     self.alive_subsampler[i].delete()
-                    del self.alive2zombie[i]
+                    del self.alive_subsampler[i]
                     return True
             for i in range(len(self.zombie_subsampler)):
                 if self.zombie_subsampler[i].name == name:
