@@ -48,7 +48,7 @@ def message_handle(client, task_queue, task_lock, response_queue):
             if list(task.values())[0] == -1 or resp == b'0':
                 break
         except:
-            task_queue.put({name:-1})
+            # task_queue.put({name:-1})
             break
 
 def accept_client(s, task_queue, task_lock, response_queue):

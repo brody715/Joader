@@ -91,9 +91,9 @@ class SubSampler(object):
             cnt = 0
             while True:
                 data = self.cache.get(block=True)
-                print(data)
+                data = ([0]*10, 123)
                 assert (data is not None)
-                logging.critical("writing data")
+                logging.critical("writing data with cache %d", self.cache.qsize()) 
                 if data == -1:
                     break
                 size_byte, data_byte = encode(data)
@@ -262,7 +262,7 @@ class Sampler(object):
 
     def dispatch_data(self, ):
         while True:
-            item = self.data_queue.get(True)
+            item = self.data_queue.get()
             idx, data = item
             # self.cache_cap.release()
             
@@ -321,12 +321,12 @@ class Sampler(object):
                 del self.zombie_subsampler[i]
 
     @staticmethod
-    def sampler(task_queue, response_queuee):
+    def sampler(task_queue, response_queue):
         logging.info("start sampler")
 
         sa = Sampler()
         
-        # start loader process
+        # start loader process to load data
         loader = multiprocessing.Process(target=Loader.loading, args=(sa.idx_queue, sa.data_queue))
         loader.start()
         assert(loader.is_alive() == True)
@@ -334,7 +334,6 @@ class Sampler(object):
         # start a thread to put index
         idx_sampler = threading.Thread(target=sa.sampling_idx, args=())
         idx_sampler.start()
-
         data_fetcher = threading.Thread(target=sa.dispatch_data, args=())
         data_fetcher.start()
 

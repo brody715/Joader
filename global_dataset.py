@@ -31,9 +31,8 @@ class GlobalDataSet(torch.utils.data.IterableDataset):
         return self
 
     def __next__(self):
-        self.s.send(b'1')
         self.cnt += 1
-        if self.cnt >= self.length:
+        if self.cnt > self.length:
             raise StopIteration
         size_byte = os.read(self.fd, SIZE_CNT)
         size = decode_size(size_byte)
@@ -67,15 +66,15 @@ class AvgTime():
             return 0
         return self.sum/self.cnt
 
-def test():
+def test(n, bs):
     ADDRESS = ('127.0.0.1', 8712)
-    gd = GlobalDataSet(address=ADDRESS, idx_list = list(range(1200)), name="lmdb-global-dataset"+str(time.time()))
+    gd = GlobalDataSet(address=ADDRESS, idx_list = list(range(n)), name="lmdb-global-dataset"+str(time.time()))
     avg = AvgTime()
-    loader = torch.utils.data.DataLoader(gd, batch_size=32)
+    loader = torch.utils.data.DataLoader(gd, batch_size=bs)
     now = time.time()
     for input, target in loader:
         # avg.add(time.time()-now)
-        print(input.shape, time.time()-now)
+        print(len(input), time.time()-now)
         time.sleep(1)
         now = time.time()
-test()
+test(5, 2)
