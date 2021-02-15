@@ -68,11 +68,7 @@ class AvgTime():
 
 def test(n, bs):
     ADDRESS = ('127.0.0.1', 8712)
-<<<<<<< HEAD
-    gd = GlobalDataSet(address=ADDRESS, idx_list = list(range(2)), name="lmdbdataset"+str(time.time()))
-=======
     gd = GlobalDataSet(address=ADDRESS, idx_list = list(range(n)), name="lmdb-global-dataset"+str(time.time()))
->>>>>>> inter
     avg = AvgTime()
     loader = torch.utils.data.DataLoader(gd, batch_size=bs)
     now = time.time()

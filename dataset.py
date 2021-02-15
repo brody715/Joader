@@ -68,15 +68,27 @@ class lmdbDataset(Dataset):
         image_content = self.transform(image_content)
         
         process_time = time.time()-begin
-        
-        # print("%f"%(process_time))
-        
-        return image_content,label
+        return self.to_bytes(image_content, label)
+
+    def to_bytes(self, image_content, label):
+        image_content_bytes = np.array(image_content).tobytes()
+        label_bytes = label.to_bytes(4, 'big')
+        # print np.array(image_content_bytes)
+        return label_bytes+image_content_bytes
+
+    def from_bytes(self, bytes):
+        label = int.from_bytes(bytes[:4], 'big')
+        image_content = np.frombuffer(bytes[4:], uint8)
+        return label, torch.from_numpy(image_content)
+
 
 
 
 if __name__ == '__main__':
-    temp_dataset = lmdbDataset('indoor67.lmdb',True)
-    print(temp_dataset[0])
+    ds = lmdbDataset('/data/share/ImageNet/ILSVRC-train.lmdb', True)
+    print(len(ds[0]))
+    print(len(ds[1]))
+    print(len(ds[15]))
+    # print(ds[0])
         #print(i)
         #assert temp_dataset[i][0] is not None
