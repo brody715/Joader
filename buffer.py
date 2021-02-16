@@ -1,12 +1,10 @@
 import multiprocessing
 import queue
 from multiprocessing import shared_memory
+from mylog import *
 import signal, os, sys
 
-# 终止进程信号处理
-
-
-class Cache(object):
+class Buffer(object):
     def __init__(self, name, create=False, size=0):
         self.shm = None
         if create:
@@ -16,6 +14,7 @@ class Cache(object):
         # self in_queue = in_queue
         self.buf = self.shm.buf
         self.size = size
+        self.name = self.shm.name
 
         # | -- inode -->     <-- data --|
         self.inode_tail = 0
@@ -44,6 +43,7 @@ class Cache(object):
         self.DATA_OK = 0x1
         self.NEXT_OK = 0x2
         self.USED = 0x4
+    
     def read(self, idx):
         data_idx_byte = self.buf[idx+self.DATA_IDX_OFF:idx+self.DATA_IDX_OFF+self.INDEX_LEN]
         data_idx = int.from_bytes(data_idx_byte, self.BYTE_ORDER)
@@ -54,7 +54,7 @@ class Cache(object):
         data_byte = self.buf[data_idx+self.DATASIZE_LEN:data_idx+self.DATASIZE_LEN+datasize]
         
         self.buf[idx+self.VALID_OFF] &= (~self.DATA_OK)
-        # print("read data(%d) inode %d"%(data_idx, idx, ))
+        logging.info("read data(%d) inode %d",data_idx, idx)
         return data_byte.tobytes()
     
     def get_next(self, idx):
@@ -85,7 +85,8 @@ class Cache(object):
             if task_name not in self.task_tails.keys():
                 return -1
             inode_idx = self._write_inode(self.task_tails[task_name], data_idx)
-            # print("write data[%d] ref(%s) in (%d ->) %d"%(data_idx, task_name, self.task_tails[task_name], inode_idx))
+            
+            logging.info("write data[%d] ref(%s) in (%d ->) %d",data_idx, task_name, self.task_tails[task_name], inode_idx)
             self.task_tails[task_name] = inode_idx
 
             self.data_refs[data_idx].append(inode_idx)
@@ -100,26 +101,22 @@ class Cache(object):
         data_idx_byte = data_idx.to_bytes(self.INDEX_LEN, self.BYTE_ORDER)
 
         # copy this data idx
-        for i in range(self.INDEX_LEN):
-            self.buf[curnode_idx+self.DATA_IDX_OFF+i] = data_idx_byte[i]
+        self.buf[curnode_idx+self.DATA_IDX_OFF:curnode_idx+self.DATA_IDX_OFF+self.INDEX_LEN] = data_idx_byte
         self.buf[curnode_idx+self.VALID_OFF] |= self.DATA_OK
 
         # link last idx
-        for i in range(self.INDEX_LEN):
-            self.buf[lastnode_idx+self.NEXT_IDX_OFF+i] = curnode_idx_byte[i]
+        self.buf[lastnode_idx+self.NEXT_IDX_OFF:lastnode_idx+self.NEXT_IDX_OFF+self.INDEX_LEN] = curnode_idx_byte
         self.buf[lastnode_idx+self.VALID_OFF] |= self.NEXT_OK
 
         return curnode_idx
     
     def _write_data(self, data):
         data_idx = self._allocate_data()
-        size = len(data).to_bytes(self.DATASIZE_LEN, byteorder=self.BYTE_ORDER)
+        size_byte = len(data).to_bytes(self.DATASIZE_LEN, byteorder=self.BYTE_ORDER)
 
-        for i in range(self.DATASIZE_LEN):
-            self.buf[data_idx+i] = size[i]
-        
-        for i in range(self.DATA_LEN-self.DATASIZE_LEN):
-            self.buf[data_idx+self.DATASIZE_LEN+i] = data[i]
+        # write data
+        self.buf[data_idx : data_idx+self.DATA_LEN] = size_byte+data
+
         return data_idx
     
     def _allocate_inode(self, ):
@@ -130,7 +127,7 @@ class Cache(object):
         
         # 当找不到空闲的节点，一直轮询，是否合理？
         while True:
-            time.sleep(1)
+            #time.sleep(1)
             # print("find free inode")
             for key in self.task_heads.keys():
                 idx = self.task_heads[key]
@@ -147,7 +144,7 @@ class Cache(object):
             return self.data_head
         #一直轮询
         while True:
-            time.sleep(1)
+            #time.sleep(1)
             # print("find free data")
             for i in range(self.size-self.DATA_LEN, self.data_head-1, -self.DATA_LEN):
                 free = True
@@ -180,23 +177,24 @@ import time
 n = 10
 def writer(c):
     for i in range(n):
-        d = c.write(b"xiejian"+str.encode(str(i)), ["task1", "task2"])
-        print("write",i," in ", d)
+        d = c.write(str.encode(str(i))*602116, ["task1", "task2"])
+        # print("write",i," in ", d)
 
 def reader(node, c, name):
-    time.sleep(0.1)
+    #time.sleep(0.1)
     for i in range(n):
+        now = time.time()
         next_node = c.get_next(node)
         while next_node == -1:
             next_node = c.get_next(node)
-            time.sleep(0.1)
+            #time.sleep(0.1)
         
-        print(name, "read", c.read(next_node))
+        print(name, "read", c.read(next_node)[0], time.time()-now)
         node = next_node
     c.delete_task(name)
     
 def test():
-    c = Cache("xiejian", True, 40)
+    c = Cache("xiejian", True, 602116*5)
     t1 = c.add_task("task1")
     t2 = c.add_task("task2")
     try:

@@ -25,30 +25,36 @@ def message_handle(client, task_queue, task_lock, response_queue):
     idx_list = []
     while True:
         try:
-            size_byte = client.recv(SIZE_CNT)
-
-            size = decode_size(size_byte)
-            task_byte = client.recv(size)
+            # client.
+            # client.settimeout(5)
+            # client.setblocking(True)
+            # print(client.gettimeout())
+            size_byte = client.recv(1024)
+            if(len(size_byte) == 0):
+                print(size_byte)
+                # size_byte = client.recv(1024)
+                continue
+            # size = decode_size(size_byte)
             
-            if (len(task_byte) == 0):
-                break
-
-            task = decode_data(task_byte)
-            name = list(task.keys())[0]
-            
-            with task_lock:
-                task_queue.put(task)
-                resp = response_queue.get()
-                if list(resp.keys())[0] == name:
-                    val = list(resp.values())[0]
-                else:
-                    response_queue.put(resp)
-            client.send(val)
-
-            if list(task.values())[0] == -1 or resp == b'0':
-                break
+            # task_byte = client.recv(size)
+            # task = decode_data(task_byte)
+            # if task == "HB":
+            #     continue
+            # name = task[0]
+            # while True:
+            #     with task_lock:
+            #         task_queue.put(task)
+            #         resp = response_queue.get()
+            #         if resp[0] == name:
+            #             buffer_head = resp[1]
+            #             break
+            #         else:
+            #             response_queue.put(resp)
+            # size, buffer_head_byte = encode(buffer_head)
+            # client.send(size)
+            # client.send(buffer_head_byte)
         except:
-            # task_queue.put({name:-1})
+            task_queue.put((name, -1))
             break
 
 def accept_client(s, task_queue, task_lock, response_queue):

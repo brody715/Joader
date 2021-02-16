@@ -5,6 +5,7 @@ import os
 import numpy as np
 ADDRESS = ('127.0.0.1', 8712) 
 import threading
+from buffer import Buffer
 
 class AvgTime():
     def __init__(self):
@@ -18,32 +19,37 @@ class AvgTime():
 
 
 def create_socket():
-    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(ADDRESS)
     return s
 
 def send_idx(name, n, s):
     idx = list(range(n))
-    size_byte, data_byte = encode({name:idx})
+    size_byte, data_byte = encode((name,0,idx))
     s.send(size_byte)
     s.send(data_byte)
-    resp = s.recv(1)
     
+    resp = (1, 2)
+    # size_byte = s.recv(SIZE_CNT)
+    # size = decode_size(size_byte)
+    # resp_byte = s.recv(size)
+    # resp = decode_data(resp_byte)
     return resp
 
-def rev_data(name, n):
-    path = "/tmp/"+name
-    print(path)
-    f = os.open(path, os.O_RDONLY)
-    idx = 0
+def recv_data(name, n, head):
     at = AvgTime()
-    
+    print(name)
+    buf = Buffer(name)
+    idx = 0
+    node = head
     while idx < n:
         now = time.time()
-        size_byte = os.read(f, 4)
-        size = decode_size(size_byte)
-        data_byte = os.read(f, size)
-        data = decode_data(data_byte)
+        next_node = buf.get_next(node)
+        while next_node == -1:
+            next_node = buf.get_next(node)
+        node = next_node
+        print("read", len(buf.read(node)), time.time()-now)
+        # print(node)
         at.add(time.time()-now)
         idx += 1
 
@@ -51,7 +57,7 @@ def rev_data(name, n):
 
 
 def restore(name, s):
-    size_byte, data_byte = encode({name:1})
+    size_byte, data_byte = encode((name, 1))
     s.send(size_byte)
     s.send(data_byte)
     resp = s.recv(1)
@@ -59,64 +65,29 @@ def restore(name, s):
     return resp
 
 def delete(name, s):
-    size_byte, data_byte = encode({name:-1})
+    size_byte, data_byte = encode((name,-1))
     s.send(size_byte)
     s.send(data_byte)
     resp = s.recv(1)
-
     return resp
 
-def test_create_restore_del(name, n):
+def test(name, n):
     s = create_socket()
-    print("conn sucess")
-    
-    resp = send_idx(name, n, s)
-    assert(resp == b'1')
+    head, buf_name = send_idx(name, n, s)
+    assert(head != -1)
 
-    rev_data(name, n)
-
-    resp = restore(name, s)
-    assert(resp == b'1')
-
-    rev_data(name, n)
-
-    resp = delete(name, s)
-    assert(resp == b'1')
-    assert(not os.path.exists("/tmp/"+name))
-
-def test_multi(name_list, n_list):
-    assert(len(name_list) == len(n_list))
-    
-    for i in range(len(name_list)):
-        t = threading.Thread(target=test_create_restore_del, args=(name_list[i], n_list[i]))
-        t.start()
-    time.sleep(60)
-
-def test_expired(name, n):
-    s = create_socket()
-    print("conn sucess")
-    
-    resp = send_idx(name, n, s)
-    assert(resp == b'1')
-
-    rev_data(name, n)
-
-    resp = send_idx(name, n, s)
-    assert(resp == b'0')
-
-    time.sleep(60)
-    resp = send_idx(name, n, s)
-    assert(resp == b'1')
+    # recv_data(buf_name, n, head)
+test("task1", 2)
 
 # test_create_restore_del("xiejian", 100)
 # test_expired("xiejian", 100)
-n = 5
-name_list = []
-n_list = []
-for i in range(n):
-    name_list.append("xiejian-GlobalLoader"+str(time.time()))
-    n_list.append(1000)
-test_multi(name_list, n_list)
+# n = 5
+# name_list = []
+# n_list = []
+# for i in range(n):
+#     name_list.append("xiejian-GlobalLoader"+str(time.time()))
+#     n_list.append(1000)
+# test_multi(name_list, n_list)
 
 
 
