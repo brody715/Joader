@@ -28,27 +28,35 @@ def send_idx(name, n, s):
     size_byte, data_byte = encode((name,0,idx))
     s.send(size_byte)
     s.send(data_byte)
-    
-    resp = (1, 2)
-    # size_byte = s.recv(SIZE_CNT)
-    # size = decode_size(size_byte)
-    # resp_byte = s.recv(size)
-    # resp = decode_data(resp_byte)
+
+    size_byte = s.recv(SIZE_CNT)
+    size = decode_size(size_byte)
+    resp_byte = s.recv(size)
+    resp = decode_data(resp_byte)
     return resp
 
-def recv_data(name, n, head):
+def recv_data(s, name, bufname, n, head):
     at = AvgTime()
-    print(name)
-    buf = Buffer(name)
+    print(bufname)
+    
+    buf = Buffer(bufname)
     idx = 0
     node = head
+    s.settimeout(0)
     while idx < n:
         now = time.time()
+        if idx%128 == 0:
+            size_byte, data_byte = encode((name,2))
+            s.send(size_byte)
+            s.send(data_byte)
+
         next_node = buf.get_next(node)
+        print(node)
         while next_node == -1:
+            time.sleep(0.001)
             next_node = buf.get_next(node)
         node = next_node
-        print("read", len(buf.read(node)), time.time()-now)
+        # print("read", len(buf.read(node)), time.time()-now)
         # print(node)
         at.add(time.time()-now)
         idx += 1
@@ -75,9 +83,8 @@ def test(name, n):
     s = create_socket()
     head, buf_name = send_idx(name, n, s)
     assert(head != -1)
-
-    # recv_data(buf_name, n, head)
-test("task1", 2)
+    recv_data(s, name, buf_name, n, head)
+test("task1", 100)
 
 # test_create_restore_del("xiejian", 100)
 # test_expired("xiejian", 100)

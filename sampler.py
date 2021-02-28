@@ -70,12 +70,14 @@ class Sampler(object):
             idx_queue = multiprocessing.Manager().Queue(maxsize=cap)
         if data_queue is None:
             data_queue = multiprocessing.Manager().Queue(maxsize=cap)
-        # zombine: 0
-        # alive: 1
-        self.task_state = {}
+        
+        # 每个任务的存活时间为10s
+        self.ttl = 10
+        self.task_tiker = {}
         
         self.buffer = Buffer(name, create, size)
         self.buffer_name = self.buffer.name
+
         # 进程通信管道
         self.data_queue = data_queue
         self.idx_queue = idx_queue
@@ -93,10 +95,11 @@ class Sampler(object):
         self.blocking_sampling = threading.Condition()
     
     def add_subsampler(self, subs):
-        if subs.name in self.task_state.keys():
-            return -1
-        
         head = self.buffer.add_task(subs.name)
+        if head == -1:
+            return head
+
+        self.task_tiker[subs.name] = time.time()
         with self.subsampler_list_lock:
             l = len(self.alive_subsampler)
             for i in range(l+1):
@@ -111,10 +114,8 @@ class Sampler(object):
 
     def restore_subsampler(self, name):
         logging.info("sampler restore subs %s", name)
-        if self.task_state[name] != 0:
-            return -1
 
-        self.buffer.delete_task(subs.name)
+        subs = None
         with self.subsampler_list_lock:
             for i in range(len(self.zombie_subsampler)):
                 if self.zombie_subsampler[i].name == name:
@@ -123,7 +124,10 @@ class Sampler(object):
                     del self.zombie_subsampler[i]
                     break
         
-        return self.add_subsampler(subs)
+        if subs is not None:
+            self.buffer.delete_task(subs.name)
+            return self.add_subsampler(subs)
+        return -1
 
     
     def _name2subs(self, subsampler_list, name):
@@ -133,22 +137,20 @@ class Sampler(object):
 
     def delete_subsampler(self, name):
         logging.info("sampler delete subs %s", name)
-        if name not in self.task_state.keys():
-            return 
-        elif task_state[name] == 0:
-            self.buffer.delete_task(name)
-            with self.subsampler_list_lock:
-                for i in range(len(self.alive_subsampler)):
-                    if self.alive_subsampler[i].name == name:
-                        del self.alive_subsampler[i]
-                        return True
-        elif task_state[name] > 0:
-            self.buffer.delete_task(name)
-            with self.subsampler_list_lock:
-                for i in range(len(self.zombie_subsampler)):
-                    if self.zombie_subsampler[i].name == name:
-                        del self.zombie_subsampler[i]
-                        return True
+        if name not in self.task_tiker.keys():
+            return
+        
+        self.buffer.delete_task(name)
+        with self.subsampler_list_lock:
+            for i in range(len(self.alive_subsampler)):
+                if self.alive_subsampler[i].name == name:
+                    del self.alive_subsampler[i]
+                    return
+            for i in range(len(self.zombie_subsampler)):
+                if self.zombie_subsampler[i].name == name:
+                    del self.zombie_subsampler[i]
+                return
+        del self.task_tiker[subs]
 
     def _next_idx(self):
         idx = -1
@@ -172,13 +174,22 @@ class Sampler(object):
                     self.pending_idx[i] = idx_dict[i]
 
     def clean(self):
+        for subs_name in self.task_tiker.keys():
+            if time.time() - self.task_tiker[subs_name] > self.ttl:
+                logging.info("sampler expired %s", subs_name)
+                self.delete_subsampler(subs_name)
         with self.subsampler_list_lock:
             for i in range(len(self.alive_subsampler)):
                 if self.alive_subsampler[i].state() == 0:
                     self.zombie_subsampler.append(self.alive_subsampler[i])
-                    self.task_state[self.alive_subsampler[i].name] = 0
                     del self.alive_subsampler[i]
-
+        
+    def update_tiker(self, name):
+        logging.info("sampler update %s", name)
+        if name not in self.task_tiker.keys():
+            return -1
+        self.task_tiker[name] = time.time()
+    
     def dispatch_data(self, ):
         while True:
             try:
@@ -233,21 +244,22 @@ class Sampler(object):
             try:
                 task = task_queue.get(True)
                 name = task[0]
-                state = task[1]
+                cmd= task[1]
 
-                logging.info("sampler receive a task : %s", name)
+                logging.info("sampler receive a task : %s. %d", name, cmd)
                 # 如果出现重复的name，或者name找不到，返回succ = False
                 sa.clean()
-                if (state == 0):
+                if (cmd == 0):
                     data = task[2]
                     subs = SubSampler(name, data)
                     succ = sa.add_subsampler(subs)
-                elif(state > 0):
+                elif(cmd == 1):
                     succ = sa.restore_subsampler(name)
-                elif(state < 0):
+                elif(cmd == -1):
                     succ = 1
                     sa.delete_subsampler(name)
-
+                else:
+                    sa.update_tiker(name)
                 response_queue.put((name, (succ, sa.buffer_name)))
             except:
                 loader.terminate()

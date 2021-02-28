@@ -22,40 +22,28 @@ def init(ip, port):
     return s
 
 def message_handle(client, task_queue, task_lock, response_queue):
-    idx_list = []
     while True:
         try:
-            # client.
-            # client.settimeout(5)
-            # client.setblocking(True)
-            # print(client.gettimeout())
-            size_byte = client.recv(1024)
-            if(len(size_byte) == 0):
-                print(size_byte)
-                # size_byte = client.recv(1024)
-                continue
-            # size = decode_size(size_byte)
+            size_byte = client.recv(SIZE_CNT)
             
-            # task_byte = client.recv(size)
-            # task = decode_data(task_byte)
-            # if task == "HB":
-            #     continue
-            # name = task[0]
-            # while True:
-            #     with task_lock:
-            #         task_queue.put(task)
-            #         resp = response_queue.get()
-            #         if resp[0] == name:
-            #             buffer_head = resp[1]
-            #             break
-            #         else:
-            #             response_queue.put(resp)
-            # size, buffer_head_byte = encode(buffer_head)
-            # client.send(size)
-            # client.send(buffer_head_byte)
+            if(len(size_byte) == 0):
+                break
+            size = decode_size(size_byte)
+            task_byte = client.recv(size)
+            task = decode_data(task_byte)
+            name = task[0]
+
+            with task_lock:
+                while not response_queue.empty():
+                    response_queue.get_nowait()
+                task_queue.put(task)
+                res_name, resp = response_queue.get(True)
+                assert(res_name == name)
+            size_byte, resp_byte = encode(resp)
+            client.send(size_byte)
+            client.send(resp_byte)
         except:
-            task_queue.put((name, -1))
-            break
+            return
 
 def accept_client(s, task_queue, task_lock, response_queue):
     while True:
