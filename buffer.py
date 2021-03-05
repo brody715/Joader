@@ -10,19 +10,19 @@ class Buffer(object):
     def __init__(self, name, create=False, size=0):
         # self.shm = None
         if create:
-            # path = "/tmp/"+name
-            # f = open(path, "wb+")
-            # f.write(b'0'*size)
-            # self.buf = mmap.mmap(f.fileno(), size)
-            # self.buf.flush()
-            self.shm = shared_memory.SharedMemory(name, create, size)
-            self.buf = self.shm.buf
+            path = "/tmp/"+name
+            f = open(path, "wb+")
+            f.write(b'0'*size)
+            self.buf = mmap.mmap(f.fileno(), size)
+            self.buf.flush()
+            # self.shm = shared_memory.SharedMemory(name, create, size)
+            # self.buf = self.shm.buf
         else:
-            # path = "/tmp/"+name
-            # f = open(path, "rb+")
-            # self.buf = mmap.mmap(f.fileno(), size)
-            self.shm = shared_memory.SharedMemory(name)
-            self.buf = self.shm.buf
+            path = "/tmp/"+name
+            f = open(path, "rb+")
+            self.buf = mmap.mmap(f.fileno(), size)
+            # self.shm = shared_memory.SharedMemory(name)
+            # self.buf = self.shm.buf
         # self in_queue = in_queue
         self.create = create
         self.size = size
@@ -69,7 +69,7 @@ class Buffer(object):
 
         self.buf[idx + self.VALID_OFF] &= (~self.DATA_OK)
         logging.info("read data(%d) inode %d in %s", data_idx, idx, self.name)
-        return data_byte.tobytes()
+        return data_byte
 
     def get_next(self, idx):
         if self.buf[idx + self.VALID_OFF] & self.NEXT_OK == 0:
@@ -207,9 +207,9 @@ class Buffer(object):
                   end=' | ')
 
     def __del__(self, ):
-        # pass
-        self.shm.close()
-        self.shm.unlink()
+        pass
+        # self.shm.close()
+        # self.shm.unlink()
 
 
 import threading
