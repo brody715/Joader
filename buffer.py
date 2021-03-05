@@ -15,14 +15,14 @@ class Buffer(object):
             # f.write(b'0'*size)
             # self.buf = mmap.mmap(f.fileno(), size)
             # self.buf.flush()
-            shm = shared_memory.SharedMemory(name, create, size)
-            self.buf = shm.buf
+            self.shm = shared_memory.SharedMemory(name, create, size)
+            self.buf = self.shm.buf
         else:
             # path = "/tmp/"+name
             # f = open(path, "rb+")
             # self.buf = mmap.mmap(f.fileno(), size)
             self.shm = shared_memory.SharedMemory(name)
-            self.buf = shm.buf
+            self.buf = self.shm.buf
         # self in_queue = in_queue
         self.create = create
         self.size = size
@@ -139,6 +139,7 @@ class Buffer(object):
                                        byteorder=self.BYTE_ORDER)
 
         # write data
+        assert(len(size_byte+data) == self.DATA_LEN)
         self.buf[data_idx:data_idx + self.DATA_LEN] = size_byte + data
 
         return data_idx
@@ -152,7 +153,7 @@ class Buffer(object):
 
         # 当找不到空闲的节点，一直轮询，是否合理？
         while True:
-            #time.sleep(1)
+            # time.sleep(1)
             # print("find free inode")
             for key in self.task_heads.keys():
                 idx = self.task_heads[key]
@@ -171,13 +172,12 @@ class Buffer(object):
             return self.data_head
         #一直轮询
         while True:
-            #time.sleep(1)
+            # time.sleep(1)
             # print("find free data")
             for i in range(self.size - self.DATA_LEN, self.data_head - 1,
                            -self.DATA_LEN):
                 free = True
                 refs = self.data_refs[i]
-                # print(refs, self.buf[refs[0]], self.buf[refs[1]])
                 for ref in refs:
                     ref_data_idx = int.from_bytes(
                         self.buf[ref + self.DATA_IDX_OFF:ref +
@@ -207,37 +207,39 @@ class Buffer(object):
                   end=' | ')
 
     def __del__(self, ):
+        # pass
         self.shm.close()
         self.shm.unlink()
 
 
 import threading
 import time
-n = 10
+n = 100
 
 
 def writer(c):
     for i in range(n):
-        d = c.write(str.encode(str(i)) * 602116, ["task1", "task2"])
+        d = c.write(str.encode(str(i%10)) * 602116, ["task1", "task2"])
         # print("write",i," in ", d)
 
 
 def reader(node, c, name):
-    #time.sleep(0.1)
+    time.sleep(5)
     for i in range(n):
         now = time.time()
         next_node = c.get_next(node)
         while next_node == -1:
             next_node = c.get_next(node)
             #time.sleep(0.1)
-
-        print(name, "read", c.read(next_node)[0], time.time() - now)
+        data = c.read(next_node)
+        t = time.time() - now
+        print(name, "read", chr(data[0]), t)
         node = next_node
     c.delete_task(name)
 
 
 def test():
-    c = Cache("xiejian", True, 602116 * 5)
+    c = Buffer("xiejian", True, 602116 * 50)
     t1 = c.add_task("task1")
     t2 = c.add_task("task2")
     try:

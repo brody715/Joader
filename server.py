@@ -25,14 +25,23 @@ def message_handle(client, task_queue, task_lock, response_queue):
     while True:
         try:
             size_byte = client.recv(SIZE_CNT)
-            
             if(len(size_byte) == 0):
                 break
+            
             size = decode_size(size_byte)
-            task_byte = client.recv(size)
-            task = decode_data(task_byte)
-            name = task[0]
 
+            packet_size = 1024
+            task_byte = b''
+            while size > packet_size:
+                data = client.recv(packet_size)
+                task_byte += data
+                size -= packet_size
+            task_byte += client.recv(size)
+            
+            task = decode_data(task_byte)
+
+            name = task[0]
+            
             with task_lock:
                 while not response_queue.empty():
                     response_queue.get_nowait()

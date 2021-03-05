@@ -6,6 +6,7 @@ import numpy as np
 ADDRESS = ('127.0.0.1', 8712) 
 import threading
 from buffer import Buffer
+import time, threading
 
 class AvgTime():
     def __init__(self):
@@ -27,7 +28,8 @@ def send_idx(name, n, s):
     idx = list(range(n))
     size_byte, data_byte = encode((name,0,idx))
     s.send(size_byte)
-    s.send(data_byte)
+    
+    s.sendall(data_byte)
 
     size_byte = s.recv(SIZE_CNT)
     size = decode_size(size_byte)
@@ -53,9 +55,10 @@ def recv_data(s, name, bufname, n, head):
         next_node = buf.get_next(node)
         print(node)
         while next_node == -1:
-            time.sleep(0.001)
+            # time.sleep(0.001)
             next_node = buf.get_next(node)
         node = next_node
+        data = buf.read(node)
         # print("read", len(buf.read(node)), time.time()-now)
         # print(node)
         at.add(time.time()-now)
@@ -84,8 +87,20 @@ def test(name, n):
     head, buf_name = send_idx(name, n, s)
     assert(head != -1)
     recv_data(s, name, buf_name, n, head)
-test("task1", 100)
+# test("task1", 100000)
 
+def test_multi(name_list, n):
+    ts = []
+    for name in name_list:
+        t = threading.Thread(target=test, args=(name, n))
+        ts.append(t)
+        t.start()
+    for t in ts:
+        t.join
+
+if __name__ == '__main__':
+    test_multi(["task1", "task2"], 1000)
+    
 # test_create_restore_del("xiejian", 100)
 # test_expired("xiejian", 100)
 # n = 5

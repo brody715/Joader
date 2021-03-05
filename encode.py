@@ -13,3 +13,10 @@ def decode_data(data):
 
 def decode_size(size):
     return int.from_bytes(size, byteorder=BYTE_ORDER)
+
+if __name__ == '__main__':
+    data = list(range(100000))
+    size, data_byte = encode(data)
+    print(len(data_byte))
+    d = decode_data(data_byte)
+    print(len(d))

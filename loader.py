@@ -25,16 +25,14 @@ class Loader(object):
 
     @staticmethod
     #TODO: hard code workers
-    def loading(idx_queue, data_queue, workers=1, s=0):
+    def loading(idx_queue, data_queue, workers=8, s=0):
         logging.info("start loader")
         # middle_queue = queue.Queue()
         if workers == 0:
             workers = multiprocessing.cpu_count()
-        if s == 0:
-            s = 2*workers
+        
         try:
             p = multiprocessing.Pool(processes = workers)
-            sem = multiprocessing.Semaphore(s)
             
             for i in range(workers):
                 p.apply_async(Loader.process, (idx_queue, data_queue))
