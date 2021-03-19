@@ -4,10 +4,9 @@ import queue
 
 class SamplingNode(object):
     def __init__(self, idx_list, name_dict={}, leaf_name=None, is_leaf=False):
-        self.idx_list = idx_list
-        self.dict = {}
-        for i in range(len(idx_list)):
-            self.dict[idx_list[i]] = i
+        self.idx_list = []
+        self.idx_list.extend(idx_list)
+        self.idx_set = set(self.idx_list)
 
         self.length = len(idx_list)
         self.delta = 0
@@ -47,19 +46,18 @@ class SamplingNode(object):
     def differ(self, node):
         if node is None:
             return
-        
         for idx in self.idx_list:
             if node.has(idx):
-                del self.dict[idx]
+                self.idx_set.remove(idx)
         
-        self.idx_list = list(self.dict.keys())
+        self.idx_list = list(self.idx_set)
         diff = (self.length-len(self.idx_list))
         for name in self.name_dict:
             self.name_dict[name] -= diff
         self.length -= diff
 
     def has(self, idx):
-        if idx in self.dict.keys():
+        if idx in self.idx_set:
             return True
         return False
     
@@ -95,8 +93,8 @@ class SamplingNode(object):
     def add_name(self, name, length):
         if self.is_leaf:
             node = SamplingNode(self.idx_list, self.name_dict, is_leaf=False)
-            node = node.add_name(name, length)
             self.differ(node)
+            node = node.add_name(name, length)
             node.left = self
             return node
         else:
@@ -127,6 +125,7 @@ class SamplingNode(object):
 
             if myname_set.issubset(item[1]):
                 self.idx_list.append(idx)
+                self.idx_set.add(idx)
                 item[1].difference_update(myname_set)
 
             if len(item[1]) == 0:
@@ -160,8 +159,9 @@ class SamplingNode(object):
         if len(parent) != 0:
             choice = random.choice(range(self.length))
             preidx = self.idx_list[choice]
+            self.idx_set.remove(preidx)
             del self.idx_list[choice]
-        
+            
         self.parent_sampling(preidx_dict)
         self.length = len(self.idx_list)
 
@@ -181,12 +181,10 @@ class SamplingNode(object):
         if self.left is not None:
             left_namedict, left_res = self.left.sampling(preidx_dict, child)
             sampling_res.update(left_res)
-            # print("left:", left_namedict)
             self.update_namedict(left_namedict)
         if self.right is not None:
             right_namedict, right_res = self.right.sampling(preidx_dict, child)
             sampling_res.update(right_res)
-            # print("right:", right_namedict)
             self.update_namedict(right_namedict)
         
         # 如果是叶子节点，需要手段更新
@@ -223,9 +221,17 @@ class SamplingTree(object):
             self.root.remove(name)
 
     def sampling(self,):
-        _,res = self.root.sampling({}, set(self.root.name_dict.keys()))
+        idx_dict = {}
+        if self.root is None:
+            return idx_dict
+        
+        _, res = self.root.sampling({}, set(self.root.name_dict.keys()))
+        for name, idx in res.items():
+            if idx not in idx_dict.keys():
+                idx_dict[idx] = []
+            idx_dict[idx].append(name)
         # print("------------------------")
-        return res
+        return idx_dict
     def rebalance(self, root):
         pass
     def _rebalance(self, root):
@@ -234,6 +240,8 @@ class SamplingTree(object):
 
     def __str__(self, ):
         q=queue.Queue()
+        if self.root == None:
+            return ""
         q.put(self.root)
         q.put("\n")
 
@@ -258,31 +266,34 @@ class SamplingTree(object):
         return res
 
 
+
 def test():
     t=SamplingTree()
-    l=range(1000000,1000010)
+    l=[2,2]
     # l = [3,2,1]
     name = []
-    for i in l:
-        name.append(str(i))
+    res = {}
     
     for i in range(len(l)):
-        t.insert(list(range(l[i])), name[i])
-    # print(t)
-    now = time.time()
-    res = {}
+        name.append(str(i))
     for i in range(len(l)):
+        # print("\n----------------\n",t)
+        t.insert(list(range(l[i])), name[i])
+        # print("***\n",t,"\n---------------\n")
         ans = t.sampling()
-        for item in ans.items():
-            if item[0] not in res.keys():
-                res[item[0]] = []
-            res[item[0]].append(item[1])
-    t = time.time()-now
-    for it in res.items():
-        print(it)
-        # assert(int(it[0]) == len(it[1]))
-        print(it[0], len(it[1]))
-    print(t)
+    # now = time.time()
+    
+    for i in range(min(l)):
+        ans = t.sampling()
+        for key in ans.keys():
+            print(key, len(ans[key]), end=' | ')
+        for idx, name_list in ans.items():
+            if idx in res.keys():
+                res[idx].extend(name_list)
+            else:
+                res[idx] = name_list
+    for idx, name_list in res.items():
+        print(idx, len(name_list))
 if __name__ == '__main__':
     import time
     

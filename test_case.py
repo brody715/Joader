@@ -37,7 +37,7 @@ def send_idx(name, n, s):
     resp = decode_data(resp_byte)
     return resp
 
-def recv_data(s, name, bufname, n, head):
+def recv_data(s, name, bufname, n, head, p = False):
     at = AvgTime()
     print(bufname)
     
@@ -53,10 +53,10 @@ def recv_data(s, name, bufname, n, head):
             s.send(data_byte)
 
         next_node = buf.get_next(node)
-        print(node)
         while next_node == -1:
             # time.sleep(0.001)
             next_node = buf.get_next(node)
+        # print(name,idx, "read from", node)
         node = next_node
         data = buf.read(node)
         # print("read", len(buf.read(node)), time.time()-now)
@@ -65,15 +65,6 @@ def recv_data(s, name, bufname, n, head):
         idx += 1
 
     print("[%s,%d]avg time %f"%(name, n, at.avg()))
-
-
-def restore(name, s):
-    size_byte, data_byte = encode((name, 1))
-    s.send(size_byte)
-    s.send(data_byte)
-    resp = s.recv(1)
-
-    return resp
 
 def delete(name, s):
     size_byte, data_byte = encode((name,-1))
@@ -95,11 +86,15 @@ def test_multi(name_list, n):
         t = threading.Thread(target=test, args=(name, n))
         ts.append(t)
         t.start()
-    for t in ts:
-        t.join
-
+    # for t in ts:
+    #     t.join()
+    time.sleep(60)
 if __name__ == '__main__':
-    test_multi(["task1", "task2"], 1000)
+    n = 10
+    names = []
+    for i in range(n):
+        names.append(str(i))
+    test_multi(names, 20)
     
 # test_create_restore_del("xiejian", 100)
 # test_expired("xiejian", 100)
