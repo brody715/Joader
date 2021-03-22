@@ -4,7 +4,8 @@ from multiprocessing import shared_memory
 from mylog import *
 import signal, os, sys
 import mmap
-
+class Replacer(object):
+    pass
 
 class Buffer(object):
     def __init__(self, name, create=False, size=0):
@@ -23,11 +24,14 @@ class Buffer(object):
             self.buf = mmap.mmap(f.fileno(), size)
             # self.shm = shared_memory.SharedMemory(name)
             # self.buf = self.shm.buf
-        # self in_queue = in_queue
         self.create = create
         self.size = size
         self.name = name
 
+        # for cache find
+        self.idx2datanode = {}
+        self.datanode2idx = {}
+        
         # | -- inode -->     <-- data --|
         self.inode_tail = 0
         self.data_head = size
@@ -104,7 +108,7 @@ class Buffer(object):
         self.task_tails[task_name] = inode_idx
         return inode_idx
 
-    def write(self, data, task_name_list):
+    def write(self, data, task_name_list, idx=0):
         # print("write", task_name_list)
         assert (type(data) == bytes)
         if self.DATA_LEN == -1:
@@ -124,6 +128,8 @@ class Buffer(object):
             self.task_tails[task_name] = inode_idx
 
             self.data_refs[data_idx].append(inode_idx)
+        self.datanode2idx[data_idx] = idx
+        self.idx2datanode[idx] = data_idx
         return data_idx
 
     def _write_inode(self, lastnode_idx, data_idx):
@@ -191,22 +197,25 @@ class Buffer(object):
         # print(self.data_refs)
         while True:
             # print("find free data", self.size - self.DATA_LEN, self.data_head - 1)
-            for i in range(self.size - self.DATA_LEN, self.data_head - 1,
+            for data_idx in range(self.size - self.DATA_LEN, self.data_head - 1,
                            -self.DATA_LEN):
                 free = True
-                refs = self.data_refs[i]
+                refs = self.data_refs[data_idx]
                 # print("check", i)
                 for ref in refs:
                     ref_data_idx = int.from_bytes(
                         self.buf[ref + self.DATA_IDX_OFF:ref +
                                  self.DATA_IDX_OFF + self.INDEX_LEN],
                         self.BYTE_ORDER)
-                    if self.buf[ref + self.DATA_OFF] != 0 and ref_data_idx == i:
+                    if self.buf[ref + self.DATA_OFF] != 0 and ref_data_idx == data_idx:
                         # print("check", i, "in", ref, "fail:", self.buf[ref + self.VALID_OFF] & self.DATA_OK, ref_data_idx, time.time())
                         free = False
                         break
                 if free:
-                    return i
+                    idx = self.datanode2idx[data_idx]
+                    del self.idx2datanode[idx]
+                    del self.datanode2idx[data_idx]
+                    return data_idx
 
     def delete_task(self, name):
         head = self.task_heads[name]
