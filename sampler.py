@@ -10,12 +10,12 @@ import os
 import sys
 import multiprocessing
 from loader import Loader
-from buffer import Buffer
+from buffer import BufferManger
 from SamplingTree import SamplingTree
 
 
 class Sampler(object):
-    def __init__(self, idx_queue=None, data_queue=None, cap=2, name="xiejian", create=True, size=602120*10+1000):
+    def __init__(self, cap=8, name="xiejian", create=True, size=602120*10+1000):
         if idx_queue is None:
             idx_queue = multiprocessing.Manager().Queue(maxsize=cap)
         if data_queue is None:
@@ -25,8 +25,8 @@ class Sampler(object):
         self.ttl = 10
         self.task_tiker = {}
 
-        self.buffer = Buffer(name, create, size)
-        self.buffer_name = self.buffer.name
+        self.bm = BufferManger(name, create=True, size = size)
+        self.buffer_name = name
 
         # 进程通信管道
         self.data_queue = data_queue
@@ -115,7 +115,6 @@ class Sampler(object):
                     logging.info("sampling idx blocking")
                     self.blocking_sampling.wait()
                 logging.info("sampling idx resuming")
-            self._merge_idx(idx_dict)
             for i in idx_dict.keys():
                 logging.critical("sampler put idx %d", i)
                 try:
@@ -138,8 +137,6 @@ class Sampler(object):
         # start a thread to put index
         idx_sampler = threading.Thread(target=sa.sampling_idx, args=())
         idx_sampler.start()
-        data_fetcher = threading.Thread(target=sa.dispatch_data, args=())
-        data_fetcher.start()
 
         while True:
             try:

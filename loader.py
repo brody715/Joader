@@ -19,7 +19,8 @@ class Loader(object):
         while True:
             idx = idx_queue.get(True)
             logging.critical("loader get idx %d,", idx)
-            data = ds[idx]
+            # data = ds[idx]
+            data = '0'*602220
             logging.critical("loader put data %d,", idx)
             data_queue.put((idx, data))
 
