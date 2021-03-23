@@ -117,7 +117,7 @@ class SamplingNode(object):
 
         return self
     
-    def parent_sampling(self, preidx_dict):
+    def _process_predix(self, preidx_dict):
         del_idx = []
         myname_set = set(self.name_dict.keys())
         for item in preidx_dict.items():
@@ -133,12 +133,8 @@ class SamplingNode(object):
         
         for idx in del_idx:
             del preidx_dict[idx]
-            
-    def sampling(self, preidx_dict, name_set):
-        # print("call", preidx_dict, name_set, "self ", self.name_dict, self.idx_list)
-        if len(preidx_dict) == 0 and len(name_set) == 0:
-            return self.name_dict, {}
-
+        
+    def _split_child(self, name_set):
         parent = set()
         child = set()
         common = self.length
@@ -154,6 +150,13 @@ class SamplingNode(object):
                     parent.add(name)
                 else:
                     child.add(name)
+        return parent, child
+
+    def sample(self, preidx_dict, name_set):
+        if len(preidx_dict) == 0 and len(name_set) == 0:
+            return self.name_dict, {}, {}
+
+        parent, child = self._split_child(name_set)
         
         preidx = -1
         if len(parent) != 0:
@@ -162,35 +165,44 @@ class SamplingNode(object):
             self.idx_set.remove(preidx)
             del self.idx_list[choice]
             
-        self.parent_sampling(preidx_dict)
+        self._process_predix(preidx_dict)
         self.length = len(self.idx_list)
 
         # 所有的集合都在此采样
         sampling_res = {}
+        expectation = {}
         for name in parent:
             sampling_res[name] = preidx
+            expectation[preidx] = len(self.name_dict)
         if preidx != -1:
-            allset = set(self.name_dict.keys())
-            allset.difference_update(parent)
-            if len(allset) != 0:
-                preidx_dict[preidx] = allset
-    
+            name_set = set(self.name_dict.keys())
+            name_set.difference_update(parent)
+            if len(name_set) != 0:
+                preidx_dict[preidx] = name_set
+
+        # 为了接下来的update_namedict, 所以一开始需要重置长度
         for name in self.name_dict:
             self.name_dict[name] = self.length
-
+        # push to child
         if self.left is not None:
-            left_namedict, left_res = self.left.sampling(preidx_dict, child)
+            left_namedict, left_res, left_expect = self.left.sample(preidx_dict, child)
             sampling_res.update(left_res)
+            expectation = self._merge_expectation(expectation, left_expect)
             self.update_namedict(left_namedict)
         if self.right is not None:
-            right_namedict, right_res = self.right.sampling(preidx_dict, child)
+            right_namedict, right_res, right_expect = self.right.sample(preidx_dict, child)
+            expectation = self._merge_expectation(expectation, right_expect)
             sampling_res.update(right_res)
             self.update_namedict(right_namedict)
         
-        # 如果是叶子节点，需要手段更新
-        
-                
-        return self.name_dict, sampling_res
+        return self.name_dict, sampling_res, expectation
+    
+    def _merge_expectation(self, exp1, exp2):
+        for key in exp2:
+            if key not in exp1.keys():
+                exp1[key] = 0
+            exp1[key] += exp2[key]
+        return exp1
     
     def update_namedict(self, name_dict):
         for name in name_dict:
@@ -206,8 +218,8 @@ class SamplingNode(object):
 
 
 class SamplingTree(object):
-    def __init__(self, root=None):
-        self.root = root
+    def __init__(self):
+        self.root = None
 
     def insert(self, idx_list, name):
         node = SamplingNode(idx_list, leaf_name=name)
@@ -225,13 +237,13 @@ class SamplingTree(object):
         if self.root is None:
             return idx_dict
         
-        _, res = self.root.sampling({}, set(self.root.name_dict.keys()))
+        _, res, expectation = self.root.sample({}, set(self.root.name_dict.keys()))
         for name, idx in res.items():
             if idx not in idx_dict.keys():
                 idx_dict[idx] = []
             idx_dict[idx].append(name)
         # print("------------------------")
-        return idx_dict
+        return idx_dict, expectation
     def rebalance(self, root):
         pass
     def _rebalance(self, root):
@@ -269,7 +281,7 @@ class SamplingTree(object):
 
 def test():
     t=SamplingTree()
-    l=[2,2]
+    l=[10,10,10,10]
     # l = [3,2,1]
     name = []
     res = {}
@@ -280,22 +292,21 @@ def test():
         # print("\n----------------\n",t)
         t.insert(list(range(l[i])), name[i])
         # print("***\n",t,"\n---------------\n")
-        ans = t.sampling()
+        print(t.sampling())
     # now = time.time()
     
     for i in range(min(l)):
-        ans = t.sampling()
-        for key in ans.keys():
-            print(key, len(ans[key]), end=' | ')
-        for idx, name_list in ans.items():
-            if idx in res.keys():
-                res[idx].extend(name_list)
-            else:
-                res[idx] = name_list
-    for idx, name_list in res.items():
-        print(idx, len(name_list))
+        print(t.sampling())
+    #     for key in ans.keys():
+    #         print(key, len(ans[key]), end=' | ')
+    #     for idx, name_list in ans.items():
+    #         if idx in res.keys():
+    #             res[idx].extend(name_list)
+    #         else:
+    #             res[idx] = name_list
+    # for idx, name_list in res.items():
+    #     print(idx, len(name_list))
 if __name__ == '__main__':
     import time
-    
     test()
     

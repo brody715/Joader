@@ -40,5 +40,6 @@ class Loader(object):
             p.join()
         except:
             print("loader is exiting ......")
+            p.close()
             p.terminate()
             return
