@@ -1,20 +1,24 @@
+import signal, os, sys
+sys.path.append("/home/xj/proj/DM/pytorch-imagenet/Loader/")
+
 import multiprocessing
 import queue
 import threading
 from mylog import *
-import signal, os, sys
 import mmap
 from loader import Loader
 from replacer import Replacer
+from concurrent.futures import ThreadPoolExecutor
+from monitor import *
 
 class BufferManger(object):
-    def __init__(self, name, cap=8, create=False, size=0):
+    def __init__(self, name, cap=16, create=False, size=0):
     
         # start loader service
         self.id_queue = multiprocessing.Manager().Queue(maxsize=cap)
         self.data_queue = multiprocessing.Manager().Queue(maxsize=cap)
         self.loader = multiprocessing.Process(
-            target=Loader.loading, args=(self.id_queue, self.data_queue))
+            target=Loader.loading, args=(self.id_queue, self.data_queue, cap))
         self.loader.start()
         assert(self.loader.is_alive() == True)
 
@@ -34,27 +38,37 @@ class BufferManger(object):
         self.buffer = Buffer(name, create, size)
 
         # start a thread to listen data queue
-        threading.Thread(target=self.listener).start()
+        executor = ThreadPoolExecutor(max_workers=cap)
+        executor.submit(self.listener)
 
     def listener(self):
         while True:
-            try:
-                item = self.data_queue.get()
-            except:
-                logging.error("listener read data queue error")
-                exit(0)
+            # try:
+            item = self.data_queue.get()
+            p_ticker = m.tiker("data process")
+            p_ticker.end()
+            p_ticker.print_avg(128, 128)
+            # except:
+            #     logging.error("listener read data queue error")
+            #     exit(0)
+            w_ticker = m.tiker("data write")
+            w_ticker.start()
 
             data_id, data = item
             logging.info("buffer get data %d with length %d", data_id, len(data))
+            name_list = []
             with self.pending_id_lock:
-                while data_id not in self.pending_id.keys():
-                    time.sleep(0.00001)
-                name_list, expect_diff = self.pending_id[data_id]
-                del self.pending_id[data_id]
+                if data_id in self.pending_id.keys():
+                    name_list, expect_diff = self.pending_id[data_id]
+                    del self.pending_id[data_id]
+            if len(name_list) == 0:
+                continue
+
             data_idx = self.write_data(data)
             logging.info("buffer write data %d in %d with tasks %s", data_id, data_idx, str(name_list))
             with self.data_lock:
                 self.id_table[data_id] = data_idx
+            
             self.write(data_id, name_list, expect_diff)
 
     def write_data(self, data):
@@ -70,11 +84,15 @@ class BufferManger(object):
             if data_id not in self.id_table.keys():
                 hit = False
             else:
+                logging.info("data %d with %s hit", data_id, name_list)
                 self.replacer.delete(data_id)
         
         if hit is False:
-            self.id_queue.put(data_id)
-            self._merge_pendingid(data_id, name_list, expect_diff)
+            logging.info("data %d with %s miss", data_id, name_list)
+            if self._merge_pendingid(data_id, name_list, expect_diff):
+                p_ticker = m.tiker("pool")
+                p_ticker.start()
+                self.id_queue.put(data_id)
             return
         
         with self.data_lock:
@@ -87,15 +105,21 @@ class BufferManger(object):
                 self.buffer.write_inode(inode_idx, self.task_tails[name], data_idx)
                 logging.info("wirte %s's data [%d]-->[%d]-->(%d)", name, self.task_tails[name], inode_idx, data_idx)
                 self.task_tails[name] = inode_idx
-                
             self.replacer.update(data_id, expect_diff)
-
+        
+        w_ticker = m.tiker("data write")
+        w_ticker.end()
+        # w_ticker.print_avg(128, 128)
     def _merge_pendingid(self, data_id, name_list, expect_diff):
+        res = False
         with self.pending_id_lock:
             if data_id not in self.pending_id.keys():
-                self.pending_id[data_id] = ([], expect_diff)
+                res = True
+                self.pending_id[data_id] = [[], 0]
             self.pending_id[data_id][0].extend(name_list)
-
+            self.pending_id[data_id][1] = expect_diff
+        return res
+    
     def add_task(self, task_name):
         if task_name in self.task_heads.keys():
             return -1
@@ -104,7 +128,7 @@ class BufferManger(object):
         self.task_heads[task_name] = inode_idx
         self.task_tails[task_name] = inode_idx
 
-        logging.info("add tast %s with head %d", task_name, inode_idx)
+        logging.info("add task %s with head %d", task_name, inode_idx)
         return inode_idx
 
     def allocate_inode(self):
@@ -130,6 +154,7 @@ class BufferManger(object):
         # free some datanode
         valid = True
         while True:
+            # print("find datanode")
             with self.data_lock:
                 data_id = self.replacer.next()
                 data_idx = self.id_table[data_id]
@@ -326,50 +351,68 @@ class Buffer(object):
 
 
 import time
-n = 10
+n = 1000000
 
-bm = BufferManger("xiejian", create=True, size=602120*20+200)
-def writer(bm, names):
-    for i in range(n):
-        bm.write(i, names, 0)
-    print("write end")
-def reader(node, c, name):
-    now = time.time()
-    for i in range(n):
-        # now = time.time()
-        next_node = c.get_next(node)
-        while next_node == -1:
+
+def writer(bm, name_list,):
+    from SamplingTree import SamplingTree
+    sa = SamplingTree()
+    for i in range(len(name_list)):
+        sa.insert(list(range(i*100, n+i*100)), name_list[i])
+    while True:
+        s_ticker = m.tiker("idx sampling")
+        s_ticker.start()
+        idx_dict, expect_diff = sa.sampling()
+        s_ticker.end()
+        # s_ticker.print_avg(128, 128)
+        if len(idx_dict.keys()) == 0:
+            return
+        for i in idx_dict.keys():
+            # print("write", i, idx_dict[i], expect_diff[i])
+            bm.write(i, idx_dict[i], expect_diff[i])
+        
+def reader(node, name):
+    
+    c = Buffer("xiejian")
+    batch_size = 32
+    for i in range(int(n/batch_size)):
+        sum_t1 = 0
+        sum_t2 = 0
+        for j in range(batch_size):
+            now = time.time()
             next_node = c.get_next(node)
-        data = c.read(next_node)
-        # print(node, c.buf[node:node+3])
-        t = time.time() - now
-        print(name, "read", "in", next_node, "in", t/(i+1))
-        node = next_node
-    print(name, (time.time()-now)/n)
-    bm.delete_task(name)
-    # print(name, "end")
-
+            while next_node == -1:
+                next_node = c.get_next(node)
+            t1 = time.time() - now
+            c.read(next_node)
+            t2 = time.time() - now - t1
+            sum_t1 += t1
+            sum_t2 += t2
+            node = next_node
+            # print("read", node)
+        # if name == '0':
+        #     print(sum_t1, sum_t2)
+        time.sleep(0.08)
+    # print(name, (time.time()-now)/n)
+    
 
 def multi_test(n):
-    c = Buffer("xiejian")
-    ts = []
+    bm = BufferManger("xiejian", create=True, size=602220*100+1000)
+    pool = []
     names = []
     for i in range(n):
         head = bm.add_task(str(i))
         names.append(str(i))
-        t = threading.Thread(target=reader, args=(head, c, str(i)))
-        ts.append(t)
-        t.start()
-    print("reader start successfully")
+        p = multiprocessing.Process(target=reader, args=(head, str(i)))
+        pool.append(p)
+        p.start()
 
-
-    w = threading.Thread(target=writer, args=(bm, names))
-    w.start()
-    print("writer start successfully")
-    w.join()
+    writer(bm, names)
+    for p in pool:
+        p.join()
     bm.terminate()
 
 
 if __name__ == '__main__':
-    multi_test(1)
+    multi_test(8)
     print("end.....")

@@ -35,7 +35,7 @@ class lmdbDataset(Dataset):
             normalize,
         ])
     def __len__(self):
-        return self.length - 1
+        return self.length
     def __getitem__(self, index):
         
         begin = time.time()

@@ -15,14 +15,13 @@ from SamplingTree import SamplingTree
 
 
 class Sampler(object):
-    def __init__(self, cap=8, name="xiejian", create=True, size=602120*10+1000):
+    def __init__(self, name="xiejian", create=True, size=1024*1024*512):
         # 每个任务的存活时间为10s
         self.ttl = 10
         self.task_tiker = {}
 
         self.bm = BufferManger(name, create=True, size = size)
         self.buffer_name = name
-
 
         self.sampling_tree = SamplingTree()
         self.tree_lock = threading.Lock()
@@ -70,20 +69,17 @@ class Sampler(object):
 
     def sampling_idx(self, ):
         while True:
-            # self.cache_cap.acquire()
             with self.tree_lock:
                 idx_dict, expect_diff = self.sampling_tree.sampling()
-            if len(idx_dict.keys()) == 0:
+            if len(idx_dict) == 0:
                 with self.blocking_sampling:
                     logging.info("sampling idx blocking")
                     self.blocking_sampling.wait()
                 logging.info("sampling idx resuming")
             for i in idx_dict.keys():
                 logging.critical("sampler put idx %d", i)
-                try:
-                    self.bm.write(i, idx_dict[i], expect_diff[i])
-                except:
-                    return
+                self.bm.write(i, idx_dict[i], expect_diff[i])
+                
 
     @staticmethod
     def sampler(task_queue, response_queue):

@@ -7,7 +7,7 @@ import threading
 from mylog import *
 import torch
 import signal, os, sys
-
+from buffer import Buffer
 
 #TODO：这个需要手动定义，有点丑陋
 ds = dataset.lmdbDataset('/data/share/ImageNet/ILSVRC-train.lmdb', True)
@@ -15,13 +15,15 @@ ds = dataset.lmdbDataset('/data/share/ImageNet/ILSVRC-train.lmdb', True)
 class Loader(object):
     @staticmethod
     def process(idx_queue, data_queue):
-        torch.set_num_threads(1)
+        # torch.set_num_threads(1)
+        buf = Buffer("xiejian")
         while True:
-            idx = idx_queue.get(True)
-            logging.critical("loader get idx %d,", idx)
-            data = ds[idx]
-            logging.critical("loader put data %d,", idx)
-            data_queue.put((idx, data))
+            data_id, data_idx = idx_queue.get(True)
+            logging.critical("loader get id %d,", data_id)
+            data = ds[data_id]
+            buf.write_data(data, data_idx)
+            logging.critical("loader put data %d,", data_id)
+            data_queue.put((data_id, data_idx))
 
     @staticmethod
     #TODO: hard code workers
