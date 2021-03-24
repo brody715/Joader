@@ -9,7 +9,7 @@ from replacer import Replacer
 
 class BufferManger(object):
     def __init__(self, name, cap=8, create=False, size=0):
-
+    
         # start loader service
         self.id_queue = multiprocessing.Manager().Queue(maxsize=cap)
         self.data_queue = multiprocessing.Manager().Queue(maxsize=cap)

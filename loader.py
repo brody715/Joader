@@ -19,8 +19,7 @@ class Loader(object):
         while True:
             idx = idx_queue.get(True)
             logging.critical("loader get idx %d,", idx)
-            # data = ds[idx]
-            data = '0'*602220
+            data = ds[idx]
             logging.critical("loader put data %d,", idx)
             data_queue.put((idx, data))
 
@@ -31,16 +30,38 @@ class Loader(object):
         # middle_queue = queue.Queue()
         if workers == 0:
             workers = multiprocessing.cpu_count()
-        
+        pool = multiprocessing.Pool(processes = workers)
         try:
-            p = multiprocessing.Pool(processes = workers)
-            
             for i in range(workers):
-                p.apply_async(Loader.process, (idx_queue, data_queue))
-            p.close()
-            p.join()
+                pool.apply_async(Loader.process, (idx_queue, data_queue))
+            pool.close()
+            pool.join()
         except:
             print("loader is exiting ......")
-            p.close()
-            p.terminate()
+            pool.close()
+            pool.terminate()
             return
+
+n = 1000
+def put(idx_queue):
+    for i in range(n):
+        idx_queue.put(i)
+def get(data_queue):
+    t = time.time()
+    for i in range(n):
+        data_queue.get()
+        print((time.time()-t)/(i+1))
+def test():
+    cap = 16
+    id_queue = multiprocessing.Manager().Queue(maxsize=cap)
+    data_queue = multiprocessing.Manager().Queue(maxsize=cap)
+    loader = multiprocessing.Process(
+        target=Loader.loading, args=(id_queue, data_queue))
+    loader.start()
+
+    threading.Thread(target=put, args=(id_queue,)).start()
+    threading.Thread(target=get, args=(data_queue,)).start()
+
+if __name__ == '__main__':
+    test()
+    

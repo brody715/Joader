@@ -16,11 +16,6 @@ from SamplingTree import SamplingTree
 
 class Sampler(object):
     def __init__(self, cap=8, name="xiejian", create=True, size=602120*10+1000):
-        if idx_queue is None:
-            idx_queue = multiprocessing.Manager().Queue(maxsize=cap)
-        if data_queue is None:
-            data_queue = multiprocessing.Manager().Queue(maxsize=cap)
-
         # 每个任务的存活时间为10s
         self.ttl = 10
         self.task_tiker = {}
@@ -28,22 +23,15 @@ class Sampler(object):
         self.bm = BufferManger(name, create=True, size = size)
         self.buffer_name = name
 
-        # 进程通信管道
-        self.data_queue = data_queue
-        self.idx_queue = idx_queue
 
         self.sampling_tree = SamplingTree()
         self.tree_lock = threading.Lock()
-
-        # {idx: subs_name}
-        self.pending_idx = {}
-        self.pending_idx_lock = threading.Lock()
 
         # 当所有进程都已经sampling完毕，就block住，防止空转
         self.blocking_sampling = threading.Condition()
 
     def add_subsampler(self, name, idx_list):
-        head = self.buffer.add_task(name)
+        head = self.bm.add_task(name)
         if head == -1:
             return head
 
@@ -61,20 +49,12 @@ class Sampler(object):
         if name not in self.task_tiker.keys():
             return
 
-        self.buffer.delete_task(name)
+        self.bm.delete_task(name)
         with self.tree_lock:
             self.sampling_tree.remove(name)
             
         del self.task_tiker[name]
 
-
-    def _merge_idx(self, idx_dict):
-        with self.pending_idx_lock:
-            for i in idx_dict.keys():
-                if i in self.pending_idx.keys():
-                    self.pending_idx[i].extend(idx_dict[i])
-                else:
-                    self.pending_idx[i] = idx_dict[i]
 
     def clean(self):
         for subs_name in self.task_tiker.keys():
@@ -88,28 +68,11 @@ class Sampler(object):
             return -1
         self.task_tiker[name] = time.time()
 
-    def dispatch_data(self, ):
-        while True:
-            try:
-                item = self.data_queue.get()
-            except:
-                return
-            idx, data = item
-            # self.cache_cap.release()
-            with self.pending_idx_lock:
-                if idx not in self.pending_idx.keys():
-                    continue
-                name_list = self.pending_idx[idx]
-                logging.critical("sampler dispatch idx %d, %s", idx, str(name_list))
-                # assert(len(name_list) <= 5)
-                self.buffer.write(data, name_list)
-                del self.pending_idx[idx]
-
     def sampling_idx(self, ):
         while True:
             # self.cache_cap.acquire()
             with self.tree_lock:
-                idx_dict = self.sampling_tree.sampling()
+                idx_dict, expect_diff = self.sampling_tree.sampling()
             if len(idx_dict.keys()) == 0:
                 with self.blocking_sampling:
                     logging.info("sampling idx blocking")
@@ -118,7 +81,7 @@ class Sampler(object):
             for i in idx_dict.keys():
                 logging.critical("sampler put idx %d", i)
                 try:
-                    self.idx_queue.put(i)
+                    self.bm.write(i, idx_dict[i], expect_diff[i])
                 except:
                     return
 
@@ -127,12 +90,6 @@ class Sampler(object):
         logging.info("start sampler")
 
         sa = Sampler()
-
-        # start loader process to load data
-        loader = multiprocessing.Process(
-            target=Loader.loading, args=(sa.idx_queue, sa.data_queue))
-        loader.start()
-        assert(loader.is_alive() == True)
 
         # start a thread to put index
         idx_sampler = threading.Thread(target=sa.sampling_idx, args=())
@@ -157,10 +114,6 @@ class Sampler(object):
                     sa.update_tiker(name)
                 response_queue.put((name, (succ, sa.buffer_name)))
             except:
-                loader.terminate()
-                while loader.is_alive == True:
-                    time.sleep(0.1)
-                loader.close()
                 print("sampler is exiting ......")
                 return
 
@@ -168,7 +121,9 @@ def test():
     sa = Sampler()
     sa.add_subsampler("aaa",list(range(100)))
     sa.add_subsampler("bbb",list(range(100)))
-    sa.sampling_idx()
+    idx_sampler = threading.Thread(target=sa.sampling_idx, args=())
+    idx_sampler.start()
+    idx_sampler.join()
 if __name__ == '__main__':
     test()
     

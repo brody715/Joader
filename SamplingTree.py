@@ -235,15 +235,19 @@ class SamplingTree(object):
     def sampling(self,):
         idx_dict = {}
         if self.root is None:
-            return idx_dict
+            return idx_dict, {}
         
         _, res, expectation = self.root.sample({}, set(self.root.name_dict.keys()))
+        
         for name, idx in res.items():
             if idx not in idx_dict.keys():
                 idx_dict[idx] = []
             idx_dict[idx].append(name)
         # print("------------------------")
-        return idx_dict, expectation
+        expect_diff = {}
+        for idx in idx_dict.keys():
+            expect_diff[idx] = expectation[idx]-len(idx_dict[idx])
+        return idx_dict, expect_diff
     def rebalance(self, root):
         pass
     def _rebalance(self, root):
