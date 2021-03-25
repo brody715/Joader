@@ -10,7 +10,7 @@ import os
 import sys
 import multiprocessing
 from loader import Loader
-from buffer import BufferManger
+from buffer_manager import BufferManger
 from SamplingTree import SamplingTree
 
 

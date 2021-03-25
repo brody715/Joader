@@ -14,28 +14,27 @@ ds = dataset.lmdbDataset('/data/share/ImageNet/ILSVRC-train.lmdb', True)
 
 class Loader(object):
     @staticmethod
-    def process(idx_queue, data_queue):
-        # torch.set_num_threads(1)
-        buf = Buffer("xiejian")
+    def process(id_queue, resp_queue, buf_name):
+        torch.set_num_threads(1)
+        buf = Buffer(buf_name, 602116)
         while True:
-            data_id, data_idx = idx_queue.get(True)
-            logging.critical("loader get id %d,", data_id)
+            data_id, data_idx = id_queue.get(True)
             data = ds[data_id]
-            buf.write_data(data, data_idx)
-            logging.critical("loader put data %d,", data_id)
-            data_queue.put((data_id, data_idx))
+
+            buf.write_data(data_idx, data)
+            logging.critical("loader write data %d in %d", data_id, data_idx)
+            resp_queue.put((data_id, data_idx))
 
     @staticmethod
     #TODO: hard code workers
-    def loading(idx_queue, data_queue, workers=8, s=0):
+    def loading(id_queue, resp_queue, buf_name, workers=8, s=0):
         logging.info("start loader")
-        # middle_queue = queue.Queue()
         if workers == 0:
             workers = multiprocessing.cpu_count()
         pool = multiprocessing.Pool(processes = workers)
         try:
             for i in range(workers):
-                pool.apply_async(Loader.process, (idx_queue, data_queue))
+                pool.apply_async(Loader.process, (id_queue, resp_queue, buf_name, ))
             pool.close()
             pool.join()
         except:
@@ -47,7 +46,7 @@ class Loader(object):
 n = 1000
 def put(idx_queue):
     for i in range(n):
-        idx_queue.put(i)
+        idx_queue.put((0, 0))
 def get(data_queue):
     t = time.time()
     for i in range(n):
@@ -58,7 +57,7 @@ def test():
     id_queue = multiprocessing.Manager().Queue(maxsize=cap)
     data_queue = multiprocessing.Manager().Queue(maxsize=cap)
     loader = multiprocessing.Process(
-        target=Loader.loading, args=(id_queue, data_queue))
+        target=Loader.loading, args=(id_queue, data_queue, "xiejian"))
     loader.start()
 
     threading.Thread(target=put, args=(id_queue,)).start()
