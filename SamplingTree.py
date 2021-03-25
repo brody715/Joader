@@ -154,6 +154,7 @@ class SamplingNode(object):
 
     def sample(self, preidx_dict, name_set):
         if len(preidx_dict) == 0 and len(name_set) == 0:
+            print(preidx_dict)
             return self.name_dict, {}, {}
 
         parent, child = self._split_child(name_set)
@@ -194,7 +195,6 @@ class SamplingNode(object):
             expectation = self._merge_expectation(expectation, right_expect)
             sampling_res.update(right_res)
             self.update_namedict(right_namedict)
-        
         return self.name_dict, sampling_res, expectation
     
     def _merge_expectation(self, exp1, exp2):
@@ -285,7 +285,7 @@ class SamplingTree(object):
 
 def test():
     t=SamplingTree()
-    l=[10,10,10,10]
+    l=[4,2,3,1]
     # l = [3,2,1]
     name = []
     res = {}
@@ -293,23 +293,11 @@ def test():
     for i in range(len(l)):
         name.append(str(i))
     for i in range(len(l)):
-        # print("\n----------------\n",t)
         t.insert(list(range(l[i])), name[i])
-        # print("***\n",t,"\n---------------\n")
-        print(t.sampling())
-    # now = time.time()
     
-    for i in range(min(l)):
-        print(t.sampling())
-    #     for key in ans.keys():
-    #         print(key, len(ans[key]), end=' | ')
-    #     for idx, name_list in ans.items():
-    #         if idx in res.keys():
-    #             res[idx].extend(name_list)
-    #         else:
-    #             res[idx] = name_list
-    # for idx, name_list in res.items():
-    #     print(idx, len(name_list))
+    for i in range(max(l)):
+        res.append(t.sampling())
+
 if __name__ == '__main__':
     import time
     test()
