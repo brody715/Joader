@@ -7,15 +7,17 @@ import threading
 from mylog import *
 import mmap
 from loader import Loader
-from replacer import Replacer
+from replacer import Replacer, RReplacer
 from concurrent.futures import ThreadPoolExecutor
 from monitor import *
 from buffer import Buffer
 
 class BufferManger(object):
-    def __init__(self, name, cap=16, create=False, size=0):
+    def __init__(self, name, data_len, cap=16, create=False, size=0):
         #buffer
-        self.buffer = Buffer(name, 602116, create, size)
+        if create:
+            logging.info("create buffer with size=%d and datalen=%d", size, data_len)
+        self.buffer = Buffer(name, data_len, create, size)
 
         # start loader service
         self.id_queue = multiprocessing.Manager().Queue(maxsize=cap)
@@ -37,33 +39,38 @@ class BufferManger(object):
 
         #replacer
         self.replacer = Replacer()
-        
+        # self.replacer = RReplacer()
 
+        #monitor
+        self.hit = 0
+        self.miss = 0
         # start a thread to listen data queue
-        executor = ThreadPoolExecutor(max_workers=1)
-        executor.submit(self.listener)
-
+        pool = ThreadPoolExecutor(max_workers=1)
+        pool.submit(self.listener)
+        # t = threading.Thread(target=self.listener(), args=())
+        # t.start()
+        
     def listener(self):
+        # logging.info("listener listen loader")
         while True:
             # try:
             item = self.data_queue.get()
-            p_ticker = m.tiker("data process")
-            p_ticker.end()
+            #     p_ticker = m.tiker("data process")
+            #     p_ticker.end()
             # p_ticker.print_avg(128, 128)
             # except:
             #     logging.error("listener read data queue error")
             #     exit(0)
-            w_ticker = m.tiker("data write")
-            w_ticker.start()
-
+            # w_ticker = m.tiker("data write")
+            # w_ticker.start()
             data_id, data_idx = item
             with self.pending_id_lock:
                 name_list, expect_diff = self.pending_id[data_id]
                 del self.pending_id[data_id]
             with self.data_lock:
                 self.id_table[data_id] = data_idx
-            logging.info("buffer write data %d in %d with tasks %s", data_id, data_idx, str(name_list))
-            
+            logging.info("listener get data %d in %d with tasks %s", data_id, data_idx, str(name_list))
+
             self.write(data_id, name_list, expect_diff)
 
     def write(self, data_id, name_list, expect_diff):
@@ -71,16 +78,21 @@ class BufferManger(object):
         with self.data_lock:
             if data_id not in self.id_table.keys():
                 hit = False
+                self.miss += 1
             else:
                 logging.info("data %d with %s hit", data_id, name_list)
                 self.replacer.delete(data_id)
-        
+                self.hit += 1
+            
         if hit is False:
             logging.info("data %d with %s miss", data_id, name_list)
             if self._merge_pendingid(data_id, name_list, expect_diff):
-                p_ticker = m.tiker("pool")
-                p_ticker.start()
+                # p_ticker = m.tiker("pool")
+                # p_ticker.start()
                 data_idx = self.allocate_datanode()
+                while data_idx == -1:
+                    time.sleep(0.0001)
+                    data_idx = self.allocate_datanode()
                 self.id_queue.put((data_id, data_idx))
             return
         
@@ -94,10 +106,10 @@ class BufferManger(object):
                 self.buffer.write_inode(inode_idx, self.task_tails[name], data_idx)
                 logging.info("wirte %s's data [%d]-->[%d]-->(%d)", name, self.task_tails[name], inode_idx, data_idx)
                 self.task_tails[name] = inode_idx
-            self.replacer.update(data_id, expect_diff)
         
-        w_ticker = m.tiker("data write")
-        w_ticker.end()
+        self.replacer.update(data_id, expect_diff)
+        # w_ticker = m.tiker("data write")
+        # w_ticker.end()
         # w_ticker.print_avg(128, 128)
     
     def _merge_pendingid(self, data_id, name_list, expect_diff):
@@ -143,10 +155,9 @@ class BufferManger(object):
 
         # free some datanode
         valid = True
-        while True:
-            # print("find datanode")
-            with self.data_lock:
-                data_id = self.replacer.next()
+        with self.data_lock:
+            data_id = self.replacer.next()
+            while data_id != -1:
                 data_idx = self.id_table[data_id]
                 for ref in self.data_refs[data_id]:
                     valid = self.buffer.is_datavalid(ref, data_idx)
@@ -160,7 +171,9 @@ class BufferManger(object):
                     self.replacer.delete(data_id)
                     self.replacer.reset()
                     return data_idx
-
+        
+        self.replacer.reset()
+        return -1
     def delete_task(self, name):
         with self.pending_id_lock:
             for data_id in self.pending_id.keys():
@@ -191,10 +204,10 @@ def writer(bm, name_list,):
     for i in range(len(name_list)):
         sa.insert(list(range(i*100, n+i*100)), name_list[i])
     while True:
-        s_ticker = m.tiker("idx sampling")
-        s_ticker.start()
+        # s_ticker = m.tiker("idx sampling")
+        # s_ticker.start()
         idx_dict, expect_diff = sa.sampling()
-        s_ticker.end()
+        # s_ticker.end()
         # s_ticker.print_avg(128, 128)
         if len(idx_dict.keys()) == 0:
             return
@@ -221,12 +234,12 @@ def reader(node, name):
             node = next_node
             # print("read", node)
         if name == '0':
-            print(sum_t1+sum_t2)
+            print(sum_t1, sum_t2)
     # print(name, (time.time()-now)/n)
     
 
 def multi_test(n):
-    bm = BufferManger("xiejian", create=True, size=602220*100+1000)
+    bm = BufferManger("xiejian", data_len=602116, create=True, size=602220*100+1000)
     pool = []
     names = []
     for i in range(n):
@@ -243,5 +256,5 @@ def multi_test(n):
 
 
 if __name__ == '__main__':
-    multi_test(32)
+    multi_test(1)
     print("end.....")

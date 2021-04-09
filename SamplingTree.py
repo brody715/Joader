@@ -154,7 +154,6 @@ class SamplingNode(object):
 
     def sample(self, preidx_dict, name_set):
         if len(preidx_dict) == 0 and len(name_set) == 0:
-            print(preidx_dict)
             return self.name_dict, {}, {}
 
         parent, child = self._split_child(name_set)
@@ -238,7 +237,7 @@ class SamplingTree(object):
             return idx_dict, {}
         
         _, res, expectation = self.root.sample({}, set(self.root.name_dict.keys()))
-        
+
         for name, idx in res.items():
             if idx not in idx_dict.keys():
                 idx_dict[idx] = []

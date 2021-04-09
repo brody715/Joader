@@ -22,7 +22,7 @@ class Loader(object):
             data = ds[data_id]
 
             buf.write_data(data_idx, data)
-            logging.critical("loader write data %d in %d", data_id, data_idx)
+            logging.critical("loader write data %d(len=%d) in %d", data_id, len(data), data_idx)
             resp_queue.put((data_id, data_idx))
 
     @staticmethod
