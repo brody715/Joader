@@ -3,7 +3,7 @@ import sys
 
 # config
 DATASIZE = 602116
-BUFFERSIZE = (30+1)*DATASIZE
+BUFFERSIZE = (64+1)*DATASIZE
 DATASET_PATH = "/home/xj/proj/DM/pytorch-imagenet/Loader/dataset.py"
 DATASET_NAME = "lmdbDataset"
 HEARTBEAT_INTER = 5

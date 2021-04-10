@@ -1,6 +1,5 @@
 import threading
 import time
-import heapq
 
 class Replacer(object):
     def __init__(self):
@@ -9,35 +8,36 @@ class Replacer(object):
         self.min_diff = 10000000
         self.cursor = [self.min_diff, -1]
 
+        self.lock = threading.Lock()
+    
     def update(self, data_id, expect_diff):
-        # with self.lock:
-        self.id_dict[data_id] = expect_diff
-        
-        if expect_diff not in self.diff_dict.keys():
-            self.diff_dict[expect_diff] = []
-            self.min_diff = min(self.min_diff, expect_diff)
-            self.cursor[0] = self.min_diff
-        self.diff_dict[expect_diff].append(data_id)
+        with self.lock:
+            self.id_dict[data_id] = expect_diff
+            if expect_diff not in self.diff_dict.keys():
+                self.diff_dict[expect_diff] = []
+                self.min_diff = min(self.min_diff, expect_diff)
+                self.cursor[0] = self.min_diff
+            self.diff_dict[expect_diff].append(data_id)
     
     def has(self, data_id):
-        return data_id in self.id_dict.keys()
+        with self.lock:
+            return data_id in self.id_dict.keys()
     
     def delete(self):
-        # with self.lock:
-        
         diff = self.cursor[0]
         data_id = self.diff_dict[diff][self.cursor[1]]
         if data_id in self.id_dict.keys():
             del self.id_dict[data_id]
         del self.diff_dict[diff][self.cursor[1]]
-        
+    
         if len(self.diff_dict[diff]) == 0:
             del self.diff_dict[diff] 
             self.min_diff = min(self.diff_dict.keys())
             self.cursor[0] = self.min_diff
-
-    def next(self):
-        # with self.lock:
+    
+    def _next(self):
+        if len(self.id_dict) == 0:
+                return -1
         if self.cursor[0] not in self.diff_dict.keys() or \
             len(self.diff_dict[self.cursor[0]]) == 0:
             self.delete()
@@ -51,13 +51,17 @@ class Replacer(object):
 
         if data_id not in self.id_dict.keys() or self.id_dict[data_id] != diff:
             self.delete()
-            return self.next()
-        
+            return self._next()
         return data_id
 
+    def next(self):
+        with self.lock:
+            return self._next()
+
     def pin(self, data_id):
-        if data_id in self.id_dict.keys():
-            del self.id_dict[data_id]
+        with self.lock:
+            if data_id in self.id_dict.keys():
+                del self.id_dict[data_id]
         
 class RReplacer(object):
     def __init__(self):

@@ -75,10 +75,3 @@ class lmdbDataset(Dataset):
 if __name__ == '__main__':
     ds = lmdbDataset('/data/share/ImageNet/ILSVRC-train.lmdb', True)
     img, label = lmdbDataset.from_bytes(ds[1])
-    # print(img.shape)
-    # print(len(ds[0]))
-    # print(len(ds[1]))
-    # print(len(ds[15]))
-    # print(ds[0])
-        #print(i)
-        #assert temp_dataset[i][0] is not None
