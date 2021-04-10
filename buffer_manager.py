@@ -228,7 +228,6 @@ def multi_test(n):
         p.start()
 
     threading.Thread(target=bm.listen).start()
-    multiprocessing.Process(target=writer, args=(bm, names,)).start()
     for p in pool:
         p.join()
     l.terminate()

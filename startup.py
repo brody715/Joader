@@ -34,7 +34,7 @@ print("start sampling tree manager")
 stm_in_queue = Queue(cfg.QUEUE_SIZE)
 stm_out_queue = Queue(cfg.QUEUE_SIZE)
 stm = SamplerTreeManager(stm_in_queue, stm_out_queue, cfg.MMAP_FILE_PATH, cfg.COMMAND, bm)
-stm_t = Process(target=stm.start)
+stm_t = threading.Thread(target=stm.start)
 stm_t.start()
 
 # start task manager
