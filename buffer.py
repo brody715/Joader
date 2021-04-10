@@ -5,22 +5,20 @@ import mmap
 
 
 class Buffer(object):
-    def __init__(self, name, data_len, create=False, size=0):
+    def __init__(self, buffer_path, data_len, create=False, size=0):
         if create:
             assert(size != 0)
-            path = "/tmp/"+name
-            f = open(path, "wb+")
+            f = open(buffer_path, "wb+")
             f.write(b'0'*size)
             self.buf = mmap.mmap(f.fileno(), size)
             self.buf.flush()
         else:
-            path = "/tmp/"+name
-            f = open(path, "rb+")
+            f = open(buffer_path, "rb+")
             self.buf = mmap.mmap(f.fileno(), size)
 
         self.create = create
         self.size = size
-        self.name = name
+        self.buffer_path = buffer_path
 
         # | -- inode -->     <-- data --|
         self.inode_tail = 0

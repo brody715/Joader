@@ -1,11 +1,9 @@
 import pickle
-
-SIZE_CNT = 4
-BYTE_ORDER = 'big'
+from config import MESSAGE_HEAD_SIZE, BYTE_ORDER
 
 def encode(data):
     data = pickle.dumps(data)
-    size = len(data).to_bytes(SIZE_CNT, byteorder=BYTE_ORDER)
+    size = len(data).to_bytes(MESSAGE_HEAD_SIZE, byteorder=BYTE_ORDER)
     return size, data
 
 def decode_data(data):

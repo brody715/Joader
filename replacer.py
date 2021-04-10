@@ -35,6 +35,7 @@ class Replacer(object):
             del self.diff_dict[diff] 
             self.min_diff = min(self.diff_dict.keys())
             self.cursor[0] = self.min_diff
+
     def next(self):
         # with self.lock:
         if self.cursor[0] not in self.diff_dict.keys() or \
@@ -53,7 +54,11 @@ class Replacer(object):
             return self.next()
         
         return data_id
-    
+
+    def pin(self, data_id):
+        if data_id in self.id_dict.keys():
+            del self.id_dict[data_id]
+        
 class RReplacer(object):
     def __init__(self):
         self.id_dict = {}
