@@ -233,6 +233,6 @@ def multi_test(n):
     l.terminate()
 
 
-if __name__ == '__main__':
-    multi_test(1)
-    print("end.....")
+# if __name__ == '__main__':
+#     multi_test(1)
+#     print("end.....")

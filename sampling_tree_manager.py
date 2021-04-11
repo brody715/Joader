@@ -2,6 +2,7 @@ import time
 import threading
 from mylog import logging
 from loader import Loader
+from multiprocessing import Process
 from buffer_manager import BufferManger
 from sampling_tree import SamplingTree
 
@@ -28,11 +29,11 @@ class SamplerTreeManager(object):
 
         with self.blocking_sampling:
             self.blocking_sampling.notify()
-        logging.info("add subsampler name %s", name)
+        logging.info("add task name %s", name)
         return head
 
     def delete_task(self, name):
-        logging.info("sampler delete subs %s", name)
+        logging.info("sampler delete task %s", name)
         self.buffer_manager.delete_task(name)
         with self.tree_lock:
             self.sampling_tree.remove(name)
@@ -71,8 +72,11 @@ class SamplerTreeManager(object):
         logging.info("start sampler")
 
         # start a thread to put index
-        idx_sampler = threading.Thread(target=self.sampling_idx)
+        idx_sampler = threading.Thread(target=self.sampling_idx, daemon=True)
         idx_sampler.start()
+
+        bmer = threading.Thread(target=self.buffer_manager.listen, daemon=True)
+        bmer.start()
 
         while True:
             try:

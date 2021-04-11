@@ -48,14 +48,14 @@ class TaskManager():
             size_byte = client.recv(self.message_head_size)
             if(len(size_byte) == 0):
                 logging.error("invalid message")
-                break
+                return
 
             size = decode_size(size_byte)
             task_bytes = self.recv_all(client, size)
             task = decode_data(task_bytes)
             self.update_tiker(task)
             if task[1] == self.command.HEARTBEAT.value:
-                break
+                continue
 
             resp = self.transfer(task)
             size_byte, resp_byte = encode(resp)
@@ -87,8 +87,14 @@ class TaskManager():
             self.ticker[name] = time.time()
 
     def heartbeat(self, ):
-        time.sleep(self.heartbeat_inter)
-        with self.lock:
-            for k in self.ticker.keys():
-                if time.time()-self.ticker[k] > self.heartbeat_inter:
-                    self.out_queue.put((k, self.command.DELETE))
+        while True:
+            time.sleep(self.heartbeat_inter)
+            with self.lock:
+                delete_key = []
+                for k in self.ticker.keys():
+                    if time.time()-self.ticker[k] > self.heartbeat_inter:
+                        logging.info("%s expired", k)
+                        delete_key.append(k)
+                        self.out_queue.put((k, self.command.DELETE.value))
+                for k in delete_key:
+                    del self.ticker[k]
