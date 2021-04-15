@@ -1,227 +1,181 @@
 import random
 import queue
-
+import time
 
 class SamplingNode(object):
-    def __init__(self, idx_list, name_dict={}, leaf_name=None, is_leaf=False):
-        self.idx_list = []
-        self.idx_list.extend(idx_list)
-        self.idx_set = set(self.idx_list)
+    def __init__(self, id_list, task_dict):
+        self.id_list = id_list
+        self.id_set = set(id_list)
+        # self.cursor = 0
 
-        self.length = len(idx_list)
-        self.delta = 0
-        self.is_leaf = is_leaf
-        self.leaf_name = leaf_name
-
-        self.name_dict = {}
-        for name in name_dict:
-            self.name_dict[name] = name_dict[name]
-        if leaf_name is not None:
-            self.name_dict[leaf_name] = self.length
-            self.is_leaf = True
+        self.task_dict = task_dict
 
         self.left = None
         self.right = None
 
-    def __len__(self, ):
-        return self.length
+    def intersection(self, id_list):
+        return self.id_set.intersection(id_list)
 
-    def contain(self, node):
-        return len(self.intersect(node)) == len(node)
+    def difference(self, id_list):
+        return self.id_set.difference(id_list)
 
-    def intersect(self, node):
-        ins = []
-        if node is None:
-            return ins
-        if len(node) > self.length:
-            for idx in self.idx_list:
-                if node.has(idx):
-                    ins.append(idx)
-        else:
-            for idx in node.idx_list:
-                if self.has(idx):
-                    ins.append(idx)
-        return ins
+    def intersection_update(self, id_list, update_taskdict=True):
+        old_l = len(self.id_set)
+        self.id_set.intersection_update(id_list)
+        new_l = len(self.id_set)
+        if update_taskdict:
+            for key in self.task_dict:
+                self.task_dict[key] += new_l - old_l
+        self.id_list = list(self.id_set)
 
-    def differ(self, node):
-        if node is None:
-            return
-        for idx in self.idx_list:
-            if node.has(idx):
-                self.idx_set.remove(idx)
-        
-        self.idx_list = list(self.idx_set)
-        diff = (self.length-len(self.idx_list))
-        for name in self.name_dict:
-            self.name_dict[name] -= diff
-        self.length -= diff
+    def union_update(self, id_list, update_taskdict=True):
+        old_l = len(self.id_set)
+        self.id_set.update(id_list)
+        new_l = len(self.id_set)
+        if update_taskdict:
+            for key in self.task_dict:
+                self.task_dict[key] += new_l - old_l
+        self.id_list = list(self.id_set)
 
-    def has(self, idx):
-        if idx in self.idx_set:
-            return True
-        return False
-    
+    def difference_update(self, id_list, update_taskdict=True):
+        old_l = len(self.id_set)
+        self.id_set.difference_update(id_list)
+        new_l = len(self.id_set)
+        if update_taskdict:
+            for key in self.task_dict:
+                self.task_dict[key] += new_l - old_l
+        self.id_list = list(self.id_set)
+
     def insert(self, node):
-        if(node.contain(self)):
-            new_root = self.add_name(node.leaf_name, node.length)
-            node.differ(new_root)
-            if len(node.intersect(new_root.left)) <= len(node.intersect(new_root.right)):
-                if new_root.right is None:
-                    new_root.right = node
-                else:
-                    new_root.right = new_root.right.insert(node)
-            else:
-                if new_root.left is None:
-                    new_root.left = node
-                else:
-                    new_root.left = new_root.left.insert(node)
-            
-            return new_root
-        else:
-            ins = self.intersect(node)
-            new_root = SamplingNode(ins, name_dict=self.name_dict)
-            for name, length in node.name_dict.items():
-                new_root.add_name(name, length)
-            
-            self.differ(new_root)
-            node.differ(new_root)
-            
-            new_root.left = self
-            new_root.right = node
-            return new_root
-    
-    def add_name(self, name, length):
-        if self.is_leaf:
-            node = SamplingNode(self.idx_list, self.name_dict, is_leaf=False)
-            self.differ(node)
-            node = node.add_name(name, length)
-            node.left = self
-            return node
-        else:
-            self.name_dict[name] = length
+        if len(node) < min(self.task_dict.values()):
+            return self.new_node(node)
+        if self.left is None and self.right is None:
+            return node.new_node(self)
+
+        difference = self.difference(node.id_list)
+        self.intersection_update(node.id_list, False)
+        self.task_dict.update(node.task_dict)
+
+        node.difference_update(self.id_set, True)
+        self.left.union_update(difference, True)
+        self.right.union_update(difference, True)
+        self.right = self.right.insert(node)
         return self
 
-    def remove(self, name):
-        if name in self.name_dict.keys():
-            del self.name_dict[name]
-        else:
-            return self
-        
-        if len(self.name_dict) == 0:
-            return None
-        
-        if self.left is not None:
-            self.left = self.left.remove(name)
-        if self.right is not None:
-            self.right = self.right.remove(name)
+    def new_node(self, node):
+        task_dict = self.task_dict.copy()
+        task_dict.update(node.task_dict)
 
-        return self
-    
-    def _process_predix(self, preidx_dict):
-        del_idx = []
-        myname_set = set(self.name_dict.keys())
-        for item in preidx_dict.items():
-            idx = item[0]
+        intersection = self.intersection(node.id_list)
+        self.difference_update(intersection, True)
+        node.difference_update(intersection, True)
 
-            if myname_set.issubset(item[1]):
-                self.idx_list.append(idx)
-                self.idx_set.add(idx)
-                item[1].difference_update(myname_set)
+        new_root = SamplingNode(list(intersection), task_dict)
+        new_root.left = node
+        new_root.right = self
+        return new_root
 
-            if len(item[1]) == 0:
-                del_idx.append(idx)
-        
-        for idx in del_idx:
-            del preidx_dict[idx]
-        
-    def _split_child(self, name_set):
-        parent = set()
-        child = set()
-        common = self.length
-        sorted_names = sorted(self.name_dict.items(), key=lambda item:item[1])
-        for item in sorted_names:
-            if item[1] == 0:
+    def random_choice(self):
+        idx = random.choice(range(len(self.id_list)))
+        e = self.id_list[idx]
+        del self.id_list[idx]
+        self.id_set.remove(e)
+        return e
+
+    def _min_task(self):
+        min_value = 100000000
+        for t in self.task_dict:
+            if min_value > self.task_dict[t]:
+                task = t
+                min_value = self.task_dict[t]
+        return task
+
+    def _split(self):
+        common = len(self.id_list)
+        sorted_task = sorted(self.task_dict.keys(),
+                             key=lambda k: self.task_dict[k])
+        zero_end = 0
+        for i in range(len(sorted_task)):
+            task = sorted_task[i]
+            if self.task_dict[task] == 0:
+                zero_end += 1
                 continue
-            name = item[0]
-            if name in name_set:
-                # 如果len(child) != 0, 说明之后的都需要加入child
-                if len(child) == 0 and random.uniform(0.00001, 1) < common/item[1]:
-                    common = item[1]
-                    parent.add(name)
-                else:
-                    child.add(name)
+            if random.uniform(0.0000001, 1) > common/self.task_dict[task]:
+                parent = set(sorted_task[zero_end:i])
+                child = set(sorted_task[i:])
+                return parent, child
+            common = self.task_dict[task]
+        child = set()
+        parent = set(sorted_task[zero_end:])
         return parent, child
 
-    def sample(self, preidx_dict, name_set):
-        if len(preidx_dict) == 0 and len(name_set) == 0:
-            return self.name_dict, {}, {}
-
-        parent, child = self._split_child(name_set)
-        
-        preidx = -1
-        if len(parent) != 0:
-            choice = random.choice(range(self.length))
-            preidx = self.idx_list[choice]
-            self.idx_set.remove(preidx)
-            del self.idx_list[choice]
-            
-        self._process_predix(preidx_dict)
-        self.length = len(self.idx_list)
-
-        # 所有的集合都在此采样
-        sampling_res = {}
-        expectation = {}
-        for name in parent:
-            sampling_res[name] = preidx
-            expectation[preidx] = len(self.name_dict)
-        if preidx != -1:
-            name_set = set(self.name_dict.keys())
-            name_set.difference_update(parent)
-            if len(name_set) != 0:
-                preidx_dict[preidx] = name_set
-
-        # 为了接下来的update_namedict, 所以一开始需要重置长度
-        for name in self.name_dict:
-            self.name_dict[name] = self.length
-        # push to child
+    def _update_task(self):
+        for task in self.task_dict:
+            self.task_dict[task] = len(self.id_list)
         if self.left is not None:
-            left_namedict, left_res, left_expect = self.left.sample(preidx_dict, child)
-            sampling_res.update(left_res)
-            expectation = self._merge_expectation(expectation, left_expect)
-            self.update_namedict(left_namedict)
+            for task in self.left.task_dict:
+                self.task_dict[task] += self.left.task_dict[task]
         if self.right is not None:
-            right_namedict, right_res, right_expect = self.right.sample(preidx_dict, child)
-            expectation = self._merge_expectation(expectation, right_expect)
-            sampling_res.update(right_res)
-            self.update_namedict(right_namedict)
-        return self.name_dict, sampling_res, expectation
-    
-    def _merge_expectation(self, exp1, exp2):
-        for key in exp2:
-            if key not in exp1.keys():
-                exp1[key] = 0
-            exp1[key] += exp2[key]
-        return exp1
-    
-    def update_namedict(self, name_dict):
-        for name in name_dict:
-            self.name_dict[name] += name_dict[name]
+            for task in self.right.task_dict:
+                self.task_dict[task] += self.right.task_dict[task]
 
-    def __str__(self, ):
-        res = "("
-        
-        res += str(self.name_dict)
-        res += "**"+str(self.idx_list)
-        res += ")"
-        return res
+    def sample(self, task_set, add_id_list):
+        if len(self.task_dict) != len(task_set):
+            res, exp = self.right.sample(task_set, add_id_list)
+            self._update_task()
+            return res, exp
+        res = {}
+        exp = {}
+        parent, child = self._split()
+        # print(parent, child, self.task_dict)
+        if len(parent) != 0:
+            e = self.random_choice()
+            res[e] = parent
+            exp[e] = len(self.task_dict)
+        if len(child) == len(self.task_dict):
+            task = self._min_task()  # left child
+            child.remove(task)
+            res, exp = self.left.sample({task}, [])
+
+        if len(child) != 0:
+            sub_res, sub_exp = self.right.sample(child, list(res.keys()))
+            res.update(sub_res)
+            exp.update(sub_exp)
+        self.id_set.update(add_id_list)
+        self.id_list.extend(add_id_list)
+        self._update_task()
+        return res, exp
+
+    def remove(self, task):
+        if task in self.task_dict:
+            del self.task_dict[task]
+        if len(self.task_dict) == 0:
+            return None
+        self.left = self.left.remove(task)
+        self.right = self.right.remove(task)
+
+        if self.left is None:
+            self.right.union_update(self.id_list, True)
+            return self.right
+        if self.right is None:
+            self.left.union_update(self.id_list, True)
+            return self.left
+
+    def __len__(self):
+        return len(self.id_set)
+
+    def __str__(self):
+        if len(self.id_list) == 0:
+            return "["+"]"+str(self.task_dict)
+        return "["+str(self.id_list[0]) +"-"+ str(self.id_list[-1])+"]"+str(self.task_dict)
 
 
 class SamplingTree(object):
     def __init__(self):
         self.root = None
 
-    def insert(self, idx_list, name):
-        node = SamplingNode(idx_list, leaf_name=name)
+    def insert(self, idx_list, task):
+        node = SamplingNode(idx_list, {task: len(idx_list)})
         if self.root is None:
             self.root = node
         else:
@@ -232,37 +186,26 @@ class SamplingTree(object):
             self.root.remove(name)
 
     def sampling(self,):
-        idx_dict = {}
         if self.root is None:
-            return idx_dict, {}
-        
-        _, res, expectation = self.root.sample({}, set(self.root.name_dict.keys()))
+            return {}, {}
 
-        for name, idx in res.items():
-            if idx not in idx_dict.keys():
-                idx_dict[idx] = []
-            idx_dict[idx].append(name)
-        # print("------------------------")
-        expect_diff = {}
-        for idx in idx_dict.keys():
-            expect_diff[idx] = expectation[idx]-len(idx_dict[idx])
-        return idx_dict, expect_diff
-    def rebalance(self, root):
-        pass
-    def _rebalance(self, root):
-        pass
+        id_dict, exp = self.root.sample(set(self.root.task_dict.keys()), [])
 
+        exp_diff = {}
+        for data_id in id_dict.keys():
+            exp_diff[data_id] = exp[data_id]-len(id_dict[data_id])
+        return id_dict, exp_diff
 
     def __str__(self, ):
-        q=queue.Queue()
+        q = queue.Queue()
         if self.root == None:
             return ""
         q.put(self.root)
         q.put("\n")
 
-        res=""
+        res = ""
         while(q.qsize() > 1):
-            s=q.get()
+            s = q.get()
             if type(s) == str:
                 res += s
                 if s == '\n':
@@ -281,23 +224,35 @@ class SamplingTree(object):
         return res
 
 
-
 def test():
-    t=SamplingTree()
-    l=[4,2,3,1]
-    # l = [3,2,1]
+    t = SamplingTree()
+    l = []
+    for _ in range(10):
+        l.append(random.randint(100000,200000))
+    # l = [86, 57, 63]
     name = []
     res = {}
-    
+
     for i in range(len(l)):
-        name.append(str(i))
+        name.append(str(l[i]))
+        res[str(l[i])] = []
+
     for i in range(len(l)):
         t.insert(list(range(l[i])), name[i])
-    
+    # print(t)
     for i in range(max(l)):
-        res.append(t.sampling())
+        now = time.time()
+        id_dict, _ = t.sampling()
+        print(time.time()-now)
+        for data_id in id_dict:
+            for name in id_dict[data_id]:
+                res[name].append(data_id)
+
+    for name in res:
+        assert(len(res[name]) == int(name))
+
 
 if __name__ == '__main__':
-    import time
-    test()
-    
+
+    for _ in range(10):
+        test()
