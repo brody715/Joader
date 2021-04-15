@@ -3,11 +3,11 @@ import sys
 
 # config
 DATASIZE = 602116
-BUFFERSIZE = (64+1)*DATASIZE
+BUFFERSIZE = (4000+1)*DATASIZE
 DATASET_PATH = "/home/xj/proj/DM/pytorch-imagenet/Loader/dataset.py"
 DATASET_NAME = "lmdbDataset"
 HEARTBEAT_INTER = 5
-WORKERS = 4
+WORKERS = 32
 ADDRESS = ('127.0.0.1', 8712)
 MESSAGE_HEAD_SIZE = 4
 BYTE_ORDER = 'big'

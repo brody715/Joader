@@ -31,20 +31,22 @@ class Replacer(object):
         self.min_diff = min(self.diff_dict.keys())
 
     def _next(self):
-        if len(self.id_dict) == 0 or len(self.diff_dict) == 0:
-            return -1
+        while True:
+            if len(self.id_dict) == 0 or len(self.diff_dict) == 0:
+                return -1
 
-        if self.cursor+1 >= len(self.diff_dict[self.min_diff]):
-            self.cursor = -1
+            if self.cursor + 1 >= len(self.diff_dict[self.min_diff]):
+                self.cursor = -1
 
-        self.cursor += 1
-        data_id = self.diff_dict[self.min_diff][self.cursor]
+            self.cursor += 1
+            data_id = self.diff_dict[self.min_diff][self.cursor]
 
-        if data_id not in self.id_dict.keys() or self.id_dict[data_id] != self.min_diff:
-            self.delete()
-            return self._next()
-        return data_id
-
+            if data_id not in self.id_dict.keys() or \
+                self.id_dict[data_id] != self.min_diff:
+                self.delete()
+                continue
+            
+            return data_id
     def next(self):
         with self.lock:
             return self._next()

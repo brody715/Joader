@@ -126,11 +126,13 @@ class SamplingNode(object):
             return res, exp
         res = {}
         exp = {}
+        pushdown = []
         parent, child = self._split()
         # print(parent, child, self.task_dict)
         if len(parent) != 0:
             e = self.random_choice()
             res[e] = parent
+            pushdown.append(e)
             exp[e] = len(self.task_dict)
         if len(child) == len(self.task_dict):
             task = self._min_task()  # left child
@@ -138,7 +140,7 @@ class SamplingNode(object):
             res, exp = self.left.sample({task}, [])
 
         if len(child) != 0:
-            sub_res, sub_exp = self.right.sample(child, list(res.keys()))
+            sub_res, sub_exp = self.right.sample(child, pushdown)
             res.update(sub_res)
             exp.update(sub_exp)
         self.id_set.update(add_id_list)
@@ -241,9 +243,7 @@ def test():
         t.insert(list(range(l[i])), name[i])
     # print(t)
     for i in range(max(l)):
-        now = time.time()
         id_dict, _ = t.sampling()
-        print(time.time()-now)
         for data_id in id_dict:
             for name in id_dict[data_id]:
                 res[name].append(data_id)
@@ -254,5 +254,5 @@ def test():
 
 if __name__ == '__main__':
 
-    for _ in range(10):
+    for _ in range(1):
         test()
