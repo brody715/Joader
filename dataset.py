@@ -37,23 +37,18 @@ class lmdbDataset(Dataset):
     def __len__(self):
         return self.length
     def __getitem__(self, index):
-        
-        begin = time.time()
         new_index = str(index).encode()
         data = self.txn.get(new_index)
         now_data = msgpack.loads(data, raw=False)
         data_img = now_data[0]
         label = now_data[1]
         now_arr = np.frombuffer(data_img[b'data'], dtype=np.uint8)
-        
-        # load_time = time.time()-begin
-        # begin = time.time()
+    
         
         image_content = cv2.imdecode(now_arr, cv2.IMREAD_COLOR)
         image_content = cv2.cvtColor(image_content,cv2.COLOR_BGR2RGB)
         image_content = Image.fromarray(image_content)
         image_content = self.transform(image_content)
-        process_time = time.time()-begin
         return lmdbDataset.to_bytes(image_content, label)
 
     @staticmethod

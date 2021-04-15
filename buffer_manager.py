@@ -93,8 +93,13 @@ class BufferManger(object):
                     data_addr = self.allocate_datanode()
                 # TODO: Infinite loop
                 while data_addr == -1:
-                    with self.data_lock:
-                        data_addr = self.allocate_datanode()
+                    time.sleep(1)
+                    for _ in range(10):
+                        with self.data_lock:
+                            data_addr = self.allocate_datanode()
+                            if data_addr != -1:
+                                break
+                    
                 self.out_queue.put((data_id, data_addr))
 
     def _merge_pendingid(self, data_id, name_list, expect_diff):
