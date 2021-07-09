@@ -103,6 +103,8 @@ class BufferManger(object):
                 self.out_queue.put((data_id, data_addr))
 
     def _merge_pendingid(self, data_id, name_list, expect_diff):
+        # if new pending, return true
+        # else return false
         res = False
         with self.pending_id_lock:
             if data_id not in self.pending_id.keys():

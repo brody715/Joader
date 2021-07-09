@@ -43,8 +43,6 @@ class lmdbDataset(Dataset):
         data_img = now_data[0]
         label = now_data[1]
         now_arr = np.frombuffer(data_img[b'data'], dtype=np.uint8)
-    
-        
         image_content = cv2.imdecode(now_arr, cv2.IMREAD_COLOR)
         image_content = cv2.cvtColor(image_content,cv2.COLOR_BGR2RGB)
         image_content = Image.fromarray(image_content)
