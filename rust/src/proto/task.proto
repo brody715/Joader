@@ -1,0 +1,26 @@
+syntax = "proto3";
+message CreateTaskRequest {
+    repeated string key = 1;
+    repeated int32 weight = 2;
+}
+
+message CreateTaskResponse {
+    enum State {
+        Ok = 0;
+        False = 1;
+    }
+    State state = 1;
+}
+
+message HeartBeatRequest {
+    int32 hb = 1;
+}
+
+message HeartBeatRespones {
+    int32 hb = 1;
+}
+
+service TaskService {
+    rpc Create(CreateTaskRequest) returns (CreateTaskResponse);
+    rpc HeartBeat(HeartBeatRequest) returns (HeartBeatRespones);
+}
