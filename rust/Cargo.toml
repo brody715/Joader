@@ -16,5 +16,5 @@ protobuf = "2"
 protoc-grpcio = "3"
 
 [lib]
-name = "protos"
-path = "src/protos/mod.rs"
+name = "proto"
+path = "src/proto/mod.rs"
