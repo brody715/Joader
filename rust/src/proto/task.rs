@@ -26,8 +26,8 @@
 #[derive(PartialEq,Clone,Default)]
 pub struct CreateTaskRequest {
     // message fields
-    pub key: ::protobuf::RepeatedField<::std::string::String>,
-    pub weight: ::std::vec::Vec<i32>,
+    pub keys: ::protobuf::RepeatedField<::std::string::String>,
+    pub weights: ::std::vec::Vec<i32>,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -44,54 +44,54 @@ impl CreateTaskRequest {
         ::std::default::Default::default()
     }
 
-    // repeated string key = 1;
+    // repeated string keys = 2;
 
 
-    pub fn get_key(&self) -> &[::std::string::String] {
-        &self.key
+    pub fn get_keys(&self) -> &[::std::string::String] {
+        &self.keys
     }
-    pub fn clear_key(&mut self) {
-        self.key.clear();
-    }
-
-    // Param is passed by value, moved
-    pub fn set_key(&mut self, v: ::protobuf::RepeatedField<::std::string::String>) {
-        self.key = v;
-    }
-
-    // Mutable pointer to the field.
-    pub fn mut_key(&mut self) -> &mut ::protobuf::RepeatedField<::std::string::String> {
-        &mut self.key
-    }
-
-    // Take field
-    pub fn take_key(&mut self) -> ::protobuf::RepeatedField<::std::string::String> {
-        ::std::mem::replace(&mut self.key, ::protobuf::RepeatedField::new())
-    }
-
-    // repeated int32 weight = 2;
-
-
-    pub fn get_weight(&self) -> &[i32] {
-        &self.weight
-    }
-    pub fn clear_weight(&mut self) {
-        self.weight.clear();
+    pub fn clear_keys(&mut self) {
+        self.keys.clear();
     }
 
     // Param is passed by value, moved
-    pub fn set_weight(&mut self, v: ::std::vec::Vec<i32>) {
-        self.weight = v;
+    pub fn set_keys(&mut self, v: ::protobuf::RepeatedField<::std::string::String>) {
+        self.keys = v;
     }
 
     // Mutable pointer to the field.
-    pub fn mut_weight(&mut self) -> &mut ::std::vec::Vec<i32> {
-        &mut self.weight
+    pub fn mut_keys(&mut self) -> &mut ::protobuf::RepeatedField<::std::string::String> {
+        &mut self.keys
     }
 
     // Take field
-    pub fn take_weight(&mut self) -> ::std::vec::Vec<i32> {
-        ::std::mem::replace(&mut self.weight, ::std::vec::Vec::new())
+    pub fn take_keys(&mut self) -> ::protobuf::RepeatedField<::std::string::String> {
+        ::std::mem::replace(&mut self.keys, ::protobuf::RepeatedField::new())
+    }
+
+    // repeated int32 weights = 3;
+
+
+    pub fn get_weights(&self) -> &[i32] {
+        &self.weights
+    }
+    pub fn clear_weights(&mut self) {
+        self.weights.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_weights(&mut self, v: ::std::vec::Vec<i32>) {
+        self.weights = v;
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_weights(&mut self) -> &mut ::std::vec::Vec<i32> {
+        &mut self.weights
+    }
+
+    // Take field
+    pub fn take_weights(&mut self) -> ::std::vec::Vec<i32> {
+        ::std::mem::replace(&mut self.weights, ::std::vec::Vec::new())
     }
 }
 
@@ -104,11 +104,11 @@ impl ::protobuf::Message for CreateTaskRequest {
         while !is.eof()? {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
-                1 => {
-                    ::protobuf::rt::read_repeated_string_into(wire_type, is, &mut self.key)?;
-                },
                 2 => {
-                    ::protobuf::rt::read_repeated_int32_into(wire_type, is, &mut self.weight)?;
+                    ::protobuf::rt::read_repeated_string_into(wire_type, is, &mut self.keys)?;
+                },
+                3 => {
+                    ::protobuf::rt::read_repeated_int32_into(wire_type, is, &mut self.weights)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -122,11 +122,11 @@ impl ::protobuf::Message for CreateTaskRequest {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
-        for value in &self.key {
-            my_size += ::protobuf::rt::string_size(1, &value);
+        for value in &self.keys {
+            my_size += ::protobuf::rt::string_size(2, &value);
         };
-        for value in &self.weight {
-            my_size += ::protobuf::rt::value_size(2, *value, ::protobuf::wire_format::WireTypeVarint);
+        for value in &self.weights {
+            my_size += ::protobuf::rt::value_size(3, *value, ::protobuf::wire_format::WireTypeVarint);
         };
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
@@ -134,11 +134,11 @@ impl ::protobuf::Message for CreateTaskRequest {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
-        for v in &self.key {
-            os.write_string(1, &v)?;
+        for v in &self.keys {
+            os.write_string(2, &v)?;
         };
-        for v in &self.weight {
-            os.write_int32(2, *v)?;
+        for v in &self.weights {
+            os.write_int32(3, *v)?;
         };
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -179,14 +179,14 @@ impl ::protobuf::Message for CreateTaskRequest {
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
             fields.push(::protobuf::reflect::accessor::make_repeated_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
-                "key",
-                |m: &CreateTaskRequest| { &m.key },
-                |m: &mut CreateTaskRequest| { &mut m.key },
+                "keys",
+                |m: &CreateTaskRequest| { &m.keys },
+                |m: &mut CreateTaskRequest| { &mut m.keys },
             ));
             fields.push(::protobuf::reflect::accessor::make_vec_accessor::<_, ::protobuf::types::ProtobufTypeInt32>(
-                "weight",
-                |m: &CreateTaskRequest| { &m.weight },
-                |m: &mut CreateTaskRequest| { &mut m.weight },
+                "weights",
+                |m: &CreateTaskRequest| { &m.weights },
+                |m: &mut CreateTaskRequest| { &mut m.weights },
             ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<CreateTaskRequest>(
                 "CreateTaskRequest",
@@ -204,8 +204,8 @@ impl ::protobuf::Message for CreateTaskRequest {
 
 impl ::protobuf::Clear for CreateTaskRequest {
     fn clear(&mut self) {
-        self.key.clear();
-        self.weight.clear();
+        self.keys.clear();
+        self.weights.clear();
         self.unknown_fields.clear();
     }
 }
@@ -226,6 +226,7 @@ impl ::protobuf::reflect::ProtobufValue for CreateTaskRequest {
 pub struct CreateTaskResponse {
     // message fields
     pub state: CreateTaskResponse_State,
+    pub name: u64,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -256,6 +257,21 @@ impl CreateTaskResponse {
     pub fn set_state(&mut self, v: CreateTaskResponse_State) {
         self.state = v;
     }
+
+    // uint64 name = 2;
+
+
+    pub fn get_name(&self) -> u64 {
+        self.name
+    }
+    pub fn clear_name(&mut self) {
+        self.name = 0;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_name(&mut self, v: u64) {
+        self.name = v;
+    }
 }
 
 impl ::protobuf::Message for CreateTaskResponse {
@@ -269,6 +285,13 @@ impl ::protobuf::Message for CreateTaskResponse {
             match field_number {
                 1 => {
                     ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.state, 1, &mut self.unknown_fields)?
+                },
+                2 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_uint64()?;
+                    self.name = tmp;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -285,6 +308,9 @@ impl ::protobuf::Message for CreateTaskResponse {
         if self.state != CreateTaskResponse_State::Ok {
             my_size += ::protobuf::rt::enum_size(1, self.state);
         }
+        if self.name != 0 {
+            my_size += ::protobuf::rt::value_size(2, self.name, ::protobuf::wire_format::WireTypeVarint);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -293,6 +319,9 @@ impl ::protobuf::Message for CreateTaskResponse {
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
         if self.state != CreateTaskResponse_State::Ok {
             os.write_enum(1, ::protobuf::ProtobufEnum::value(&self.state))?;
+        }
+        if self.name != 0 {
+            os.write_uint64(2, self.name)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -337,6 +366,11 @@ impl ::protobuf::Message for CreateTaskResponse {
                 |m: &CreateTaskResponse| { &m.state },
                 |m: &mut CreateTaskResponse| { &mut m.state },
             ));
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
+                "name",
+                |m: &CreateTaskResponse| { &m.name },
+                |m: &mut CreateTaskResponse| { &mut m.name },
+            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<CreateTaskResponse>(
                 "CreateTaskResponse",
                 fields,
@@ -354,6 +388,7 @@ impl ::protobuf::Message for CreateTaskResponse {
 impl ::protobuf::Clear for CreateTaskResponse {
     fn clear(&mut self) {
         self.state = CreateTaskResponse_State::Ok;
+        self.name = 0;
         self.unknown_fields.clear();
     }
 }
@@ -725,15 +760,16 @@ impl ::protobuf::reflect::ProtobufValue for HeartBeatRespones {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\ntask.proto\"=\n\x11CreateTaskRequest\x12\x10\n\x03key\x18\x01\x20\
-    \x03(\tR\x03key\x12\x16\n\x06weight\x18\x02\x20\x03(\x05R\x06weight\"a\n\
-    \x12CreateTaskResponse\x12/\n\x05state\x18\x01\x20\x01(\x0e2\x19.CreateT\
-    askResponse.StateR\x05state\"\x1a\n\x05State\x12\x06\n\x02Ok\x10\0\x12\t\
-    \n\x05False\x10\x01\"\"\n\x10HeartBeatRequest\x12\x0e\n\x02hb\x18\x01\
-    \x20\x01(\x05R\x02hb\"#\n\x11HeartBeatRespones\x12\x0e\n\x02hb\x18\x01\
-    \x20\x01(\x05R\x02hb2t\n\x0bTaskService\x121\n\x06Create\x12\x12.CreateT\
-    askRequest\x1a\x13.CreateTaskResponse\x122\n\tHeartBeat\x12\x11.HeartBea\
-    tRequest\x1a\x12.HeartBeatResponesb\x06proto3\
+    \n\ntask.proto\"A\n\x11CreateTaskRequest\x12\x12\n\x04keys\x18\x02\x20\
+    \x03(\tR\x04keys\x12\x18\n\x07weights\x18\x03\x20\x03(\x05R\x07weights\"\
+    u\n\x12CreateTaskResponse\x12/\n\x05state\x18\x01\x20\x01(\x0e2\x19.Crea\
+    teTaskResponse.StateR\x05state\x12\x12\n\x04name\x18\x02\x20\x01(\x04R\
+    \x04name\"\x1a\n\x05State\x12\x06\n\x02Ok\x10\0\x12\t\n\x05False\x10\x01\
+    \"\"\n\x10HeartBeatRequest\x12\x0e\n\x02hb\x18\x01\x20\x01(\x05R\x02hb\"\
+    #\n\x11HeartBeatRespones\x12\x0e\n\x02hb\x18\x01\x20\x01(\x05R\x02hb2m\n\
+    \x04Task\x121\n\x06Create\x12\x12.CreateTaskRequest\x1a\x13.CreateTaskRe\
+    sponse\x122\n\tHeartBeat\x12\x11.HeartBeatRequest\x1a\x12.HeartBeatRespo\
+    nesb\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

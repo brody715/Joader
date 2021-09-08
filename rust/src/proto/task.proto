@@ -1,7 +1,7 @@
 syntax = "proto3";
 message CreateTaskRequest {
-    repeated string key = 1;
-    repeated int32 weight = 2;
+    repeated string keys = 2;
+    repeated int32 weights = 3;
 }
 
 message CreateTaskResponse {
@@ -10,6 +10,7 @@ message CreateTaskResponse {
         False = 1;
     }
     State state = 1;
+    uint64 name = 2;
 }
 
 message HeartBeatRequest {
@@ -20,7 +21,7 @@ message HeartBeatRespones {
     int32 hb = 1;
 }
 
-service TaskService {
+service Task {
     rpc Create(CreateTaskRequest) returns (CreateTaskResponse);
     rpc HeartBeat(HeartBeatRequest) returns (HeartBeatRespones);
 }
