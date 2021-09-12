@@ -76,8 +76,8 @@ impl TaskManager<'_> {
         if self.tasks.contains_key(&task.id) {
             return Err(());
         }
-        self.tasks.insert(task.id, task);
-        self.sampler_manager.add(&task);
+        self.tasks.insert(task.id, task.clone());
+        self.sampler_manager.add(&self.tasks[&task.id]);
         Ok(())
     }
 
