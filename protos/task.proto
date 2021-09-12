@@ -2,6 +2,9 @@ syntax = "proto3";
 message CreateTaskRequest {
     repeated string keys = 2;
     repeated int32 weights = 3;
+    // only supported lmdb,filesystem
+    string loader = 4;
+    string family = 5;
 }
 
 message CreateTaskResponse {
@@ -10,18 +13,19 @@ message CreateTaskResponse {
         False = 1;
     }
     State state = 1;
-    uint64 name = 2;
+    uint64 task_id = 2;
+    string path = 3;
 }
 
-message HeartBeatRequest {
-    int32 hb = 1;
+message GetDataRequest {
+    uint64 task_id = 1;
 }
 
-message HeartBeatRespones {
-    int32 hb = 1;
+message GetDataRespones {
+    uint64 address = 1;
 }
 
 service Task {
     rpc Create(CreateTaskRequest) returns (CreateTaskResponse);
-    rpc HeartBeat(HeartBeatRequest) returns (HeartBeatRespones);
+    rpc GetData(GetDataRequest) returns (GetDataRespones);
 }

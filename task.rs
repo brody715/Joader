@@ -17,7 +17,7 @@
 #![allow(trivial_casts)]
 #![allow(unused_imports)]
 #![allow(unused_results)]
-//! Generated file from `task.proto`
+//! Generated file from `protos/task.proto`
 
 /// Generated files are compatible only with the same version
 /// of protobuf runtime.
@@ -28,8 +28,6 @@ pub struct CreateTaskRequest {
     // message fields
     pub keys: ::protobuf::RepeatedField<::std::string::String>,
     pub weights: ::std::vec::Vec<i32>,
-    pub loader: ::std::string::String,
-    pub family: ::std::string::String,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -95,58 +93,6 @@ impl CreateTaskRequest {
     pub fn take_weights(&mut self) -> ::std::vec::Vec<i32> {
         ::std::mem::replace(&mut self.weights, ::std::vec::Vec::new())
     }
-
-    // string loader = 4;
-
-
-    pub fn get_loader(&self) -> &str {
-        &self.loader
-    }
-    pub fn clear_loader(&mut self) {
-        self.loader.clear();
-    }
-
-    // Param is passed by value, moved
-    pub fn set_loader(&mut self, v: ::std::string::String) {
-        self.loader = v;
-    }
-
-    // Mutable pointer to the field.
-    // If field is not initialized, it is initialized with default value first.
-    pub fn mut_loader(&mut self) -> &mut ::std::string::String {
-        &mut self.loader
-    }
-
-    // Take field
-    pub fn take_loader(&mut self) -> ::std::string::String {
-        ::std::mem::replace(&mut self.loader, ::std::string::String::new())
-    }
-
-    // string family = 5;
-
-
-    pub fn get_family(&self) -> &str {
-        &self.family
-    }
-    pub fn clear_family(&mut self) {
-        self.family.clear();
-    }
-
-    // Param is passed by value, moved
-    pub fn set_family(&mut self, v: ::std::string::String) {
-        self.family = v;
-    }
-
-    // Mutable pointer to the field.
-    // If field is not initialized, it is initialized with default value first.
-    pub fn mut_family(&mut self) -> &mut ::std::string::String {
-        &mut self.family
-    }
-
-    // Take field
-    pub fn take_family(&mut self) -> ::std::string::String {
-        ::std::mem::replace(&mut self.family, ::std::string::String::new())
-    }
 }
 
 impl ::protobuf::Message for CreateTaskRequest {
@@ -163,12 +109,6 @@ impl ::protobuf::Message for CreateTaskRequest {
                 },
                 3 => {
                     ::protobuf::rt::read_repeated_int32_into(wire_type, is, &mut self.weights)?;
-                },
-                4 => {
-                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.loader)?;
-                },
-                5 => {
-                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.family)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -188,12 +128,6 @@ impl ::protobuf::Message for CreateTaskRequest {
         for value in &self.weights {
             my_size += ::protobuf::rt::value_size(3, *value, ::protobuf::wire_format::WireTypeVarint);
         };
-        if !self.loader.is_empty() {
-            my_size += ::protobuf::rt::string_size(4, &self.loader);
-        }
-        if !self.family.is_empty() {
-            my_size += ::protobuf::rt::string_size(5, &self.family);
-        }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
@@ -206,12 +140,6 @@ impl ::protobuf::Message for CreateTaskRequest {
         for v in &self.weights {
             os.write_int32(3, *v)?;
         };
-        if !self.loader.is_empty() {
-            os.write_string(4, &self.loader)?;
-        }
-        if !self.family.is_empty() {
-            os.write_string(5, &self.family)?;
-        }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -260,16 +188,6 @@ impl ::protobuf::Message for CreateTaskRequest {
                 |m: &CreateTaskRequest| { &m.weights },
                 |m: &mut CreateTaskRequest| { &mut m.weights },
             ));
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
-                "loader",
-                |m: &CreateTaskRequest| { &m.loader },
-                |m: &mut CreateTaskRequest| { &mut m.loader },
-            ));
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
-                "family",
-                |m: &CreateTaskRequest| { &m.family },
-                |m: &mut CreateTaskRequest| { &mut m.family },
-            ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<CreateTaskRequest>(
                 "CreateTaskRequest",
                 fields,
@@ -288,8 +206,6 @@ impl ::protobuf::Clear for CreateTaskRequest {
     fn clear(&mut self) {
         self.keys.clear();
         self.weights.clear();
-        self.loader.clear();
-        self.family.clear();
         self.unknown_fields.clear();
     }
 }
@@ -736,7 +652,7 @@ impl ::protobuf::reflect::ProtobufValue for GetDataRequest {
 #[derive(PartialEq,Clone,Default)]
 pub struct GetDataRespones {
     // message fields
-    pub address: u64,
+    pub address: i64,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -753,10 +669,10 @@ impl GetDataRespones {
         ::std::default::Default::default()
     }
 
-    // uint64 address = 1;
+    // int64 address = 1;
 
 
-    pub fn get_address(&self) -> u64 {
+    pub fn get_address(&self) -> i64 {
         self.address
     }
     pub fn clear_address(&mut self) {
@@ -764,7 +680,7 @@ impl GetDataRespones {
     }
 
     // Param is passed by value, moved
-    pub fn set_address(&mut self, v: u64) {
+    pub fn set_address(&mut self, v: i64) {
         self.address = v;
     }
 }
@@ -782,7 +698,7 @@ impl ::protobuf::Message for GetDataRespones {
                     if wire_type != ::protobuf::wire_format::WireTypeVarint {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    let tmp = is.read_uint64()?;
+                    let tmp = is.read_int64()?;
                     self.address = tmp;
                 },
                 _ => {
@@ -807,7 +723,7 @@ impl ::protobuf::Message for GetDataRespones {
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
         if self.address != 0 {
-            os.write_uint64(1, self.address)?;
+            os.write_int64(1, self.address)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -847,7 +763,7 @@ impl ::protobuf::Message for GetDataRespones {
         static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt64>(
                 "address",
                 |m: &GetDataRespones| { &m.address },
                 |m: &mut GetDataRespones| { &mut m.address },
@@ -886,18 +802,17 @@ impl ::protobuf::reflect::ProtobufValue for GetDataRespones {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\ntask.proto\"q\n\x11CreateTaskRequest\x12\x12\n\x04keys\x18\x02\x20\
-    \x03(\tR\x04keys\x12\x18\n\x07weights\x18\x03\x20\x03(\x05R\x07weights\
-    \x12\x16\n\x06loader\x18\x04\x20\x01(\tR\x06loader\x12\x16\n\x06family\
-    \x18\x05\x20\x01(\tR\x06family\"\x8e\x01\n\x12CreateTaskResponse\x12/\n\
-    \x05state\x18\x01\x20\x01(\x0e2\x19.CreateTaskResponse.StateR\x05state\
-    \x12\x17\n\x07task_id\x18\x02\x20\x01(\x04R\x06taskId\x12\x12\n\x04path\
-    \x18\x03\x20\x01(\tR\x04path\"\x1a\n\x05State\x12\x06\n\x02Ok\x10\0\x12\
-    \t\n\x05False\x10\x01\")\n\x0eGetDataRequest\x12\x17\n\x07task_id\x18\
-    \x01\x20\x01(\x04R\x06taskId\"+\n\x0fGetDataRespones\x12\x18\n\x07addres\
-    s\x18\x01\x20\x01(\x04R\x07address2g\n\x04Task\x121\n\x06Create\x12\x12.\
-    CreateTaskRequest\x1a\x13.CreateTaskResponse\x12,\n\x07GetData\x12\x0f.G\
-    etDataRequest\x1a\x10.GetDataResponesb\x06proto3\
+    \n\x11protos/task.proto\"A\n\x11CreateTaskRequest\x12\x12\n\x04keys\x18\
+    \x02\x20\x03(\tR\x04keys\x12\x18\n\x07weights\x18\x03\x20\x03(\x05R\x07w\
+    eights\"\x8e\x01\n\x12CreateTaskResponse\x12/\n\x05state\x18\x01\x20\x01\
+    (\x0e2\x19.CreateTaskResponse.StateR\x05state\x12\x17\n\x07task_id\x18\
+    \x02\x20\x01(\x04R\x06taskId\x12\x12\n\x04path\x18\x03\x20\x01(\tR\x04pa\
+    th\"\x1a\n\x05State\x12\x06\n\x02Ok\x10\0\x12\t\n\x05False\x10\x01\")\n\
+    \x0eGetDataRequest\x12\x17\n\x07task_id\x18\x01\x20\x01(\x04R\x06taskId\
+    \"+\n\x0fGetDataRespones\x12\x18\n\x07address\x18\x01\x20\x01(\x03R\x07a\
+    ddress2g\n\x04Task\x121\n\x06Create\x12\x12.CreateTaskRequest\x1a\x13.Cr\
+    eateTaskResponse\x12,\n\x07GetData\x12\x0f.GetDataRequest\x1a\x10.GetDat\
+    aResponesb\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

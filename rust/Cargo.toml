@@ -13,6 +13,9 @@ grpcio = "0.9"
 protobuf = "2"
 log = "0.4.8"
 log4rs = "0.10.0"
+tokio = "1"
+rand = "0.8.4"
+crossbeam = "0.8.1"
 
 [build-dependencies]
 protoc-grpcio = "3"

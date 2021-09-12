@@ -1,49 +1,91 @@
-use std::os::unix::thread;
-use std::sync::mpsc::channel;
-use crate::sampler::{self, Sampler, SamplerManager};
-
+use crate::sampler::SamplerManager;
+use crossbeam::channel::Sender;
+use std::sync::Mutex;
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(Clone)]
 pub struct Task {
     id: u64,
     keys: Vec<String>,
-    weights: Vec<i32>
+    weights: Vec<i32>,
+    loader: String,
+    sender: Sender<u64>,
+    family: String,
 }
 
 impl Task {
-    pub fn new(id: u64, keys: Vec<String>, weights: Vec<i32>) -> Self {
-        Task{id, keys, weights}
+    pub fn new(
+        id: u64,
+        keys: Vec<String>,
+        weights: Vec<i32>,
+        loader: String,
+        sender: Sender<u64>,
+        family: String
+    ) -> Task {
+        Task {
+            id,
+            keys,
+            weights,
+            loader,
+            sender,
+            family
+        }
+    }
+
+    pub fn id(&self) -> u64 {
+        self.id
+    }
+    
+    pub fn weights(&self) -> &Vec<i32> {
+        &self.weights
+    }
+
+    pub fn keys(&self) -> &Vec<String> {
+        &self.keys
+    }
+
+    pub fn family(&self) -> &str {
+        self.family.as_str()
+    }
+
+    pub fn sender(&self) -> Sender<u64> {
+        self.sender.clone()
+    }
+
+    pub fn send(&self, address: u64) {
+        self.sender.send(address).unwrap();
     }
 }
 
 #[derive(Clone)]
-pub struct TaskManager {
-    tasks: Vec<Task>,
-    id: u64,
-    sampler_manager: SamplerManager
-    
+pub struct TaskManager<'a> {
+    tasks: HashMap<u64, Task>,
+    sampler_manager: SamplerManager<'a>,
 }
 
-impl TaskManager {
+impl TaskManager<'_> {
     pub fn new() -> Self {
-        TaskManager {tasks: Vec::<Task>::new(), id: 0, sampler_manager: SamplerManager{} }
-    }
-
-    pub fn new_id(&mut self) -> u64 {
-        let id = self.id;
-        id
+        let sampler_manager = SamplerManager::new();
+        TaskManager {
+            tasks: HashMap::<u64, Task>::new(),
+            sampler_manager,
+        }
     }
 
     pub fn add(&mut self, task: Task) -> Result<(), ()> {
-        self.tasks.push(task);
+        if self.tasks.contains_key(&task.id) {
+            return Err(());
+        }
+        self.tasks.insert(task.id, task);
+        self.sampler_manager.add(&task);
         Ok(())
     }
 
-    pub fn append_sampler(&mut self) {
-        // let (tx, rx) = channel::<&str>();
-        // thread::Spawn(move|| {
-        //     self.sampler_manager.start()
-        // });
-        todo!()
+    pub fn start_sample(task_manager: Arc<Mutex<Self>>) {
+        loop {
+            let mut task_manager = task_manager.lock().unwrap();
+            //todo(xj): when sample manager is empty, the thread should be blocked util new tasks add
+            task_manager.sampler_manager.sample();
+        }
     }
 }
