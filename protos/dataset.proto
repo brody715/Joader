@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+enum Status {
+    Ok = 0;
+    False = 1;
+}
+
+message DataItem {
+    repeated string keys = 1;
+}
+
+message CreateDatasetRequest {
+    enum FileType {
+        FILESYSTEM = 0;
+        LMDB=1;
+    }
+    FileType type = 1;
+    repeated DataItem keys = 2;
+    repeated uint32 weights = 3;
+}
+
+message CreateDatasetResponse {
+    uint32 dataset_id = 1;
+    Status rsp = 2;
+}
+
+message DeleteDatasetRequest {
+    uint32 dataset_id = 1;
+}
+
+message DeleteDatasetResponse {
+    Status rsp = 2;
+}
+
+service Dataset {
+    rpc CreateDataset(CreateDatasetRequest) returns (CreateDatasetResponse);
+    rpc DeleteDataset(DeleteDatasetRequest) returns (DeleteDatasetResponse);
+}

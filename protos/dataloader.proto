@@ -1,0 +1,42 @@
+
+syntax = "proto3";
+
+enum Status {
+    Ok = 0;
+    False = 1;
+}
+
+message CreateDataloaderRequest {
+    uint32 dataset_id = 1;
+    repeated uint32 keys = 2;
+}
+
+message CreateDataloaderResponse {
+    Status resp = 1;
+    string shared_mem_file = 2;
+    uint32 loader_id = 3;
+}
+
+
+message NextRequest {
+    uint32 loader_id = 1;
+}
+
+message NextResponse {
+    Status resp = 1;
+    uint32 address = 2;
+}
+
+message DeleteDataloaderRequest {
+    uint32 loader_id = 3;
+}
+
+message DeleteDataloaderResponse {
+    Status resp = 3;
+}
+
+service DataLoader {
+    rpc CreateDataloader(CreateDataloaderRequest) returns (CreateDataloaderResponse);
+    rpc Next(NextRequest) returns (NextResponse);
+    rpc DeleteDataloader(DeleteDataloaderRequest) returns (DeleteDataloaderResponse);
+}
