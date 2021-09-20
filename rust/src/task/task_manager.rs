@@ -71,6 +71,42 @@ impl Task {
     }
 }
 
+impl TaskRef {
+    pub fn new(id: u64, dataset_id: u32, keys: Vec<u32>, sender: Sender<u64>) -> Self {
+        TaskRef(Arc::new(Task {
+            id,
+            dataset_id,
+            keys,
+            sender,
+        }))
+        
+    }
+
+    pub fn id(&self) -> &u64 {
+        &self.0.id
+    }
+
+    pub fn dataset(&self) -> u32 {
+        self.0.dataset_id
+    }
+
+    pub fn keys(&self) -> &Vec<u32> {
+        &self.0.keys
+    }
+
+    pub fn sender(&self) -> Sender<u64> {
+        self.0.sender.clone()
+    }
+
+    pub fn send(&self, address: u64) {
+        self.0.sender.send(address).unwrap();
+    }
+
+    pub fn len(&self) -> usize {
+        return self.0.keys.len()
+    }
+}
+
 #[derive(Clone)]
 pub struct TaskManager {}
 
