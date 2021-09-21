@@ -18,16 +18,22 @@ pub struct FileDataset {
 
 pub trait Dataset {
     fn load(&self, index: usize) -> Vec<usize>;
+    fn id(&self) -> u32;
 }
 
 impl FileDataset {
     pub fn new(dataset: Vec<DataItem>) -> Self {
         FileDataset{dataset: Rc::from(dataset) }
     }
+
+    
 }
 
 impl Dataset for FileDataset {
     fn load(&self, index: usize) -> Vec<usize> {
+        todo!()
+    }
+    fn id(&self) -> u32 {
         todo!()
     }
 }

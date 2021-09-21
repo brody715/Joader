@@ -1,3 +1,7 @@
+use std::{collections::HashMap, ops::Index, string, sync::Arc, thread};
+
+use crate::{dataset::Dataset, task::TaskRef};
+
 use super::Sampler;
 
 // use std::collections::HashMap;
@@ -9,23 +13,30 @@ use super::Sampler;
 // // a sampler has a dataset
 // #[derive(Clone)]
 pub struct SamplerManager {
-    sampler: Vec<Sampler>
+    sampler_table: HashMap<u32 , Sampler>
 }
 
-// impl SamplerManager<'_> {
-//     pub fn new() -> Self {
-//         SamplerManager {
-//             sampler_table: HashMap::<&str, Sampler>::new(),
-//         }
-//     }
+impl SamplerManager {
+    pub fn new() -> Self {
+        SamplerManager { sampler_table: HashMap::new() }
+    }
 
-//     pub fn add(&mut self, task: &Task) {
-//         // only support filesystem currently
-//         // self.sampler_table[task.family()].insert(task.id(), task.weights(), task.keys());
-//         todo!()
-//     }
+    pub fn insert(&mut self, task: TaskRef) -> Result<(), ()> {
+        if let Some(sampler) = self.sampler_table.get_mut(&task.dataset()) {
+            sampler.insert(task);
+        } else {
+            return Err(());
+        }
+        Ok(())
+    }
 
-//     pub fn sample(&mut self) {
-//         todo!()
-//     }
-// }
+    pub fn create_dataset(&mut self, dataset: Arc<dyn Dataset>) {
+        self.sampler_table.insert(dataset.id(), Sampler::new(dataset));
+    }
+
+    pub fn start_sample(&mut self) {
+        for (_, sampler) in self.sampler_table {
+            thread::spawn(move || &sampler.sample());
+        }
+    }
+}
