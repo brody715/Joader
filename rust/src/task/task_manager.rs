@@ -82,6 +82,10 @@ impl TaskRef {
         
     }
 
+    pub fn task(&self) -> &Task {
+        &self.0
+    }
+
     pub fn id(&self) -> &u64 {
         &self.0.id
     }

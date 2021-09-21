@@ -216,32 +216,34 @@ impl NodeRef {
 
         let common = node_set.iter().fold(0, |x, n| x + n.len());
         let mut last_common = common;
-        // debug
         let tasks_cloned = tasks.clone();
-        for (idx, task) in tasks_cloned.iter().cloned().enumerate() {
-            // choose difference
-            if self.uniform_rand() >= (last_common as f32) / (task.1 as f32) {
-                if idx == 0 {
-                    if let Some(left) = &self.0.left {
-                        let mut value = HashSet::new();
-                        value.insert(task.0.clone());
-                        decisions.insert(left.clone(), value);
-                    }
-                    tasks.remove(0);
-                }
+        //debug
+        let debug = tasks.iter().map(|x| x.1).collect::<Vec<_>>();
+        let mut first_decision = false;
+        for task in tasks_cloned.iter().cloned() {
+            let p = self.uniform_rand();
+            if p >= (last_common as f32) / (task.1 as f32) {
                 break;
             }
             //choose current node
-            tasks.remove(0);
-            self.choose_intersection(decisions, &task, idx, &node_set);
-            let size = decisions.len();
+            self.choose_intersection(decisions, &task, &node_set);
             last_common = task.1;
+            first_decision =true;
+            tasks.remove(0);
         }
 
         if !tasks.is_empty() {
             for task in tasks.iter_mut() {
                 task.1 -= common;
             }
+            // choose left child for the first task
+            if !first_decision {
+                let mut value = HashSet::new();
+                value.insert(tasks[0].0.clone());
+                decisions.insert(self.0.left.clone().unwrap(), value);
+                tasks.remove(0);
+            }
+            // choose right child
             if let Some(mut right) = self.0.right.clone() {
                 right.decide(tasks, decisions, vec![])
             }
@@ -252,7 +254,6 @@ impl NodeRef {
         &mut self,
         decisions: &mut HashMap<NodeRef, HashSet<TaskRef>>,
         task: &(TaskRef, usize),
-        idx: usize,
         node_set: &Vec<NodeRef>,
     ) {
         let weights = node_set.iter().map(|x| x.len()).collect::<Vec<_>>();
@@ -321,11 +322,6 @@ impl Sampler {
         }
     }
     pub fn insert(&mut self, task: TaskRef) {
-        // let index = self
-        //     .task_table
-        //     .binary_search_by_key(&task.len(), |t| t.1)
-        //     .unwrap_or_else(|x| x);
-        // self.task_table.insert(index, (task.clone(), task.len()));
         let node = NodeRef::from_task(&task);
         self.root = Some(NodeRef::insert(self.root.clone(), node));
         self.task_table.clear();
@@ -347,17 +343,29 @@ impl Sampler {
 
     pub fn sample(&mut self) -> HashMap<u32, HashSet<TaskRef>> {
         let mut decisions = HashMap::new();
-        let mut tasks = self.task_table.clone();
+        let mut tasks = self
+            .task_table
+            .iter()
+            .filter(|x| x.1 != 0)
+            .cloned()
+            .collect::<Vec<_>>();
         let mut res = HashMap::<u32, HashSet<TaskRef>>::new();
         self.root.clone().expect("can not sampling in None").decide(
             &mut tasks,
             &mut decisions,
             vec![],
         );
+        
         for (node, tasks) in decisions {
             let mut node = node.clone();
             let id = node.random_choose(tasks.clone());
-            res.insert(id, tasks);
+            if let Some(v_set) = res.get_mut(&id) {
+                for task in tasks {
+                    v_set.insert(task);
+                }
+            } else {
+                res.insert(id, tasks);
+            }
         }
         for task in &mut self.task_table {
             if task.1 != 0 {
@@ -378,20 +386,21 @@ mod tests {
     use crate::dataset::{DataItem, FileDataset};
     use crossbeam::channel;
     use std::iter::FromIterator;
+    use std::time::Instant;
     #[test]
     fn test_sampler() {
         // insert(4);
-        sample(3);
+        sample(10);
     }
 
     fn sample(tasks: u32) {
         let mut sampler = Sampler::new(create_dataset());
         let mut rng = rand::thread_rng();
         let mut vec_keys = Vec::<Vec<u32>>::new();
-        let sizes = &[3, 2, 1];
+        // let sizes = &[10, 5, 1];
         for _i in 0..tasks {
-            // let size = rng.gen_range(1..1000);
-            let size = sizes[_i as usize];
+            let size = rng.gen_range(1..10000);
+            // let size = sizes[_i as usize];
             let keys = (0..size).into_iter().collect();
             vec_keys.push(keys);
         }
@@ -408,8 +417,11 @@ mod tests {
         for task in &vec_tasks {
             map.insert(task.clone(), Vec::new());
         }
+        let mut time;
         loop {
+            let now = Instant::now();
             let res = sampler.sample();
+            time = now.elapsed().as_micros();
             if res.is_empty() {
                 break;
             }
@@ -419,7 +431,7 @@ mod tests {
                 }
             }
         }
-
+        print!("time cost in one turn: {}",time);
         for (task, set) in &mut map {
             set.sort();
             let mut keys = task.keys().clone();

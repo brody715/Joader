@@ -1,3 +1,5 @@
+use super::Sampler;
+
 // use std::collections::HashMap;
 // use sampler::Sampler;
 // use crate::task::Task;
@@ -6,7 +8,9 @@
 
 // // a sampler has a dataset
 // #[derive(Clone)]
-pub struct SamplerManager {}
+pub struct SamplerManager {
+    sampler: Vec<Sampler>
+}
 
 // impl SamplerManager<'_> {
 //     pub fn new() -> Self {
