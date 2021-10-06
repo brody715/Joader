@@ -1,7 +1,7 @@
 
 syntax = "proto3";
 
-enum Status {
+enum LoaderStatus {
     Ok = 0;
     False = 1;
 }
@@ -12,27 +12,25 @@ message CreateDataloaderRequest {
 }
 
 message CreateDataloaderResponse {
-    Status resp = 1;
     string shared_mem_file = 2;
-    uint32 loader_id = 3;
+    uint64 loader_id = 3;
 }
 
 
 message NextRequest {
-    uint32 loader_id = 1;
+    uint64 loader_id = 1;
 }
 
 message NextResponse {
-    Status resp = 1;
-    uint32 address = 2;
+    uint64 address = 2;
 }
 
 message DeleteDataloaderRequest {
-    uint32 loader_id = 3;
+    uint64 loader_id = 3;
 }
 
 message DeleteDataloaderResponse {
-    Status resp = 3;
+    LoaderStatus resp = 3;
 }
 
 service DataLoader {

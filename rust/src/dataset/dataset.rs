@@ -1,4 +1,16 @@
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
+use crossbeam::channel::Sender;
+
+#[derive(Clone)]
+pub enum DatasetType {
+    FileSystem,
+    LMDB(String),
+}
+pub struct DataRequest {
+    pub sender: Vec<Sender<u64>>,
+    pub key: DataItem,
+    pub dataset: DatasetType
+}
 
 #[derive(Clone)]
 pub struct DataItem {
@@ -9,31 +21,38 @@ impl DataItem {
     pub fn new(keys: Vec<String>) -> Self {
         DataItem{keys}
     }
+
+    pub fn keys(&self) -> &[String] {
+        &self.keys
+    }
 }
 
 #[derive(Clone)]
-pub struct FileDataset {
-    dataset: Rc<Vec<DataItem>>
+pub struct Dataset {
+    dataset: Rc<Vec<DataItem>>,
+    dataset_type: DatasetType
 }
 
-pub trait Dataset {
-    fn load(&self, index: usize) -> Vec<usize>;
-    fn id(&self) -> u32;
-}
-
-impl FileDataset {
-    pub fn new(dataset: Vec<DataItem>) -> Self {
-        FileDataset{dataset: Rc::from(dataset) }
+impl Dataset {
+    pub fn get_type(&self) -> DatasetType {
+        self.dataset_type.clone()
     }
 
-    
+    pub fn get(&self, idx: usize) -> DataItem {
+        self.dataset[idx].clone()
+    }
 }
 
-impl Dataset for FileDataset {
-    fn load(&self, index: usize) -> Vec<usize> {
-        todo!()
+pub struct DatasetTable {
+    dataset_table: HashMap<u32, Dataset>
+}
+
+impl DatasetTable {
+    pub fn get(&self, idx: u32) -> &Dataset {
+        &self.dataset_table.get(&idx).unwrap()
     }
-    fn id(&self) -> u32 {
-        todo!()
+
+    pub fn new() -> DatasetTable {
+        DatasetTable { dataset_table: HashMap::new() }
     }
 }

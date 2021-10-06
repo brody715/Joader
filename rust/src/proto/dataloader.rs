@@ -219,9 +219,8 @@ impl ::protobuf::reflect::ProtobufValue for CreateDataloaderRequest {
 #[derive(PartialEq,Clone,Default)]
 pub struct CreateDataloaderResponse {
     // message fields
-    pub resp: Status,
     pub shared_mem_file: ::std::string::String,
-    pub loader_id: u32,
+    pub loader_id: u64,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -236,21 +235,6 @@ impl<'a> ::std::default::Default for &'a CreateDataloaderResponse {
 impl CreateDataloaderResponse {
     pub fn new() -> CreateDataloaderResponse {
         ::std::default::Default::default()
-    }
-
-    // .Status resp = 1;
-
-
-    pub fn get_resp(&self) -> Status {
-        self.resp
-    }
-    pub fn clear_resp(&mut self) {
-        self.resp = Status::Ok;
-    }
-
-    // Param is passed by value, moved
-    pub fn set_resp(&mut self, v: Status) {
-        self.resp = v;
     }
 
     // string shared_mem_file = 2;
@@ -279,10 +263,10 @@ impl CreateDataloaderResponse {
         ::std::mem::replace(&mut self.shared_mem_file, ::std::string::String::new())
     }
 
-    // uint32 loader_id = 3;
+    // uint64 loader_id = 3;
 
 
-    pub fn get_loader_id(&self) -> u32 {
+    pub fn get_loader_id(&self) -> u64 {
         self.loader_id
     }
     pub fn clear_loader_id(&mut self) {
@@ -290,7 +274,7 @@ impl CreateDataloaderResponse {
     }
 
     // Param is passed by value, moved
-    pub fn set_loader_id(&mut self, v: u32) {
+    pub fn set_loader_id(&mut self, v: u64) {
         self.loader_id = v;
     }
 }
@@ -304,9 +288,6 @@ impl ::protobuf::Message for CreateDataloaderResponse {
         while !is.eof()? {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
-                1 => {
-                    ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.resp, 1, &mut self.unknown_fields)?
-                },
                 2 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.shared_mem_file)?;
                 },
@@ -314,7 +295,7 @@ impl ::protobuf::Message for CreateDataloaderResponse {
                     if wire_type != ::protobuf::wire_format::WireTypeVarint {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    let tmp = is.read_uint32()?;
+                    let tmp = is.read_uint64()?;
                     self.loader_id = tmp;
                 },
                 _ => {
@@ -329,9 +310,6 @@ impl ::protobuf::Message for CreateDataloaderResponse {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
-        if self.resp != Status::Ok {
-            my_size += ::protobuf::rt::enum_size(1, self.resp);
-        }
         if !self.shared_mem_file.is_empty() {
             my_size += ::protobuf::rt::string_size(2, &self.shared_mem_file);
         }
@@ -344,14 +322,11 @@ impl ::protobuf::Message for CreateDataloaderResponse {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
-        if self.resp != Status::Ok {
-            os.write_enum(1, ::protobuf::ProtobufEnum::value(&self.resp))?;
-        }
         if !self.shared_mem_file.is_empty() {
             os.write_string(2, &self.shared_mem_file)?;
         }
         if self.loader_id != 0 {
-            os.write_uint32(3, self.loader_id)?;
+            os.write_uint64(3, self.loader_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -391,17 +366,12 @@ impl ::protobuf::Message for CreateDataloaderResponse {
         static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<Status>>(
-                "resp",
-                |m: &CreateDataloaderResponse| { &m.resp },
-                |m: &mut CreateDataloaderResponse| { &mut m.resp },
-            ));
             fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
                 "shared_mem_file",
                 |m: &CreateDataloaderResponse| { &m.shared_mem_file },
                 |m: &mut CreateDataloaderResponse| { &mut m.shared_mem_file },
             ));
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
                 "loader_id",
                 |m: &CreateDataloaderResponse| { &m.loader_id },
                 |m: &mut CreateDataloaderResponse| { &mut m.loader_id },
@@ -422,7 +392,6 @@ impl ::protobuf::Message for CreateDataloaderResponse {
 
 impl ::protobuf::Clear for CreateDataloaderResponse {
     fn clear(&mut self) {
-        self.resp = Status::Ok;
         self.shared_mem_file.clear();
         self.loader_id = 0;
         self.unknown_fields.clear();
@@ -444,7 +413,7 @@ impl ::protobuf::reflect::ProtobufValue for CreateDataloaderResponse {
 #[derive(PartialEq,Clone,Default)]
 pub struct NextRequest {
     // message fields
-    pub loader_id: u32,
+    pub loader_id: u64,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -461,10 +430,10 @@ impl NextRequest {
         ::std::default::Default::default()
     }
 
-    // uint32 loader_id = 1;
+    // uint64 loader_id = 1;
 
 
-    pub fn get_loader_id(&self) -> u32 {
+    pub fn get_loader_id(&self) -> u64 {
         self.loader_id
     }
     pub fn clear_loader_id(&mut self) {
@@ -472,7 +441,7 @@ impl NextRequest {
     }
 
     // Param is passed by value, moved
-    pub fn set_loader_id(&mut self, v: u32) {
+    pub fn set_loader_id(&mut self, v: u64) {
         self.loader_id = v;
     }
 }
@@ -490,7 +459,7 @@ impl ::protobuf::Message for NextRequest {
                     if wire_type != ::protobuf::wire_format::WireTypeVarint {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    let tmp = is.read_uint32()?;
+                    let tmp = is.read_uint64()?;
                     self.loader_id = tmp;
                 },
                 _ => {
@@ -515,7 +484,7 @@ impl ::protobuf::Message for NextRequest {
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
         if self.loader_id != 0 {
-            os.write_uint32(1, self.loader_id)?;
+            os.write_uint64(1, self.loader_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -555,7 +524,7 @@ impl ::protobuf::Message for NextRequest {
         static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
                 "loader_id",
                 |m: &NextRequest| { &m.loader_id },
                 |m: &mut NextRequest| { &mut m.loader_id },
@@ -596,8 +565,7 @@ impl ::protobuf::reflect::ProtobufValue for NextRequest {
 #[derive(PartialEq,Clone,Default)]
 pub struct NextResponse {
     // message fields
-    pub resp: Status,
-    pub address: u32,
+    pub address: u64,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -614,25 +582,10 @@ impl NextResponse {
         ::std::default::Default::default()
     }
 
-    // .Status resp = 1;
+    // uint64 address = 2;
 
 
-    pub fn get_resp(&self) -> Status {
-        self.resp
-    }
-    pub fn clear_resp(&mut self) {
-        self.resp = Status::Ok;
-    }
-
-    // Param is passed by value, moved
-    pub fn set_resp(&mut self, v: Status) {
-        self.resp = v;
-    }
-
-    // uint32 address = 2;
-
-
-    pub fn get_address(&self) -> u32 {
+    pub fn get_address(&self) -> u64 {
         self.address
     }
     pub fn clear_address(&mut self) {
@@ -640,7 +593,7 @@ impl NextResponse {
     }
 
     // Param is passed by value, moved
-    pub fn set_address(&mut self, v: u32) {
+    pub fn set_address(&mut self, v: u64) {
         self.address = v;
     }
 }
@@ -654,14 +607,11 @@ impl ::protobuf::Message for NextResponse {
         while !is.eof()? {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
-                1 => {
-                    ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.resp, 1, &mut self.unknown_fields)?
-                },
                 2 => {
                     if wire_type != ::protobuf::wire_format::WireTypeVarint {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    let tmp = is.read_uint32()?;
+                    let tmp = is.read_uint64()?;
                     self.address = tmp;
                 },
                 _ => {
@@ -676,9 +626,6 @@ impl ::protobuf::Message for NextResponse {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
-        if self.resp != Status::Ok {
-            my_size += ::protobuf::rt::enum_size(1, self.resp);
-        }
         if self.address != 0 {
             my_size += ::protobuf::rt::value_size(2, self.address, ::protobuf::wire_format::WireTypeVarint);
         }
@@ -688,11 +635,8 @@ impl ::protobuf::Message for NextResponse {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
-        if self.resp != Status::Ok {
-            os.write_enum(1, ::protobuf::ProtobufEnum::value(&self.resp))?;
-        }
         if self.address != 0 {
-            os.write_uint32(2, self.address)?;
+            os.write_uint64(2, self.address)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -732,12 +676,7 @@ impl ::protobuf::Message for NextResponse {
         static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<Status>>(
-                "resp",
-                |m: &NextResponse| { &m.resp },
-                |m: &mut NextResponse| { &mut m.resp },
-            ));
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
                 "address",
                 |m: &NextResponse| { &m.address },
                 |m: &mut NextResponse| { &mut m.address },
@@ -758,7 +697,6 @@ impl ::protobuf::Message for NextResponse {
 
 impl ::protobuf::Clear for NextResponse {
     fn clear(&mut self) {
-        self.resp = Status::Ok;
         self.address = 0;
         self.unknown_fields.clear();
     }
@@ -779,7 +717,7 @@ impl ::protobuf::reflect::ProtobufValue for NextResponse {
 #[derive(PartialEq,Clone,Default)]
 pub struct DeleteDataloaderRequest {
     // message fields
-    pub loader_id: u32,
+    pub loader_id: u64,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -796,10 +734,10 @@ impl DeleteDataloaderRequest {
         ::std::default::Default::default()
     }
 
-    // uint32 loader_id = 3;
+    // uint64 loader_id = 3;
 
 
-    pub fn get_loader_id(&self) -> u32 {
+    pub fn get_loader_id(&self) -> u64 {
         self.loader_id
     }
     pub fn clear_loader_id(&mut self) {
@@ -807,7 +745,7 @@ impl DeleteDataloaderRequest {
     }
 
     // Param is passed by value, moved
-    pub fn set_loader_id(&mut self, v: u32) {
+    pub fn set_loader_id(&mut self, v: u64) {
         self.loader_id = v;
     }
 }
@@ -825,7 +763,7 @@ impl ::protobuf::Message for DeleteDataloaderRequest {
                     if wire_type != ::protobuf::wire_format::WireTypeVarint {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    let tmp = is.read_uint32()?;
+                    let tmp = is.read_uint64()?;
                     self.loader_id = tmp;
                 },
                 _ => {
@@ -850,7 +788,7 @@ impl ::protobuf::Message for DeleteDataloaderRequest {
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
         if self.loader_id != 0 {
-            os.write_uint32(3, self.loader_id)?;
+            os.write_uint64(3, self.loader_id)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -890,7 +828,7 @@ impl ::protobuf::Message for DeleteDataloaderRequest {
         static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
                 "loader_id",
                 |m: &DeleteDataloaderRequest| { &m.loader_id },
                 |m: &mut DeleteDataloaderRequest| { &mut m.loader_id },
@@ -931,7 +869,7 @@ impl ::protobuf::reflect::ProtobufValue for DeleteDataloaderRequest {
 #[derive(PartialEq,Clone,Default)]
 pub struct DeleteDataloaderResponse {
     // message fields
-    pub resp: Status,
+    pub resp: LoaderStatus,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -948,18 +886,18 @@ impl DeleteDataloaderResponse {
         ::std::default::Default::default()
     }
 
-    // .Status resp = 3;
+    // .LoaderStatus resp = 3;
 
 
-    pub fn get_resp(&self) -> Status {
+    pub fn get_resp(&self) -> LoaderStatus {
         self.resp
     }
     pub fn clear_resp(&mut self) {
-        self.resp = Status::Ok;
+        self.resp = LoaderStatus::Ok;
     }
 
     // Param is passed by value, moved
-    pub fn set_resp(&mut self, v: Status) {
+    pub fn set_resp(&mut self, v: LoaderStatus) {
         self.resp = v;
     }
 }
@@ -988,7 +926,7 @@ impl ::protobuf::Message for DeleteDataloaderResponse {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
-        if self.resp != Status::Ok {
+        if self.resp != LoaderStatus::Ok {
             my_size += ::protobuf::rt::enum_size(3, self.resp);
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
@@ -997,7 +935,7 @@ impl ::protobuf::Message for DeleteDataloaderResponse {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
-        if self.resp != Status::Ok {
+        if self.resp != LoaderStatus::Ok {
             os.write_enum(3, ::protobuf::ProtobufEnum::value(&self.resp))?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
@@ -1038,7 +976,7 @@ impl ::protobuf::Message for DeleteDataloaderResponse {
         static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<Status>>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<LoaderStatus>>(
                 "resp",
                 |m: &DeleteDataloaderResponse| { &m.resp },
                 |m: &mut DeleteDataloaderResponse| { &mut m.resp },
@@ -1059,7 +997,7 @@ impl ::protobuf::Message for DeleteDataloaderResponse {
 
 impl ::protobuf::Clear for DeleteDataloaderResponse {
     fn clear(&mut self) {
-        self.resp = Status::Ok;
+        self.resp = LoaderStatus::Ok;
         self.unknown_fields.clear();
     }
 }
@@ -1077,28 +1015,28 @@ impl ::protobuf::reflect::ProtobufValue for DeleteDataloaderResponse {
 }
 
 #[derive(Clone,PartialEq,Eq,Debug,Hash)]
-pub enum Status {
+pub enum LoaderStatus {
     Ok = 0,
     False = 1,
 }
 
-impl ::protobuf::ProtobufEnum for Status {
+impl ::protobuf::ProtobufEnum for LoaderStatus {
     fn value(&self) -> i32 {
         *self as i32
     }
 
-    fn from_i32(value: i32) -> ::std::option::Option<Status> {
+    fn from_i32(value: i32) -> ::std::option::Option<LoaderStatus> {
         match value {
-            0 => ::std::option::Option::Some(Status::Ok),
-            1 => ::std::option::Option::Some(Status::False),
+            0 => ::std::option::Option::Some(LoaderStatus::Ok),
+            1 => ::std::option::Option::Some(LoaderStatus::False),
             _ => ::std::option::Option::None
         }
     }
 
     fn values() -> &'static [Self] {
-        static values: &'static [Status] = &[
-            Status::Ok,
-            Status::False,
+        static values: &'static [LoaderStatus] = &[
+            LoaderStatus::Ok,
+            LoaderStatus::False,
         ];
         values
     }
@@ -1106,21 +1044,21 @@ impl ::protobuf::ProtobufEnum for Status {
     fn enum_descriptor_static() -> &'static ::protobuf::reflect::EnumDescriptor {
         static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
-            ::protobuf::reflect::EnumDescriptor::new_pb_name::<Status>("Status", file_descriptor_proto())
+            ::protobuf::reflect::EnumDescriptor::new_pb_name::<LoaderStatus>("LoaderStatus", file_descriptor_proto())
         })
     }
 }
 
-impl ::std::marker::Copy for Status {
+impl ::std::marker::Copy for LoaderStatus {
 }
 
-impl ::std::default::Default for Status {
+impl ::std::default::Default for LoaderStatus {
     fn default() -> Self {
-        Status::Ok
+        LoaderStatus::Ok
     }
 }
 
-impl ::protobuf::reflect::ProtobufValue for Status {
+impl ::protobuf::reflect::ProtobufValue for LoaderStatus {
     fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
         ::protobuf::reflect::ReflectValueRef::Enum(::protobuf::ProtobufEnum::descriptor(self))
     }
@@ -1129,20 +1067,18 @@ impl ::protobuf::reflect::ProtobufValue for Status {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x10dataloader.proto\"L\n\x17CreateDataloaderRequest\x12\x1d\n\ndatase\
     t_id\x18\x01\x20\x01(\rR\tdatasetId\x12\x12\n\x04keys\x18\x02\x20\x03(\r\
-    R\x04keys\"|\n\x18CreateDataloaderResponse\x12\x1b\n\x04resp\x18\x01\x20\
-    \x01(\x0e2\x07.StatusR\x04resp\x12&\n\x0fshared_mem_file\x18\x02\x20\x01\
-    (\tR\rsharedMemFile\x12\x1b\n\tloader_id\x18\x03\x20\x01(\rR\x08loaderId\
-    \"*\n\x0bNextRequest\x12\x1b\n\tloader_id\x18\x01\x20\x01(\rR\x08loaderI\
-    d\"E\n\x0cNextResponse\x12\x1b\n\x04resp\x18\x01\x20\x01(\x0e2\x07.Statu\
-    sR\x04resp\x12\x18\n\x07address\x18\x02\x20\x01(\rR\x07address\"6\n\x17D\
-    eleteDataloaderRequest\x12\x1b\n\tloader_id\x18\x03\x20\x01(\rR\x08loade\
-    rId\"7\n\x18DeleteDataloaderResponse\x12\x1b\n\x04resp\x18\x03\x20\x01(\
-    \x0e2\x07.StatusR\x04resp*\x1b\n\x06Status\x12\x06\n\x02Ok\x10\0\x12\t\n\
-    \x05False\x10\x012\xc3\x01\n\nDataLoader\x12G\n\x10CreateDataloader\x12\
-    \x18.CreateDataloaderRequest\x1a\x19.CreateDataloaderResponse\x12#\n\x04\
-    Next\x12\x0c.NextRequest\x1a\r.NextResponse\x12G\n\x10DeleteDataloader\
-    \x12\x18.DeleteDataloaderRequest\x1a\x19.DeleteDataloaderResponseb\x06pr\
-    oto3\
+    R\x04keys\"_\n\x18CreateDataloaderResponse\x12&\n\x0fshared_mem_file\x18\
+    \x02\x20\x01(\tR\rsharedMemFile\x12\x1b\n\tloader_id\x18\x03\x20\x01(\
+    \x04R\x08loaderId\"*\n\x0bNextRequest\x12\x1b\n\tloader_id\x18\x01\x20\
+    \x01(\x04R\x08loaderId\"(\n\x0cNextResponse\x12\x18\n\x07address\x18\x02\
+    \x20\x01(\x04R\x07address\"6\n\x17DeleteDataloaderRequest\x12\x1b\n\tloa\
+    der_id\x18\x03\x20\x01(\x04R\x08loaderId\"=\n\x18DeleteDataloaderRespons\
+    e\x12!\n\x04resp\x18\x03\x20\x01(\x0e2\r.LoaderStatusR\x04resp*!\n\x0cLo\
+    aderStatus\x12\x06\n\x02Ok\x10\0\x12\t\n\x05False\x10\x012\xc3\x01\n\nDa\
+    taLoader\x12G\n\x10CreateDataloader\x12\x18.CreateDataloaderRequest\x1a\
+    \x19.CreateDataloaderResponse\x12#\n\x04Next\x12\x0c.NextRequest\x1a\r.N\
+    extResponse\x12G\n\x10DeleteDataloader\x12\x18.DeleteDataloaderRequest\
+    \x1a\x19.DeleteDataloaderResponseb\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

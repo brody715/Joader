@@ -229,9 +229,8 @@ class SamplingTree(object):
 def test():
     t = SamplingTree()
     l = []
-    for _ in range(10):
-        l.append(random.randint(100000,200000))
-    # l = [86, 57, 63]
+    for _ in range(8):
+        l.append(random.randint(1000,10000))
     name = []
     res = {}
 
@@ -243,7 +242,10 @@ def test():
         t.insert(list(range(l[i])), name[i])
     # print(t)
     for i in range(max(l)):
+        now = time.time()
         id_dict, _ = t.sampling()
+        print(time.time()-now)
+        exit(0)
         for data_id in id_dict:
             for name in id_dict[data_id]:
                 res[name].append(data_id)

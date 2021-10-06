@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-enum Status {
+enum DatasetStatus {
     Ok = 0;
     False = 1;
 }
@@ -21,7 +21,7 @@ message CreateDatasetRequest {
 
 message CreateDatasetResponse {
     uint32 dataset_id = 1;
-    Status rsp = 2;
+    DatasetStatus rsp = 2;
 }
 
 message DeleteDatasetRequest {
@@ -29,7 +29,7 @@ message DeleteDatasetRequest {
 }
 
 message DeleteDatasetResponse {
-    Status rsp = 2;
+    DatasetStatus rsp = 2;
 }
 
 service Dataset {

@@ -1,42 +1,42 @@
-use std::{collections::HashMap, ops::Index, string, sync::Arc, thread};
-
-use crate::{dataset::Dataset, task::TaskRef};
-
-use super::Sampler;
-
-// use std::collections::HashMap;
-// use sampler::Sampler;
-// use crate::task::Task;
-
-// use super::sampler;
+use super::{Sampler};
+use crate::{dataset::DatasetTable, dataset::DataRequest, task::TaskRef};
+use std::{collections::HashMap, sync::Arc};
 
 // // a sampler has a dataset
-// #[derive(Clone)]
+#[derive(Clone)]
 pub struct SamplerManager {
-    sampler_table: HashMap<u32 , Sampler>
+    sampler_table: HashMap<u32, Sampler>,
 }
 
 impl SamplerManager {
     pub fn new() -> Self {
-        SamplerManager { sampler_table: HashMap::new() }
+        SamplerManager {
+            sampler_table: HashMap::new(),
+        }
     }
 
-    pub fn insert(&mut self, task: TaskRef) -> Result<(), ()> {
+    pub fn insert(&mut self, task: TaskRef) {
         if let Some(sampler) = self.sampler_table.get_mut(&task.dataset()) {
             sampler.insert(task);
         } else {
-            return Err(());
+            let mut sampler = Sampler::new();
+            sampler.insert(task.clone());
+            self.sampler_table.insert(task.dataset(), sampler);
         }
-        Ok(())
     }
 
-    pub fn create_dataset(&mut self, dataset: Arc<dyn Dataset>) {
-        self.sampler_table.insert(dataset.id(), Sampler::new(dataset));
-    }
-
-    pub fn start_sample(&mut self) {
-        for (_, sampler) in self.sampler_table {
-            thread::spawn(move || &sampler.sample());
+    pub fn sample(&mut self, dataset_table: &DatasetTable) -> Vec<DataRequest> {
+        let mut res = Vec::new();
+        for (dataset, sampler) in &mut self.sampler_table {
+            let sampling_table = sampler.sample();
+            for (data, set) in &sampling_table {
+                res.push(DataRequest {
+                    sender: set.iter().map(|x| x.sender().clone()).collect::<Vec<_>>(),
+                    key: dataset_table.get(*dataset).get(*data as usize),
+                    dataset: dataset_table.get(*dataset).get_type(),
+                })
+            }
         }
+        res
     }
 }

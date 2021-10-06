@@ -138,8 +138,6 @@ impl NodeRef {
     fn insert(tree: Option<NodeRef>, mut other: NodeRef) -> NodeRef {
         if let Some(mut tree) = tree {
             let mut new_root;
-            let l = other.len();
-            let l = tree.min_task_length();
             if other.len() <= tree.min_task_length() {
                 new_root = tree.intersect_update(&mut other);
                 new_root.set_children(Some(other), Some(tree));
@@ -155,8 +153,6 @@ impl NodeRef {
 
     fn get_task_values(&self, task: TaskRef) -> Vec<u32> {
         let mut res = Vec::<u32>::new();
-        let l = self.0.tasks_set.len();
-        let keys = self.0.tasks_set.iter().collect::<Vec<_>>();
         if self.0.tasks_set.contains(task.id()) {
             for v in &self.0.values {
                 res.push(*v);
@@ -217,8 +213,6 @@ impl NodeRef {
         let common = node_set.iter().fold(0, |x, n| x + n.len());
         let mut last_common = common;
         let tasks_cloned = tasks.clone();
-        //debug
-        let debug = tasks.iter().map(|x| x.1).collect::<Vec<_>>();
         let mut first_decision = false;
         for task in tasks_cloned.iter().cloned() {
             let p = self.uniform_rand();
@@ -228,7 +222,7 @@ impl NodeRef {
             //choose current node
             self.choose_intersection(decisions, &task, &node_set);
             last_common = task.1;
-            first_decision =true;
+            first_decision = true;
             tasks.remove(0);
         }
 
@@ -256,12 +250,18 @@ impl NodeRef {
         task: &(TaskRef, usize),
         node_set: &Vec<NodeRef>,
     ) {
-        let weights = node_set.iter().map(|x| x.len()).collect::<Vec<_>>();
-        if weights.iter().sum::<usize>() == 0 {
-            return;
+        let intersection;
+        if node_set.len() != 0 {
+            let weights = node_set.iter().map(|x| x.len()).collect::<Vec<_>>();
+            if weights.iter().sum::<usize>() == 0 {
+                return;
+            }
+            let dist = WeightedIndex::new(&weights).unwrap();
+            intersection = &node_set[dist.sample(&mut self.get_mut().rng)];
+        } else {
+            intersection = &node_set[0];
         }
-        let dist = WeightedIndex::new(&weights).unwrap();
-        let intersection = &node_set[dist.sample(&mut self.get_mut().rng)];
+
         if let Some(task_set) = decisions.get_mut(intersection) {
             task_set.insert(task.0.clone());
         } else {
@@ -307,17 +307,14 @@ impl NodeRef {
 #[derive(Clone)]
 pub struct Sampler {
     root: Option<NodeRef>,
-    //init + get + len
-    dataset: Arc<dyn Dataset>,
     // store tasks sorted by its length
     task_table: Vec<(TaskRef, usize)>,
 }
 
 impl Sampler {
-    pub fn new(dataset: Arc<dyn Dataset>) -> Self {
+    pub fn new() -> Self {
         Sampler {
             root: None,
-            dataset,
             task_table: Vec::new(),
         }
     }
@@ -329,9 +326,6 @@ impl Sampler {
             .as_ref()
             .unwrap()
             .get_task_set(&mut self.task_table, 0);
-        // debug
-        let lens = self.task_table.iter().map(|(_, x)| x).collect::<Vec<_>>();
-        let x = 2;
     }
 
     pub fn get_task_values(&self, task: TaskRef) -> Vec<u32> {
@@ -355,7 +349,7 @@ impl Sampler {
             &mut decisions,
             vec![],
         );
-        
+
         for (node, tasks) in decisions {
             let mut node = node.clone();
             let id = node.random_choose(tasks.clone());
@@ -374,33 +368,25 @@ impl Sampler {
         }
         res
     }
-
-    pub fn dataset(&self) -> Arc<dyn Dataset> {
-        self.dataset.clone()
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dataset::{DataItem, FileDataset};
     use crossbeam::channel;
-    use std::iter::FromIterator;
     use std::time::Instant;
     #[test]
     fn test_sampler() {
         // insert(4);
-        sample(10);
+        sample(8);
     }
 
     fn sample(tasks: u32) {
-        let mut sampler = Sampler::new(create_dataset());
+        let mut sampler = Sampler::new();
         let mut rng = rand::thread_rng();
         let mut vec_keys = Vec::<Vec<u32>>::new();
-        // let sizes = &[10, 5, 1];
         for _i in 0..tasks {
-            let size = rng.gen_range(1..10000);
-            // let size = sizes[_i as usize];
+            let size = rng.gen_range(1000..10000);
             let keys = (0..size).into_iter().collect();
             vec_keys.push(keys);
         }
@@ -408,7 +394,7 @@ mod tests {
         let mut vec_tasks = Vec::new();
         for (idx, keys) in vec_keys.iter().enumerate() {
             let (s, _) = channel::unbounded();
-            let task = TaskRef::new(idx as u64, 0, keys.clone(), s);
+            let task = TaskRef::new(idx as u64, 0, &keys, s);
             vec_tasks.push(task.clone());
             sampler.insert(task);
         }
@@ -431,7 +417,7 @@ mod tests {
                 }
             }
         }
-        print!("time cost in one turn: {}",time);
+        println!("time cost in one turn: {}", time);
         for (task, set) in &mut map {
             set.sort();
             let mut keys = task.keys().clone();
@@ -441,7 +427,7 @@ mod tests {
     }
 
     fn insert(tasks: u32) {
-        let mut sampler = Sampler::new(create_dataset());
+        let mut sampler = Sampler::new();
         let mut rng = rand::thread_rng();
         let mut vec_keys = Vec::<Vec<u32>>::new();
 
@@ -454,7 +440,7 @@ mod tests {
         let mut vec_tasks = Vec::new();
         for (idx, keys) in vec_keys.iter().enumerate() {
             let (s, _) = channel::unbounded();
-            let task = TaskRef::new(idx as u64, 0, keys.clone(), s);
+            let task = TaskRef::new(idx as u64, 0, &keys, s);
             vec_tasks.push(task.clone());
             sampler.insert(task);
         }
@@ -466,13 +452,5 @@ mod tests {
             keys.sort();
             assert!(values.eq(&keys));
         }
-    }
-
-    fn create_dataset() -> Arc<dyn Dataset + 'static> {
-        let mut data_items = Vec::new();
-        for i in 0..100 {
-            data_items.push(DataItem::new(vec![i.to_string()]));
-        }
-        Arc::new(FileDataset::new(data_items))
     }
 }

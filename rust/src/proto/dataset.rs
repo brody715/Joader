@@ -473,7 +473,7 @@ impl ::protobuf::reflect::ProtobufValue for CreateDatasetRequest_FileType {
 pub struct CreateDatasetResponse {
     // message fields
     pub dataset_id: u32,
-    pub rsp: Status,
+    pub rsp: DatasetStatus,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -505,18 +505,18 @@ impl CreateDatasetResponse {
         self.dataset_id = v;
     }
 
-    // .Status rsp = 2;
+    // .DatasetStatus rsp = 2;
 
 
-    pub fn get_rsp(&self) -> Status {
+    pub fn get_rsp(&self) -> DatasetStatus {
         self.rsp
     }
     pub fn clear_rsp(&mut self) {
-        self.rsp = Status::Ok;
+        self.rsp = DatasetStatus::Ok;
     }
 
     // Param is passed by value, moved
-    pub fn set_rsp(&mut self, v: Status) {
+    pub fn set_rsp(&mut self, v: DatasetStatus) {
         self.rsp = v;
     }
 }
@@ -555,7 +555,7 @@ impl ::protobuf::Message for CreateDatasetResponse {
         if self.dataset_id != 0 {
             my_size += ::protobuf::rt::value_size(1, self.dataset_id, ::protobuf::wire_format::WireTypeVarint);
         }
-        if self.rsp != Status::Ok {
+        if self.rsp != DatasetStatus::Ok {
             my_size += ::protobuf::rt::enum_size(2, self.rsp);
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
@@ -567,7 +567,7 @@ impl ::protobuf::Message for CreateDatasetResponse {
         if self.dataset_id != 0 {
             os.write_uint32(1, self.dataset_id)?;
         }
-        if self.rsp != Status::Ok {
+        if self.rsp != DatasetStatus::Ok {
             os.write_enum(2, ::protobuf::ProtobufEnum::value(&self.rsp))?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
@@ -613,7 +613,7 @@ impl ::protobuf::Message for CreateDatasetResponse {
                 |m: &CreateDatasetResponse| { &m.dataset_id },
                 |m: &mut CreateDatasetResponse| { &mut m.dataset_id },
             ));
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<Status>>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<DatasetStatus>>(
                 "rsp",
                 |m: &CreateDatasetResponse| { &m.rsp },
                 |m: &mut CreateDatasetResponse| { &mut m.rsp },
@@ -635,7 +635,7 @@ impl ::protobuf::Message for CreateDatasetResponse {
 impl ::protobuf::Clear for CreateDatasetResponse {
     fn clear(&mut self) {
         self.dataset_id = 0;
-        self.rsp = Status::Ok;
+        self.rsp = DatasetStatus::Ok;
         self.unknown_fields.clear();
     }
 }
@@ -807,7 +807,7 @@ impl ::protobuf::reflect::ProtobufValue for DeleteDatasetRequest {
 #[derive(PartialEq,Clone,Default)]
 pub struct DeleteDatasetResponse {
     // message fields
-    pub rsp: Status,
+    pub rsp: DatasetStatus,
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
     pub cached_size: ::protobuf::CachedSize,
@@ -824,18 +824,18 @@ impl DeleteDatasetResponse {
         ::std::default::Default::default()
     }
 
-    // .Status rsp = 2;
+    // .DatasetStatus rsp = 2;
 
 
-    pub fn get_rsp(&self) -> Status {
+    pub fn get_rsp(&self) -> DatasetStatus {
         self.rsp
     }
     pub fn clear_rsp(&mut self) {
-        self.rsp = Status::Ok;
+        self.rsp = DatasetStatus::Ok;
     }
 
     // Param is passed by value, moved
-    pub fn set_rsp(&mut self, v: Status) {
+    pub fn set_rsp(&mut self, v: DatasetStatus) {
         self.rsp = v;
     }
 }
@@ -864,7 +864,7 @@ impl ::protobuf::Message for DeleteDatasetResponse {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
-        if self.rsp != Status::Ok {
+        if self.rsp != DatasetStatus::Ok {
             my_size += ::protobuf::rt::enum_size(2, self.rsp);
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
@@ -873,7 +873,7 @@ impl ::protobuf::Message for DeleteDatasetResponse {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
-        if self.rsp != Status::Ok {
+        if self.rsp != DatasetStatus::Ok {
             os.write_enum(2, ::protobuf::ProtobufEnum::value(&self.rsp))?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
@@ -914,7 +914,7 @@ impl ::protobuf::Message for DeleteDatasetResponse {
         static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<Status>>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<DatasetStatus>>(
                 "rsp",
                 |m: &DeleteDatasetResponse| { &m.rsp },
                 |m: &mut DeleteDatasetResponse| { &mut m.rsp },
@@ -935,7 +935,7 @@ impl ::protobuf::Message for DeleteDatasetResponse {
 
 impl ::protobuf::Clear for DeleteDatasetResponse {
     fn clear(&mut self) {
-        self.rsp = Status::Ok;
+        self.rsp = DatasetStatus::Ok;
         self.unknown_fields.clear();
     }
 }
@@ -953,28 +953,28 @@ impl ::protobuf::reflect::ProtobufValue for DeleteDatasetResponse {
 }
 
 #[derive(Clone,PartialEq,Eq,Debug,Hash)]
-pub enum Status {
+pub enum DatasetStatus {
     Ok = 0,
     False = 1,
 }
 
-impl ::protobuf::ProtobufEnum for Status {
+impl ::protobuf::ProtobufEnum for DatasetStatus {
     fn value(&self) -> i32 {
         *self as i32
     }
 
-    fn from_i32(value: i32) -> ::std::option::Option<Status> {
+    fn from_i32(value: i32) -> ::std::option::Option<DatasetStatus> {
         match value {
-            0 => ::std::option::Option::Some(Status::Ok),
-            1 => ::std::option::Option::Some(Status::False),
+            0 => ::std::option::Option::Some(DatasetStatus::Ok),
+            1 => ::std::option::Option::Some(DatasetStatus::False),
             _ => ::std::option::Option::None
         }
     }
 
     fn values() -> &'static [Self] {
-        static values: &'static [Status] = &[
-            Status::Ok,
-            Status::False,
+        static values: &'static [DatasetStatus] = &[
+            DatasetStatus::Ok,
+            DatasetStatus::False,
         ];
         values
     }
@@ -982,21 +982,21 @@ impl ::protobuf::ProtobufEnum for Status {
     fn enum_descriptor_static() -> &'static ::protobuf::reflect::EnumDescriptor {
         static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
-            ::protobuf::reflect::EnumDescriptor::new_pb_name::<Status>("Status", file_descriptor_proto())
+            ::protobuf::reflect::EnumDescriptor::new_pb_name::<DatasetStatus>("DatasetStatus", file_descriptor_proto())
         })
     }
 }
 
-impl ::std::marker::Copy for Status {
+impl ::std::marker::Copy for DatasetStatus {
 }
 
-impl ::std::default::Default for Status {
+impl ::std::default::Default for DatasetStatus {
     fn default() -> Self {
-        Status::Ok
+        DatasetStatus::Ok
     }
 }
 
-impl ::protobuf::reflect::ProtobufValue for Status {
+impl ::protobuf::reflect::ProtobufValue for DatasetStatus {
     fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
         ::protobuf::reflect::ReflectValueRef::Enum(::protobuf::ProtobufEnum::descriptor(self))
     }
@@ -1008,15 +1008,15 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x20\x01(\x0e2\x1e.CreateDatasetRequest.FileTypeR\x04type\x12\x1d\n\x04k\
     eys\x18\x02\x20\x03(\x0b2\t.DataItemR\x04keys\x12\x18\n\x07weights\x18\
     \x03\x20\x03(\rR\x07weights\"$\n\x08FileType\x12\x0e\n\nFILESYSTEM\x10\0\
-    \x12\x08\n\x04LMDB\x10\x01\"Q\n\x15CreateDatasetResponse\x12\x1d\n\ndata\
-    set_id\x18\x01\x20\x01(\rR\tdatasetId\x12\x19\n\x03rsp\x18\x02\x20\x01(\
-    \x0e2\x07.StatusR\x03rsp\"5\n\x14DeleteDatasetRequest\x12\x1d\n\ndataset\
-    _id\x18\x01\x20\x01(\rR\tdatasetId\"2\n\x15DeleteDatasetResponse\x12\x19\
-    \n\x03rsp\x18\x02\x20\x01(\x0e2\x07.StatusR\x03rsp*\x1b\n\x06Status\x12\
-    \x06\n\x02Ok\x10\0\x12\t\n\x05False\x10\x012\x89\x01\n\x07Dataset\x12>\n\
-    \rCreateDataset\x12\x15.CreateDatasetRequest\x1a\x16.CreateDatasetRespon\
-    se\x12>\n\rDeleteDataset\x12\x15.DeleteDatasetRequest\x1a\x16.DeleteData\
-    setResponseb\x06proto3\
+    \x12\x08\n\x04LMDB\x10\x01\"X\n\x15CreateDatasetResponse\x12\x1d\n\ndata\
+    set_id\x18\x01\x20\x01(\rR\tdatasetId\x12\x20\n\x03rsp\x18\x02\x20\x01(\
+    \x0e2\x0e.DatasetStatusR\x03rsp\"5\n\x14DeleteDatasetRequest\x12\x1d\n\n\
+    dataset_id\x18\x01\x20\x01(\rR\tdatasetId\"9\n\x15DeleteDatasetResponse\
+    \x12\x20\n\x03rsp\x18\x02\x20\x01(\x0e2\x0e.DatasetStatusR\x03rsp*\"\n\r\
+    DatasetStatus\x12\x06\n\x02Ok\x10\0\x12\t\n\x05False\x10\x012\x89\x01\n\
+    \x07Dataset\x12>\n\rCreateDataset\x12\x15.CreateDatasetRequest\x1a\x16.C\
+    reateDatasetResponse\x12>\n\rDeleteDataset\x12\x15.DeleteDatasetRequest\
+    \x1a\x16.DeleteDatasetResponseb\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;
