@@ -1,37 +1,38 @@
-use crate::cache::bit::BitMap;
+use std::{io::BufRead, slice::from_raw_parts};
+
+use crate::cache::bit::Bitmap;
+
+use super::Buffer;
 // head: |--end--|--len--|--addr--|
 //       |--4--|--4--|--8--|
-pub struct HeadMap {
-    bitmap: BitMap,
-    addr: *mut u8,
-    len: usize,
+pub struct HeadSegment {
+    bitmap: Bitmap,
+    head: Buffer,
+    // 16
     head_size: usize,
 }
 
-impl HeadMap {
-    pub fn new(addr: *mut u8, len: usize, head_size: usize) -> (HeadMap, usize) {
+impl HeadSegment {
+    pub fn new(addr: *mut u8, len: usize, head_size: usize) -> (HeadSegment, usize) {
         let size = len * head_size + len;
         unsafe {
             (
-                HeadMap {
-                    addr: addr.offset(len as isize),
-                    len,
+                HeadSegment {
+                    bitmap: Bitmap::new(Buffer::new(addr, len)),
+                    head: Buffer::new(addr.offset(len as isize), len*head_size),
                     head_size,
-                    bitmap: BitMap::new(addr, len),
                 },
                 size,
             )
         }
     }
-    pub fn allocate_slot(&mut self) -> *mut u8 {
-        unsafe { self.addr.offset(self.bitmap.find_free() as isize) }
+    pub fn allocate(&mut self) -> Buffer {
+        todo!()
     }
-    pub fn write_head(addr: *mut u8, data_addr: usize, data_size: usize, end: bool) {
-        unsafe {
-
-            addr.offset(0).copy_from((end as u32).to_be_bytes().as_ptr(), 4);
-            addr.offset(4).copy_from((data_size as u32).to_be_bytes().as_ptr(), 4);
-            addr.offset(8).copy_from((data_addr as u64).to_be_bytes().as_ptr(), 8);
-        }
+    pub fn write_head(head: Buffer, data: Buffer, end: bool) {
+        todo!()
+    }
+    pub fn replace_head(block: Buffer, next_block: Buffer) ->(Buffer, Buffer) {
+        todo!()
     }
 }

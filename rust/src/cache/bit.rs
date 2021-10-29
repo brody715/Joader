@@ -1,33 +1,32 @@
 use std::{thread, time};
 
-pub struct BitMap {
-    addr: *mut u8,
-    len: usize,
+use super::Buffer;
+
+pub struct Bitmap {
+    buf: Buffer
 }
 
-impl BitMap {
-    pub fn is_true(&mut self, idx: usize) -> bool {
-        unsafe { *self.addr.offset(idx as isize) == 1 }
+impl Bitmap {
+    pub fn is_true(&self, idx: usize) -> bool {
+        self.buf.get_idx(idx as isize) != 0
     }
 
     pub fn set(&mut self, idx: usize) {
-        unsafe {
-            *(self.addr.offset(idx as isize)) = 1;
-        }
+        self.buf.set_idx(idx as isize, 1);
     }
 
-    pub fn new(addr: *mut u8, len: usize) -> BitMap {
-        BitMap { addr, len }
+    pub fn new(buf: Buffer) -> Bitmap {
+        Bitmap { buf }
     }
 
     pub fn len(&self) -> usize {
-        self.len
+        self.buf.len()
     }
 
     //todo(xj): add free list
     pub fn find_free(&mut self) -> usize {
         loop {
-            for idx in 0..self.len {
+            for idx in 0..self.len() {
                 if !self.is_true(idx) {
                     return idx;
                 }
@@ -39,12 +38,12 @@ impl BitMap {
 
 #[cfg(test)]
 mod tests {
-    use super::BitMap;
-
+    use super::Bitmap;
+    use super::*;
     #[test]
     fn test() {
         let mut buf = [0u8; 16];
-        let mut bm = BitMap::new(buf.as_mut_ptr(), 16);
+        let mut bm = Bitmap::new(Buffer::new(buf.as_mut_ptr(), 16));
         for i in 0..bm.len() {
             if i%2 == 0 {
                 bm.set(i)
