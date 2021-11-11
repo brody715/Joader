@@ -1,5 +1,5 @@
 #![feature(get_mut_unchecked)]
-#![feature(ptr_metadata)]
+// #![feature(ptr_metadata)]
 use std::{
     sync::{Arc, Mutex},
     thread,
