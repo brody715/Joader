@@ -46,12 +46,13 @@ impl Buffer {
         self.ptr
     }
 
-    pub fn copy_from_buffer(&self, buf: &Buffer) {
+    pub fn copy_from_buffer(&self, buf: &Buffer, off: usize) {
         unsafe {
             if buf.len() > self.len {
                 panic!()
             }
-            self.ptr.copy_from(buf.as_ptr(), buf.len() as usize)
+            self.ptr
+                .copy_from(buf.as_mut_ptr().offset(off as isize), buf.len() as usize)
         }
     }
 

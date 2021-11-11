@@ -51,11 +51,13 @@ pub struct HeadSegment {
     head: Buffer,
     // 16
     head_size: u32,
+
+    // Record the ref cnt of each data in the sampling tree
+    ref_table: Vec<Vec<u64>>,
 }
 
 impl HeadSegment {
     pub fn new(addr: *mut u8, head_num: u64, head_size: u32) -> HeadSegment {
-        let size = head_num * (head_size as u64) + head_num;
         unsafe {
             HeadSegment {
                 bitmap: Bitmap::new(Buffer::new(addr, 0, head_num)),
@@ -65,6 +67,8 @@ impl HeadSegment {
                     head_num * (head_size as u64),
                 ),
                 head_size,
+                // there are 64 level
+                ref_table: vec![Vec::new(); 64],
             }
         }
     }
@@ -73,17 +77,44 @@ impl HeadSegment {
         self.bitmap.len() + self.head.len()
     }
 
-    pub fn allocate(&mut self) -> Buffer {
+    pub fn allocate(&mut self, ref_cnt: usize) -> Buffer {
+        assert!(ref_cnt < 64);
         let idx = self.bitmap.find_free();
         self.bitmap.set(idx);
-        let off = self.head.offset() + idx * (self.head_size as u64);
-        self.head.allocate(off, self.head_size as u64)
+
+        let buffer = self.at(idx);
+        self.ref_table[ref_cnt].push(idx);
+        buffer
     }
 
-    pub fn write_head(head: *mut u8, data: &Buffer, end: bool) {
-        write_head_off(head, data.offset());
+    pub fn write_head(head: *mut u8, off: u64, len: u32, end: bool) {
+        write_head_off(head, off);
         write_head_end(head, end);
-        write_head_len(head, data.len() as u32);
+        write_head_len(head, len);
+    }
+
+    pub fn free(&mut self) -> Option<Vec<Buffer>> {
+        let mut ret = Vec::new();
+        for v in &self.ref_table {
+            if v.len() == 0 {
+                continue;
+            }
+            for idx in v {
+                if !self.bitmap.is_true(*idx) {
+                    let off = self.head.offset() + idx * (self.head_size as u64);
+                    ret.push(self.head.allocate(off, self.head_size as u64))
+                }
+            }
+            if ret.len() != 0 {
+                return Some(ret);
+            }
+        }
+        None
+    }
+
+    fn at(&mut self, idx: u64) -> Buffer {
+        let off = self.head.offset() + idx * (self.head_size as u64);
+        self.head.allocate(off, self.head_size as u64)
     }
 }
 
@@ -97,9 +128,8 @@ mod tests {
         let head_size = 16;
         let mut hs = HeadSegment::new(bytes.as_mut_ptr(), 1024, head_size);
         for i in 0..1024 {
-            let head = hs.allocate();
-            let data = Buffer::new(bytes.as_mut_ptr(), i, i);
-            HeadSegment::write_head(head.as_mut_ptr(), &data, true);
+            let head = hs.allocate(0);
+            HeadSegment::write_head(head.as_mut_ptr(), i, i as u32, true);
         }
         for i in 0..1024 {
             assert!(hs.bitmap.is_true(i as u64));
