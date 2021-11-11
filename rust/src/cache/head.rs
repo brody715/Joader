@@ -46,6 +46,11 @@ pub fn head_end(addr: *mut u8) -> bool {
     u32::from_be_bytes(slice.try_into().unwrap()) == 1
 }
 
+pub fn write_head(head: *mut u8, off: u64, len: u32, end: bool) {
+    write_head_off(head, off);
+    write_head_end(head, end);
+    write_head_len(head, len);
+}
 pub struct HeadSegment {
     bitmap: Bitmap,
     head: Buffer,
@@ -87,12 +92,6 @@ impl HeadSegment {
         buffer
     }
 
-    pub fn write_head(head: *mut u8, off: u64, len: u32, end: bool) {
-        write_head_off(head, off);
-        write_head_end(head, end);
-        write_head_len(head, len);
-    }
-
     pub fn free(&mut self) -> Option<Vec<Buffer>> {
         let mut ret = Vec::new();
         for v in &self.ref_table {
@@ -129,7 +128,7 @@ mod tests {
         let mut hs = HeadSegment::new(bytes.as_mut_ptr(), 1024, head_size);
         for i in 0..1024 {
             let head = hs.allocate(0);
-            HeadSegment::write_head(head.as_mut_ptr(), i, i as u32, true);
+            write_head(head.as_mut_ptr(), i, i as u32, true);
         }
         for i in 0..1024 {
             assert!(hs.bitmap.is_true(i as u64));
