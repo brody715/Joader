@@ -27,6 +27,11 @@ impl LoaderManager {
             let size = file.read(block.as_mut_slice()).expect("reading data error");
             let mut remain_block = block.occupy(size);
             loop {
+                // write flow:
+                // allocate block -> write -> occupy(size)
+                // if size < block, then some space remain
+                // if size = block, then return None
+                // if size == 0, then finish writing and free current block
                 let mut last_block = block;
                 if let Some(_b) = remain_block {
                     block = _b;

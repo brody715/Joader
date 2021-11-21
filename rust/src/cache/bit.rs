@@ -15,7 +15,10 @@ impl Bitmap {
         self.buf.set_idx(idx as isize, 1);
     }
 
-    pub fn new(buf: Buffer) -> Bitmap {
+    pub fn new(mut buf: Buffer) -> Bitmap {
+        for idx in 0..buf.len() {
+            buf.set_idx(idx as isize, 0);
+        }
         Bitmap { buf }
     }
 

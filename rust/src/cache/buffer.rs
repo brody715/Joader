@@ -4,6 +4,7 @@ use std::slice::from_raw_parts_mut;
 pub struct Buffer {
     // the offset is global for total cache
     offset: u64,
+    // the addr is relative address: ptr = start_ptr + offset
     ptr: *mut u8,
     len: u64,
 }

@@ -15,10 +15,11 @@ pub struct Cache {
     head_size: u32,
     head_segment: HeadSegment,
     data_segment: DataSegment,
+    start_addr: *mut u8,
 }
 
 const HEAD_SIZE: u32 = 16;
-const HEAD_NUM: u64 = 4096;
+const HEAD_NUM: u64 = 8;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DataBlock {
@@ -66,17 +67,14 @@ impl DataBlock {
             false,
         );
 
-        // remain some data
+        // remain some data, share the same head
         if len > size as u64 + self.reserve as u64 {
             return Some(DataBlock {
-                head: self.data.allocate(
-                    self.data.offset() + size as u64 - HEAD_SIZE as u64,
-                    HEAD_SIZE as u64,
-                ),
+                head: self.head,
                 data: self
                     .data
                     .allocate(self.data.offset() + size as u64, len - size as u64),
-                reserve: HEAD_SIZE as isize,
+                reserve: 0,
             });
         }
         None
@@ -97,11 +95,13 @@ impl Cache {
             (fd, addr as *mut u8)
         };
         let head_segment = HeadSegment::new(addr, HEAD_NUM, HEAD_SIZE);
-        let data_segment = DataSegment::new(
-            addr,
-            head_segment.size(),
-            capacity as u64 - head_segment.size(),
-        );
+        let data_segment = unsafe {
+            DataSegment::new(
+                addr.offset(head_segment.size() as isize),
+                head_segment.size(),
+                capacity as u64 - head_segment.size(),
+            )
+        };
 
         Cache {
             name,
@@ -109,6 +109,7 @@ impl Cache {
             capacity,
             head_segment,
             data_segment,
+            start_addr: addr,
         }
     }
 
@@ -128,7 +129,8 @@ impl Cache {
 
     pub fn free_block(&mut self, block: DataBlock) {
         // the head is lazy copied
-        self.data_segment.free(block.data.offset(), block.data.len());
+        self.data_segment
+            .free(block.data.offset(), block.data.len());
     }
 
     pub fn allocate_data(&mut self, ref_cnt: usize) -> Buffer {
@@ -174,6 +176,10 @@ impl Cache {
         }
     }
 
+    pub fn start_addr(&self) -> *mut u8 {
+        self.start_addr
+    }
+
     pub fn close(&mut self) {
         unsafe {
             let shmpath = self.name.as_ptr() as *const i8;
@@ -184,14 +190,99 @@ impl Cache {
 
 #[cfg(test)]
 mod test {
+    use std::{cmp::min, slice::from_raw_parts};
+
+    use crate::cache::{head_end, head_len, head_off};
+
+    use super::{Cache, HEAD_SIZE};
+
     struct S {
         a: i32,
         b: i32,
     }
     #[test]
-    fn test() {
-        let mut s = S { a: 1, b: 2 };
-        let mut _x = &mut s.a;
-        let mut _y = &mut s.b;
+    fn single_thread_test() {
+        let len = 256;
+        let name = "DLCache".to_string();
+        let mut cache = Cache::new(len, name);
+
+        let size_list = &[4, 6, 10];
+        let mut off_list = vec![];
+        for size in size_list {
+            let off = write(&mut cache, *size);
+            off_list.push(off);
+        }
+        for (size, off) in size_list.iter().zip(off_list.iter()) {
+            let data = read(*off, cache.start_addr());
+            assert_eq!(data.len(), *size);
+        }
+    }
+
+    fn write(cache: &mut Cache, mut len: usize) -> u64 {
+        let data = 7u8;
+        let mut block = cache.next_block(None, 0);
+        let offset = block.head.offset();
+        let size = block.size();
+        let write_size = min(len, size as usize);
+        let block_slice = block.as_mut_slice();
+        for i in 0..write_size {
+            block_slice[i] = data;
+        }
+        let mut remain_block = block.occupy(write_size as usize);
+        len -= write_size;
+        loop {
+            // write flow:
+            // allocate block -> write -> occupy(size)
+            // if size < block, then some space remain
+            // if size = block, then return None
+            // if size == 0, then finish writing and free current block
+            let mut last_block = block;
+            if let Some(_b) = remain_block {
+                block = _b;
+            } else {
+                block = cache.next_block(Some(last_block), 0);
+            }
+            let size = block.size();
+            let write_size = min(len, size as usize);
+            let block_slice = block.as_mut_slice();
+            for i in 0..write_size {
+                block_slice[i] = data;
+            }
+            remain_block = block.occupy(write_size as usize);
+            len -= write_size;
+            if len == 0 {
+                cache.free_block(block);
+                last_block.finish();
+                break;
+            }
+        }
+
+        offset
+    }
+
+    fn read(offset: u64, start_addr: *mut u8) -> Vec<u8> {
+        let mut addr = unsafe { start_addr.offset(offset as isize) };
+        let mut end = head_end(addr);
+        let mut len = head_len(addr);
+        let mut off = head_off(addr);
+        let mut res = Vec::new();
+        loop {
+            let data = unsafe { from_raw_parts(start_addr.offset(off as isize), len as usize) };
+            // res.copy_from_slice(.as_slice())
+            for d in data {
+                res.push(*d)
+            }
+            if end {
+                break;
+            }
+            addr = unsafe { start_addr.offset((len - HEAD_SIZE) as isize) };
+            end = head_end(addr);
+            len = head_len(addr);
+            off = head_off(addr);
+            for _ in 0..HEAD_SIZE {
+                res.pop();
+            }
+        }
+        res
     }
 }
