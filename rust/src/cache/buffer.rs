@@ -26,12 +26,12 @@ impl Buffer {
         self.offset
     }
 
-    pub fn copy_from_slice(&mut self, data: &mut [u8]) {
+    pub fn copy_from_slice(&mut self, data: &mut [u8], off: isize) {
         unsafe {
             if data.len() > self.len as usize {
                 panic!()
             }
-            self.ptr.copy_from(data.as_ptr(), data.len())
+            self.ptr.offset(off).copy_from(data.as_ptr(), data.len())
         }
     }
 
@@ -45,16 +45,6 @@ impl Buffer {
 
     pub fn as_mut_ptr(&self) -> *mut u8 {
         self.ptr
-    }
-
-    pub fn copy_from_buffer(&self, buf: &Buffer, off: usize) {
-        unsafe {
-            if buf.len() > self.len {
-                panic!()
-            }
-            self.ptr
-                .copy_from(buf.as_mut_ptr().offset(off as isize), buf.len() as usize)
-        }
     }
 
     pub fn get_idx(&self, idx: isize) -> u8 {
