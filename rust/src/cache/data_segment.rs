@@ -27,6 +27,10 @@ impl DataSegment {
     pub fn free(&mut self, off: u64, len: u64) {
         self.free_list.insert(off, len)
     }
+
+    pub fn data(&mut self) -> Buffer {
+        self.data
+    }
 }
 
 #[cfg(test)]

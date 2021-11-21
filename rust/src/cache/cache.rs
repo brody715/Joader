@@ -12,7 +12,7 @@ pub struct Cache {
     capacity: usize,
     head_segment: HeadSegment,
     data_segment: DataSegment,
-    start_addr: *mut u8,
+    start_ptr: *mut u8,
 }
 
 const HEAD_NUM: u64 = 8;
@@ -52,10 +52,13 @@ impl DataBlock {
             return Some(*self);
         }
 
-        let len = self.data.len();
-        // copy last head data to new data block
-        self.data.copy_from_slice(self.head.as_mut_slice(), 0);
+        // lazy copy head to the front of the block
+        if self.reserve != 0 {
+            self.data.copy_from_slice(self.head.as_mut_slice(), 0);
+        }
+
         // write head the meta information
+        let len = self.data.len();
         self.head
             .set(false, size as u32 + self.reserve as u32, self.data.offset());
 
@@ -100,7 +103,7 @@ impl Cache {
             capacity,
             head_segment,
             data_segment,
-            start_addr: addr,
+            start_ptr: addr,
         }
     }
 
@@ -177,8 +180,8 @@ impl Cache {
         )
     }
 
-    pub fn start_addr(&self) -> *mut u8 {
-        self.start_addr
+    pub fn start_ptr(&self) -> *mut u8 {
+        self.start_ptr
     }
 
     pub fn close(&mut self) {
@@ -187,66 +190,86 @@ impl Cache {
             shm_unlink(shmpath);
         }
     }
+
+    fn print(&mut self) {
+        // print head
+        for i in 0..self.head_segment.size() / super::head::HEAD_SIZE {
+            unsafe {
+                let mut head: super::head::Head =
+                    (self.start_ptr.offset((i * super::head::HEAD_SIZE) as isize)).into();
+                print!("{:?}\n", head.get());
+            }
+        }
+        print!("{:?}", self.data_segment.data().as_slice());
+        // print data
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use std::{cmp::min, slice::from_raw_parts};
-    const MAGIC: u8 = 7;
-    struct S {
-        a: i32,
-        b: i32,
-    }
     #[test]
     fn single_thread_test() {
         let len = 256;
         let name = "DLCache".to_string();
         let mut cache = Cache::new(len, name);
 
-        let size_list = &[4, 6, 10];
-        let mut off_list = vec![];
+        let size_list = &[20, 27, 60, 19];
+        let mut idx_list = vec![];
         for size in size_list {
-            let off = write(&mut cache, *size);
-            off_list.push(off);
+            let idx = write(&mut cache, *size, size % 2, 7);
+            idx_list.push(idx);
         }
-        for (size, off) in size_list.iter().zip(off_list.iter()) {
-            let data = read(*off, cache.start_addr());
+        cache.print();
+        for (size, off) in size_list.iter().zip(idx_list.iter()) {
+            let data = read(*off, cache.start_ptr(), 7);
             assert_eq!(data.len(), *size);
         }
+
+        // some data should be free
+        let size_list = &[40];
+        let mut idx_list = vec![];
+        for size in size_list {
+            let idx = write(&mut cache, *size, size % 3, 3);
+            idx_list.push(idx);
+        }
+        cache.print();
+        // for (size, off) in size_list.iter().zip(idx_list.iter()) {
+        //     let data = read(*off, cache.start_ptr(), 3);
+        //     assert_eq!(data.len(), *size);
+        // }
+        cache.close()
     }
 
-    fn write(cache: &mut Cache, mut len: usize) -> usize {
-        let data = MAGIC;
-        let (mut block, idx) = cache.next_block(None, 0);
-        let block_slice = block.as_mut_slice();
-        let write_size = min(len, block_slice.len());
-        for i in 0..write_size {
-            block_slice[i] = data;
-        }
+    fn write(cache: &mut Cache, mut len: usize, ref_cnt: usize, value: u8) -> usize {
+        let (mut block, idx) = cache.next_block(None, ref_cnt);
+        let mut block_slice = block.as_mut_slice();
+        let mut write_size = min(len, block_slice.len());
+        (0..write_size).fold((), |_, i| block_slice[i] = value);
         let mut remain_block = block.occupy(write_size as usize);
         len -= write_size;
+
         loop {
+            let mut last_block = block;
             // write flow:
             // allocate block -> write -> occupy(size)
             // if size < block, then some space remain
             // if size = block, then return None
             // if size == 0, then finish writing and free current block
-            let mut last_block = block;
             if let Some(_b) = remain_block {
                 block = _b;
             } else {
                 block = cache.next_block(Some(last_block), 0).0;
             }
-            let size = block.size();
-            let write_size = min(len, size as usize);
-            let block_slice = block.as_mut_slice();
-            for i in 0..write_size {
-                block_slice[i] = data;
-            }
+
+            block_slice = block.as_mut_slice();
+            write_size = min(len, block_slice.len());
+
+            (0..write_size).fold((), |_, i| block_slice[i] = value);
             remain_block = block.occupy(write_size as usize);
             len -= write_size;
-            if len == 0 {
+            if write_size == 0 {
                 cache.free_block(block);
                 last_block.finish();
                 break;
@@ -255,25 +278,31 @@ mod test {
         idx
     }
 
-    fn read(idx: usize, start_addr: *mut u8) -> Vec<u8> {
-        let mut addr = unsafe { start_addr.offset((idx as isize) * (Head::size() as isize)) };
-        let (end, len, off) = Head::from(addr).get();
+    fn read(idx: usize, start_ptr: *mut u8, value: u8) -> Vec<u8> {
+        let mut addr = unsafe { start_ptr.offset((idx as isize) * (Head::size() as isize)) };
+        let mut head = Head::from(addr);
+        let (mut end, mut len, mut off) = head.get();
+
         let mut res = Vec::new();
         loop {
-            let data = unsafe { from_raw_parts(start_addr.offset(off as isize), len as usize) };
+            let data = unsafe { from_raw_parts(start_ptr.offset(off as isize), len as usize) };
             for d in data {
                 res.push(*d);
-                assert_eq!(*d, MAGIC);
+                assert_eq!(*d, value);
             }
             if end {
                 break;
             }
-            addr = unsafe { start_addr.offset(len as isize - Head::size() as isize) };
-            let (end, len, off) = Head::from(addr).get();
+            addr = unsafe { start_ptr.offset(len as isize - Head::size() as isize) };
+            let value = Head::from(addr).get();
+            end = value.0;
+            len = value.1;
+            off = value.2;
             for _ in 0..Head::size() {
                 res.pop();
             }
         }
+        head.set_unvalid();
         res
     }
 }

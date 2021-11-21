@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
 
+use super::HEAD_SIZE;
+
 pub struct FreeList {
     free_list: VecDeque<(u64, u64)>,
 }
@@ -18,6 +20,13 @@ impl FreeList {
 
     pub fn get(&mut self) -> Option<(u64, u64)> {
         //Todo(xj): find the biggest block
-        self.free_list.pop_front()
+        // find the block larger than head
+        for (idx, (_, len)) in self.free_list.iter().enumerate() {
+            if *len > HEAD_SIZE {
+                self.free_list.swap(idx, 0);
+                return self.free_list.pop_front();
+            }
+        }
+        None
     }
 }

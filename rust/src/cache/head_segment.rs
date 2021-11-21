@@ -29,6 +29,7 @@ impl HeadSegment {
         loop {
             for (idx, head) in self.head_segment.iter_mut().enumerate() {
                 if head.is_free() {
+                    self.ref_table[ref_cnt].push(*head);
                     head.set_valid();
                     return (head.clone(), idx);
                 }
@@ -48,8 +49,9 @@ impl HeadSegment {
             if v.len() == 0 {
                 continue;
             }
-            for head in v.iter() {
+            for head in v.iter_mut() {
                 if head.is_unvalid() {
+                    head.set_free();
                     ret.push(*head);
                 }
             }
