@@ -1,11 +1,12 @@
-use crate::cache::head::Head;
-use crate::cache::{Buffer, DataSegment, HeadSegment};
+use crate::cache::data_segment::DataSegment;
+use crate::cache::head_segment::HeadSegment;
 use core::time;
-use libc::{c_void, ftruncate, mmap, shm_open};
+use libc::{ftruncate, mmap, shm_open};
 use libc::{off_t, shm_unlink};
 use libc::{MAP_SHARED, O_CREAT, O_RDWR, PROT_WRITE, S_IRUSR, S_IWUSR};
-use std::slice::from_raw_parts_mut;
 use std::{ptr, thread};
+
+use super::data_block::{Data, DataBlock};
 
 pub struct Cache {
     name: String,
@@ -16,69 +17,6 @@ pub struct Cache {
 }
 
 const HEAD_NUM: u64 = 8;
-
-#[derive(Debug, Clone, Copy)]
-pub struct DataBlock {
-    head: Head,
-    data: Buffer,
-    // In the data, some data willl be reserved when call next_block()
-    reserve: isize,
-}
-
-impl DataBlock {
-    pub fn is_valid(&self) -> bool {
-        self.data.len() > self.reserve as u64
-    }
-
-    pub fn size(&self) -> u64 {
-        self.data.len() - self.reserve as u64
-    }
-
-    pub fn ptr(&mut self) -> *mut c_void {
-        unsafe { self.data.as_mut_ptr().offset(self.reserve).cast::<c_void>() }
-    }
-
-    pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        unsafe {
-            from_raw_parts_mut(
-                self.data.as_mut_ptr().offset(self.reserve),
-                self.size() as usize,
-            )
-        }
-    }
-
-    pub fn occupy(&mut self, size: usize) -> Option<DataBlock> {
-        if size == 0 {
-            return Some(*self);
-        }
-
-        // lazy copy head to the front of the block
-        if self.reserve != 0 {
-            self.data.copy_from_slice(self.head.as_mut_slice(), 0);
-        }
-
-        // write head the meta information
-        let len = self.data.len();
-        self.head
-            .set(false, size as u32 + self.reserve as u32, self.data.offset());
-
-        // remain some data, share the same head
-        if len > size as u64 + self.reserve as u64 {
-            return Some(DataBlock {
-                head: self.head,
-                data: self
-                    .data
-                    .allocate(self.data.offset() + size as u64, len - size as u64),
-                reserve: 0,
-            });
-        }
-        None
-    }
-
-    pub fn finish(&mut self) {
-        self.head.set_end(true);
-    }
-}
 
 impl Cache {
     pub fn new(capacity: usize, name: String) -> Cache {
@@ -124,10 +62,10 @@ impl Cache {
     pub fn free_block(&mut self, block: DataBlock) {
         // the head is lazy copied
         self.data_segment
-            .free(block.data.offset(), block.data.len());
+            .free(block.data().off(), block.data().len());
     }
 
-    pub fn allocate_data(&mut self, ref_cnt: usize) -> Buffer {
+    pub fn allocate_data(&mut self, ref_cnt: usize) -> Data {
         // This function return a data
         // Todo(xj): better free method
 
@@ -149,20 +87,12 @@ impl Cache {
         // next block
         if let Some(mut block) = block {
             let data = self.allocate_data(ref_cnt);
-            // copy the last 16 bytes of last block to the new block
-            // the last 16 bytes is the new head
-            let head = block
-                .data
-                .allocate(
-                    block.data.offset() + block.data.len() - Head::size() as u64,
-                    Head::size(),
-                )
-                .into();
+            // the last space is the new head
             return (
                 DataBlock {
-                    head,
+                    head: block.data().tail_head(),
                     data,
-                    reserve: Head::size() as isize,
+                    transfer: true,
                 },
                 0,
             );
@@ -174,7 +104,7 @@ impl Cache {
             DataBlock {
                 head,
                 data,
-                reserve: 0,
+                transfer: false,
             },
             idx,
         )
@@ -200,13 +130,15 @@ impl Cache {
                 print!("{:?}\n", head.get());
             }
         }
-        print!("{:?}", self.data_segment.data().as_slice());
+        print!("{:?}", self.data_segment.data().as_mut_slice());
         // print data
     }
 }
 
 #[cfg(test)]
 mod test {
+    use crate::cache::head::{Head, HEAD_SIZE};
+
     use super::*;
     use std::{cmp::min, slice::from_raw_parts};
     #[test]
@@ -249,7 +181,7 @@ mod test {
         (0..write_size).fold((), |_, i| block_slice[i] = value);
         let mut remain_block = block.occupy(write_size as usize);
         len -= write_size;
-
+        let ss = cache.data_segment.data().as_slice();
         loop {
             let mut last_block = block;
             // write flow:
@@ -262,12 +194,13 @@ mod test {
             } else {
                 block = cache.next_block(Some(last_block), 0).0;
             }
-
+            let ss = cache.data_segment.data().as_slice();
             block_slice = block.as_mut_slice();
             write_size = min(len, block_slice.len());
 
             (0..write_size).fold((), |_, i| block_slice[i] = value);
             remain_block = block.occupy(write_size as usize);
+            let ss = cache.data_segment.data().as_slice();
             len -= write_size;
             if write_size == 0 {
                 cache.free_block(block);
@@ -284,13 +217,37 @@ mod test {
         let (mut end, mut len, mut off) = head.get();
 
         let mut res = Vec::new();
+        let mut reserve = 0;
         loop {
-            let data = unsafe { from_raw_parts(start_ptr.offset(off as isize), len as usize) };
+            let data = {
+                if len as u64 >= HEAD_SIZE {
+                    reserve = HEAD_SIZE;
+                    unsafe {
+                        from_raw_parts(
+                            start_ptr.offset(off as isize),
+                            len as usize - HEAD_SIZE as usize,
+                        )
+                    }
+                } else {
+                    unsafe { from_raw_parts(start_ptr.offset(off as isize), len as usize) }
+                }
+            };
             for d in data {
                 res.push(*d);
                 assert_eq!(*d, value);
             }
             if end {
+                // read the last head size value
+                let data = unsafe {
+                    from_raw_parts(
+                        start_ptr.offset(off as isize + len as isize - reserve as isize),
+                        reserve as usize,
+                    )
+                };
+                for d in data {
+                    res.push(*d);
+                    assert_eq!(*d, value);
+                }
                 break;
             }
             addr = unsafe { start_ptr.offset(len as isize - Head::size() as isize) };
@@ -298,9 +255,6 @@ mod test {
             end = value.0;
             len = value.1;
             off = value.2;
-            for _ in 0..Head::size() {
-                res.pop();
-            }
         }
         head.set_unvalid();
         res

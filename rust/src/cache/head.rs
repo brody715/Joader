@@ -1,7 +1,5 @@
 use std::{convert::TryInto, slice::from_raw_parts, slice::from_raw_parts_mut};
 
-use crate::cache::Buffer;
-
 // head: |end|valid|--len--|----off----|
 //       |1|1|-|-|--4--|----8----|
 pub const HEAD_SIZE: u64 = 16;
@@ -19,16 +17,6 @@ pub struct Head {
     // state for each head, 0 : free, 1: valid, 2: unvalid
     // 0 -> 1 -> 2 -> 0
     state: HeadState,
-}
-
-impl From<Buffer> for Head {
-    fn from(buf: Buffer) -> Self {
-        assert_eq!(buf.len(), HEAD_SIZE);
-        Self {
-            ptr: buf.as_mut_ptr(),
-            state: HeadState::Free,
-        }
-    }
 }
 
 impl From<*mut u8> for Head {
@@ -117,5 +105,9 @@ impl Head {
 
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         unsafe { from_raw_parts_mut(self.ptr, HEAD_SIZE as usize) }
+    }
+
+    pub fn as_ptr(&self) -> *const u8 {
+        self.ptr
     }
 }

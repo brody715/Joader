@@ -1,6 +1,5 @@
+use super::head::HEAD_SIZE;
 use std::collections::VecDeque;
-
-use super::HEAD_SIZE;
 
 pub struct FreeList {
     free_list: VecDeque<(u64, u64)>,
