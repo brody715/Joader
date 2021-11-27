@@ -1,30 +1,18 @@
 use std::{convert::TryInto, slice::from_raw_parts, slice::from_raw_parts_mut};
 
-// head: |end|valid|--len--|----off----|
+// head: |end|read|--len--|----off----|
 //       |1|1|-|-|--4--|----8----|
 pub const HEAD_SIZE: u64 = 16;
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-enum HeadState {
-    Free,
-    Valid,
-    Unvalid,
-}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Head {
     ptr: *mut u8,
-    // state for each head, 0 : free, 1: valid, 2: unvalid
-    // 0 -> 1 -> 2 -> 0
-    state: HeadState,
+    free: bool,
 }
 
 impl From<*mut u8> for Head {
     fn from(ptr: *mut u8) -> Self {
-        Self {
-            ptr,
-            state: HeadState::Free,
-        }
+        Self { ptr, free: true }
     }
 }
 
@@ -47,51 +35,49 @@ impl Head {
         unsafe { self.ptr.offset(8).copy_from(off.to_be_bytes().as_ptr(), 8) };
     }
 
-    pub fn get(&mut self) -> (bool, u32, u64) {
+    pub fn get(&self) -> (bool, u32, u64) {
         (self.get_end(), self.get_len(), self.get_off())
     }
 
-    fn get_len(&mut self) -> u32 {
+    pub fn get_len(&self) -> u32 {
         let slice = unsafe { from_raw_parts(self.ptr.offset(4), 4) };
 
         u32::from_be_bytes(slice.try_into().unwrap())
     }
 
-    fn get_off(&mut self) -> u64 {
+    pub fn get_off(&self) -> u64 {
         let slice = unsafe { from_raw_parts(self.ptr.offset(8), 8) };
         u64::from_be_bytes(slice.try_into().unwrap())
     }
 
-    fn get_end(&mut self) -> bool {
+    pub fn get_end(&self) -> bool {
         let slice = unsafe { from_raw_parts(self.ptr, 1) };
         u8::from_be_bytes(slice.try_into().unwrap()) == 1
     }
 
-    pub fn is_valid(&self) -> bool {
+    pub fn is_readed(&self) -> bool {
         let slice = unsafe { from_raw_parts(self.ptr.offset(1), 1) };
-        self.state == HeadState::Valid || u8::from_be_bytes(slice.try_into().unwrap()) == 0
+        u8::from_be_bytes(slice.try_into().unwrap()) == 0
+    }
+
+    pub fn readed(&mut self) {
+        unsafe {
+            self.ptr
+                .offset(1)
+                .copy_from((0 as u8).to_be_bytes().as_ptr(), 1)
+        };
     }
 
     pub fn is_free(&self) -> bool {
-        self.state == HeadState::Free
-    }
-
-    pub fn is_unvalid(&self) -> bool {
-        let slice = unsafe { from_raw_parts(self.ptr.offset(1), 1) };
-        self.state == HeadState::Unvalid || u8::from_be_bytes(slice.try_into().unwrap()) == 1
-    }
-
-    pub fn set_valid(&mut self) {
-        self.state = HeadState::Valid;
+        self.free
     }
 
     pub fn set_free(&mut self) {
-        self.state = HeadState::Free;
+        self.free = true;
     }
 
-    pub fn set_unvalid(&mut self) {
-        self.state = HeadState::Unvalid;
-        // Todo(xj): better unvalid method
+    pub fn allocated(&mut self) {
+        self.free = false;
         unsafe {
             self.ptr
                 .offset(1)

@@ -7,6 +7,7 @@ use libc::{MAP_SHARED, O_CREAT, O_RDWR, PROT_WRITE, S_IRUSR, S_IWUSR};
 use std::{ptr, thread};
 
 use super::data_block::{Data, DataBlock};
+use super::head::{Head, HEAD_SIZE};
 
 pub struct Cache {
     name: String,
@@ -48,12 +49,19 @@ impl Cache {
     fn free(&mut self) {
         if let Some(mut unvalid_heads) = self.head_segment.free() {
             for head in unvalid_heads.iter_mut() {
+                let (mut end, mut len, mut off) = head.get();
                 loop {
-                    let (end, len, off) = head.get();
                     self.data_segment.free(off, len as u64);
                     if end {
                         break;
                     }
+                    let head = Head::from(unsafe {
+                        self.start_ptr
+                            .offset((off + len as u64 - HEAD_SIZE) as isize)
+                    });
+                    end = head.get_end();
+                    len = head.get_len();
+                    off = head.get_off();
                 }
             }
         }
@@ -68,7 +76,6 @@ impl Cache {
     pub fn allocate_data(&mut self, ref_cnt: usize) -> Data {
         // This function return a data
         // Todo(xj): better free method
-
         let mut data = self.data_segment.allocate();
         if let Some(data) = data {
             return data;
@@ -127,7 +134,7 @@ impl Cache {
             unsafe {
                 let mut head: super::head::Head =
                     (self.start_ptr.offset((i * super::head::HEAD_SIZE) as isize)).into();
-                print!("{:?}\n", head.get());
+                print!("{:?}{:?}\n", head.is_readed(), head.get());
             }
         }
         print!("{:?}", self.data_segment.data().as_mut_slice());
@@ -143,6 +150,7 @@ mod test {
     use std::{cmp::min, slice::from_raw_parts};
     #[test]
     fn single_thread_test() {
+        log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
         let len = 256;
         let name = "DLCache".to_string();
         let mut cache = Cache::new(len, name);
@@ -158,11 +166,12 @@ mod test {
             let data = read(*off, cache.start_ptr(), 7);
             assert_eq!(data.len(), *size);
         }
+
         // some data should be free
         let size_list = &[40, 38];
         let mut idx_list = vec![];
         for size in size_list {
-            let idx = write(&mut cache, *size, size % 3, 3);
+            let idx = write(&mut cache, *size, size % 2, 3);
             idx_list.push(idx);
         }
         cache.print();
@@ -172,7 +181,7 @@ mod test {
         }
 
         // some data should be free
-        let size_list = &[60];
+        let size_list = &[128];
         let mut idx_list = vec![];
         for size in size_list {
             let idx = write(&mut cache, *size, size % 3, 5);
@@ -180,7 +189,7 @@ mod test {
         }
         cache.print();
         for (size, off) in size_list.iter().zip(idx_list.iter()) {
-            let data = read(*off, cache.start_ptr(), 3);
+            let data = read(*off, cache.start_ptr(), 5);
             assert_eq!(data.len(), *size);
         }
         cache.close()
@@ -227,48 +236,35 @@ mod test {
         let mut addr = unsafe { start_ptr.offset((idx as isize) * (Head::size() as isize)) };
         let mut head = Head::from(addr);
         let (mut end, mut len, mut off) = head.get();
-
         let mut res = Vec::new();
-        let mut reserve = 0;
         loop {
-            let data = {
-                if len as u64 >= HEAD_SIZE {
-                    reserve = HEAD_SIZE;
-                    unsafe {
-                        from_raw_parts(
-                            start_ptr.offset(off as isize),
-                            len as usize - HEAD_SIZE as usize,
-                        )
-                    }
-                } else {
-                    unsafe { from_raw_parts(start_ptr.offset(off as isize), len as usize) }
-                }
-            };
-            for d in data {
-                res.push(*d);
-                assert_eq!(*d, value);
-            }
+            let data;
             if end {
-                // read the last head size value
-                let data = unsafe {
+                data = unsafe { from_raw_parts(start_ptr.offset(off as isize), len as usize) };
+                data.iter().fold((), |_, x| {
+                    assert!(*x == value);
+                    res.push(*x)
+                });
+                break;
+            } else {
+                data = unsafe {
                     from_raw_parts(
-                        start_ptr.offset(off as isize + len as isize - reserve as isize),
-                        reserve as usize,
+                        start_ptr.offset(off as isize),
+                        len as usize - HEAD_SIZE as usize,
                     )
                 };
-                for d in data {
-                    res.push(*d);
-                    assert_eq!(*d, value);
-                }
-                break;
+                data.iter().fold((), |_, x| {
+                    assert!(*x == value);
+                    res.push(*x)
+                });
             }
             addr = unsafe { start_ptr.offset(off as isize + len as isize - Head::size() as isize) };
-            let value = Head::from(addr).get();
-            end = value.0;
-            len = value.1;
-            off = value.2;
+            let head = Head::from(addr);
+            end = head.get_end();
+            len = head.get_len();
+            off = head.get_off();
         }
-        head.set_unvalid();
+        head.readed();
         res
     }
 }

@@ -68,6 +68,10 @@ impl Data {
             off: self.off + occupy_size,
         })
     }
+
+    pub fn as_ptr(&self) -> *const u8 {
+        self.ptr
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -108,7 +112,6 @@ impl DataBlock {
         if size == 0 {
             return Some(*self);
         }
-
         // lazy copy head to the front of the block
         if self.transfer {
             self.data.copy_head(self.head);
@@ -120,6 +123,12 @@ impl DataBlock {
             size += HEAD_SIZE;
         }
         self.head.set(false, size as u32, self.data.off());
+        log::info!(
+            "Occupy {:?} : [{:},{:})",
+            self.ptr(),
+            self.data.off(),
+            self.data.off() + size
+        );
 
         // remain some data, share the same head
         if let Some(data) = self.data.remain(size) {

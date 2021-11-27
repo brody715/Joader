@@ -20,12 +20,20 @@ impl DataSegment {
     pub fn allocate(&mut self) -> Option<Data> {
         let ret = self.free_list.get();
         if let Some((off, len)) = ret {
-            return Some(self.data.allocate(off, len));
+            let data = self.data.allocate(off, len);
+            log::info!(
+                "Allocate data {:?}: [{:?}, {})",
+                data.as_ptr(),
+                data.off(),
+                data.off() + data.len()
+            );
+            return Some(data);
         }
         None
     }
 
     pub fn free(&mut self, off: u64, len: u64) {
+        log::info!("Free data [{:}, {:})", off, off + len);
         self.free_list.insert(off, len)
     }
 

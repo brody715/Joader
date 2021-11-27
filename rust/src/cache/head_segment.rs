@@ -4,7 +4,7 @@ use crate::cache::head::HEAD_SIZE;
 pub struct HeadSegment {
     head_segment: Vec<Head>,
     // Record the ref cnt of each data in the sampling tree, 64 level
-    ref_table: Vec<Vec<Head>>,
+    ref_table: Vec<Vec<usize>>,
 }
 
 impl HeadSegment {
@@ -29,16 +29,18 @@ impl HeadSegment {
         loop {
             for (idx, head) in self.head_segment.iter_mut().enumerate() {
                 if head.is_free() {
-                    self.ref_table[ref_cnt].push(*head);
-                    head.set_valid();
+                    self.ref_table[ref_cnt].push(idx);
+                    log::info!(
+                        "Allocate head {:?}: {:?}{:?}",
+                        idx,
+                        head.is_readed(),
+                        head.get()
+                    );
+                    head.allocated();
                     return (head.clone(), idx);
                 }
             }
         }
-    }
-
-    pub fn set_unvalid(&mut self, idx: usize) {
-        self.head_segment[idx].set_unvalid();
     }
 
     // only free the unvalid head
@@ -51,12 +53,14 @@ impl HeadSegment {
             }
             let mut heads_clone = heads.clone();
             heads.clear();
-            for head in heads_clone.iter_mut() {
-                if head.is_unvalid() {
+            for idx in heads_clone.iter_mut() {
+                let head = &mut self.head_segment[*idx];
+                if head.is_readed() {
+                    log::info!("Free head {:?} {:?}{:?}", idx, head.is_readed(), head.get());
                     head.set_free();
-                    ret.push(*head);
+                    ret.push(head.clone());
                 } else {
-                    heads.push(*head);
+                    heads.push(*idx);
                 };
             }
             if ret.len() != 0 {
