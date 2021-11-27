@@ -4,7 +4,7 @@ use core::time;
 use libc::{ftruncate, mmap, shm_open};
 use libc::{off_t, shm_unlink};
 use libc::{MAP_SHARED, O_CREAT, O_RDWR, PROT_WRITE, S_IRUSR, S_IWUSR};
-use std::{ptr, string, thread, usize};
+use std::{ptr, thread, usize};
 
 use super::data_block::{Data, DataBlock};
 use super::head::{Head, HEAD_SIZE};
@@ -17,7 +17,7 @@ pub struct Cache {
     start_ptr: *mut u8,
 }
 
-const HEAD_NUM: u64 = 8;
+const HEAD_NUM: u64 = 128;
 
 impl Cache {
     pub fn new(capacity: usize, name: String) -> Cache {
@@ -161,8 +161,7 @@ mod test {
     use super::*;
     use crate::cache::head::{Head, HEAD_SIZE};
     use crossbeam::channel::{unbounded, Receiver, Sender};
-    use std::{cmp::min, slice::from_raw_parts, sync::atomic::AtomicPtr};
-    const MAGIC: u8 = 7;
+    use std::{cmp::min, slice::from_raw_parts, sync::atomic::AtomicPtr, time::SystemTime};
     #[test]
     fn single_thread_test() {
         log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
@@ -196,7 +195,7 @@ mod test {
         }
 
         // some data should be free
-        let size_list = &[128];
+        let size_list = &[127];
         let mut idx_list = vec![];
         for size in size_list {
             let idx = write(&mut cache, *size, size % 3, 5);
@@ -213,21 +212,23 @@ mod test {
     #[test]
     fn two_thread_test() {
         log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
-        const TURN: usize = 20;
-        let len = 1024;
+        const TURN: usize = 10000;
+        let len = (HEAD_SIZE as usize) * (TURN*12 + 2 * HEAD_NUM as usize);
         let name = "DLCache".to_string();
         let (wc, rc) = unbounded::<usize>();
         let (addr_wc, addr_rc) = unbounded();
         let writer = thread::spawn(move || {
             let cache = Cache::new(len, name.clone());
+            log::info!("writer start {:?}", cache.start_ptr());
             addr_wc.send(AtomicPtr::new(cache.start_ptr())).unwrap();
             writer_func(cache, TURN, wc);
-            println!("write finish.......");
-            thread::sleep(time::Duration::from_secs(10));
+            log::info!("write finish.......");
+            thread::sleep(time::Duration::from_secs(5));
             Cache::close(name);
         });
         let reader = thread::spawn(move || {
             let mut start_ptr = addr_rc.recv().unwrap();
+            log::info!("reader start {:?}", *start_ptr.get_mut());
             reader_func(*start_ptr.get_mut(), TURN, rc);
             println!("read finish.......");
         });
@@ -236,19 +237,35 @@ mod test {
     }
 
     fn writer_func(mut cache: Cache, turn: usize, wc: Sender<usize>) {
-        for i in 0..turn {
-            let idx = write(&mut cache, i * HEAD_SIZE as usize, (i % 3) as usize, MAGIC);
+        let mut start = SystemTime::now();
+        for i in 1..turn {
+            let idx = write(&mut cache, i * HEAD_SIZE as usize, (i % 3) as usize, 7);
             wc.send(idx).unwrap();
-            println!("write..{:}", i);
+            if i % 1000 == 0 {
+                println!(
+                    "write..{:} avg time: {:}",
+                    i,
+                    SystemTime::now().duration_since(start).unwrap().as_secs() as f64 / 1000 as f64
+                );
+                start = SystemTime::now();
+            }
         }
         drop(wc);
     }
 
     fn reader_func(start_ptr: *mut u8, turn: usize, rc: Receiver<usize>) {
-        for i in 0..turn {
+        let mut start = SystemTime::now();
+        for i in 1..turn {
+            if i % 1000 == 0 {
+                println!(
+                    "read..{:} avg time: {:}",
+                    i,
+                    SystemTime::now().duration_since(start).unwrap().as_secs() as f64 / 1000 as f64
+                );
+                start = SystemTime::now();
+            }
             let idx = rc.recv().unwrap();
-            read(idx, start_ptr, MAGIC);
-            println!("read..{:}", i);
+            read(idx, start_ptr, 7);
         }
         drop(rc);
     }
@@ -296,6 +313,7 @@ mod test {
             let data;
             if end {
                 data = unsafe { from_raw_parts(start_ptr.offset(off as isize), len as usize) };
+                log::info!("read [{:?}, {:?})", off, off + len as u64);
                 data.iter().fold((), |_, x| {
                     assert!(*x == value);
                     res.push(*x)
@@ -303,6 +321,7 @@ mod test {
                 break;
             } else {
                 data = unsafe {
+                    log::info!("read [{:?}, {:?})", off, off + len as u64 - HEAD_SIZE);
                     from_raw_parts(
                         start_ptr.offset(off as isize),
                         len as usize - HEAD_SIZE as usize,
