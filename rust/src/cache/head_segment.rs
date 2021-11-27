@@ -24,23 +24,22 @@ impl HeadSegment {
         (self.head_segment.len() as u64) * HEAD_SIZE
     }
 
-    pub fn allocate(&mut self, ref_cnt: usize) -> (Head, usize) {
+    pub fn allocate(&mut self, ref_cnt: usize) -> Option<(Head, usize)> {
         assert!(ref_cnt < 64);
-        loop {
-            for (idx, head) in self.head_segment.iter_mut().enumerate() {
-                if head.is_free() {
-                    self.ref_table[ref_cnt].push(idx);
-                    log::info!(
-                        "Allocate head {:?}: {:?}{:?}",
-                        idx,
-                        head.is_readed(),
-                        head.get()
-                    );
-                    head.allocated();
-                    return (head.clone(), idx);
-                }
+        for (idx, head) in self.head_segment.iter_mut().enumerate() {
+            if head.is_free() {
+                self.ref_table[ref_cnt].push(idx);
+                log::info!(
+                    "Allocate head {:?}: {:?}{:?}",
+                    idx,
+                    head.is_readed(),
+                    head.get()
+                );
+                head.allocated();
+                return Some((head.clone(), idx));
             }
         }
+        None
     }
 
     // only free the unvalid head
@@ -80,7 +79,7 @@ mod tests {
         let mut bytes = [0u8; 1024 * 17];
         let mut hs = HeadSegment::new(bytes.as_mut_ptr(), 1024);
         for i in 0..1024 {
-            let (mut head, _) = hs.allocate(0);
+            let (mut head, _) = hs.allocate(0).unwrap();
             head.set(true, i, i as u64);
         }
         for i in 0..1024 {
