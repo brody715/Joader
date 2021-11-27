@@ -9,17 +9,20 @@ build = "build.rs"
 
 [dependencies]
 futures = "0.3"
-grpcio = "0.9"
-protobuf = "2"
 log = "0.4"
 log4rs = "0.10.0"
 tokio = "1"
 rand = "0.8.4"
 crossbeam = "0.8.1"
 libc = "0.2"
+bytes = "1"
+prost = "0.8"
+prost-types = "0.8"
+protobuf = "2"
+tonic = "0.5"
 
 [build-dependencies]
-protoc-grpcio = "3"
+tonic-build = "0.5"
 
 [lib]
 name = "proto"

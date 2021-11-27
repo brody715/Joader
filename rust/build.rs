@@ -1,10 +1,20 @@
-extern crate protoc_grpcio;
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let proto_root = "src/proto";
-    protoc_grpcio::compile_grpc_protos(&["../protos/dataloader.proto"], &["../protos/"], &proto_root, None)
-        .expect("Failed to compile grpc!");
-        protoc_grpcio::compile_grpc_protos(&["../protos/dataset.proto"], &["../protos/"], &proto_root, None)
-        .expect("Failed to compile grpc!");
+    let proto_dir = "../protos";
+  
+    println!("cargo:rerun-if-changed={}", proto_dir);
+  
+    let proto_files = vec![
+      "dataloader",
+      "dataset",
+    ];
+    let protos: Vec<String> = proto_files
+      .iter()
+      .map(|f| format!("{}/{}.proto", proto_dir, f))
+      .collect();
+  
+    tonic_build::configure()
+      .out_dir("./src/proto")
+      .compile(&protos, &[proto_dir.to_string()])
+      .expect("Failed to compile grpc!");
     Ok(())
-}
+  }

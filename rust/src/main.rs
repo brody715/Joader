@@ -11,12 +11,10 @@ use task::{TaskManager, TaskRef};
 // mod loader;
 mod dataset;
 mod loader;
-mod proto;
 mod sampler;
-mod service;
 mod task;
 mod cache;
-
+mod proto;
 // fn main() {
 //
 //     info!("INFO");
