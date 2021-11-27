@@ -6,6 +6,7 @@ use crate::cache::head::{Head, HEAD_SIZE};
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Data {
+    // the ptr is the point of data start, that is the global ptr + off
     ptr: *mut u8,
     // the size of data is less than 4GB
     len: u64,
@@ -19,14 +20,14 @@ impl Data {
 
     pub fn allocate(&mut self, off: u64, len: u64) -> Data {
         Data {
-            ptr: unsafe { self.ptr.offset(off as isize) },
+            ptr: unsafe { self.ptr.offset(off as isize - self.off as isize) },
             off,
             len,
         }
     }
 
     pub fn tail_head(&mut self) -> Head {
-        todo!()
+        unsafe { self.ptr.offset((self.len - HEAD_SIZE) as isize) }.into()
     }
 
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
@@ -57,7 +58,7 @@ impl Data {
     }
 
     pub fn remain(&mut self, occupy_size: u64) -> Option<Data> {
-        assert!(occupy_size >= self.len);
+        assert!(occupy_size <= self.len);
         if occupy_size == self.len {
             return None;
         }
@@ -71,10 +72,10 @@ impl Data {
 
 #[derive(Debug, Clone, Copy)]
 pub struct DataBlock {
-    head: Head,
-    data: Data,
+    pub head: Head,
+    pub data: Data,
     // if it's true, we should transfer the data in head to data
-    transfer: bool,
+    pub transfer: bool,
 }
 
 impl DataBlock {
@@ -87,7 +88,7 @@ impl DataBlock {
     }
 
     pub fn ptr(&mut self) -> *mut c_void {
-        let offset = 0;
+        let mut offset = 0;
         if self.transfer {
             offset = HEAD_SIZE as isize;
         }
@@ -96,7 +97,7 @@ impl DataBlock {
     }
 
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        let offset = 0;
+        let mut offset = 0;
         if self.transfer {
             offset = HEAD_SIZE as isize;
         }
@@ -114,7 +115,7 @@ impl DataBlock {
         }
 
         // write head the meta information
-        let size = size as u64;
+        let mut size = size as u64;
         if self.transfer {
             size += HEAD_SIZE;
         }

@@ -1,11 +1,8 @@
-use crate::cache::Cache;
 use crate::dataset::DataRequest;
 use std::fs::File;
 use std::io::Read;
 
-pub struct LoaderManager {
-    cache: Cache,
-}
+pub struct LoaderManager {}
 
 impl LoaderManager {
     pub fn new() -> LoaderManager {

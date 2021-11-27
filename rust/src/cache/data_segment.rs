@@ -12,7 +12,7 @@ impl DataSegment {
         let mut free_list = FreeList::new();
         free_list.insert(off, len);
         DataSegment {
-            data: Data { ptr, len, off },
+            data: Data::new(ptr, off, len),
             free_list,
         }
     }

@@ -59,7 +59,7 @@ impl Cache {
         }
     }
 
-    pub fn free_block(&mut self, block: DataBlock) {
+    pub fn free_block(&mut self, mut block: DataBlock) {
         // the head is lazy copied
         self.data_segment
             .free(block.data().off(), block.data().len());
@@ -147,30 +147,42 @@ mod test {
         let name = "DLCache".to_string();
         let mut cache = Cache::new(len, name);
 
-        let size_list = &[20, 27, 60, 19];
+        let size_list = &[(20, 0), (27, 1), (60, 2), (20, 3)];
         let mut idx_list = vec![];
-        for size in size_list {
-            let idx = write(&mut cache, *size, size % 2, 7);
+        for (size, ref_cnt) in size_list {
+            let idx = write(&mut cache, *size, *ref_cnt, 7);
             idx_list.push(idx);
         }
         cache.print();
-        for (size, off) in size_list.iter().zip(idx_list.iter()) {
+        for ((size, _), off) in size_list.iter().zip(idx_list.iter()) {
             let data = read(*off, cache.start_ptr(), 7);
             assert_eq!(data.len(), *size);
         }
-
         // some data should be free
-        let size_list = &[40];
+        let size_list = &[40, 38];
         let mut idx_list = vec![];
         for size in size_list {
             let idx = write(&mut cache, *size, size % 3, 3);
             idx_list.push(idx);
         }
         cache.print();
-        // for (size, off) in size_list.iter().zip(idx_list.iter()) {
-        //     let data = read(*off, cache.start_ptr(), 3);
-        //     assert_eq!(data.len(), *size);
-        // }
+        for (size, off) in size_list.iter().zip(idx_list.iter()) {
+            let data = read(*off, cache.start_ptr(), 3);
+            assert_eq!(data.len(), *size);
+        }
+
+        // some data should be free
+        let size_list = &[60];
+        let mut idx_list = vec![];
+        for size in size_list {
+            let idx = write(&mut cache, *size, size % 3, 5);
+            idx_list.push(idx);
+        }
+        cache.print();
+        for (size, off) in size_list.iter().zip(idx_list.iter()) {
+            let data = read(*off, cache.start_ptr(), 3);
+            assert_eq!(data.len(), *size);
+        }
         cache.close()
     }
 
@@ -250,7 +262,7 @@ mod test {
                 }
                 break;
             }
-            addr = unsafe { start_ptr.offset(len as isize - Head::size() as isize) };
+            addr = unsafe { start_ptr.offset(off as isize + len as isize - Head::size() as isize) };
             let value = Head::from(addr).get();
             end = value.0;
             len = value.1;

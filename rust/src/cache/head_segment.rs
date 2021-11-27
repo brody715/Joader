@@ -45,18 +45,21 @@ impl HeadSegment {
     // travel from the lowest level, if all table is valid. return None
     pub fn free(&mut self) -> Option<Vec<Head>> {
         let mut ret = Vec::new();
-        for v in self.ref_table.iter_mut() {
-            if v.len() == 0 {
+        for heads in self.ref_table.iter_mut() {
+            if heads.len() == 0 {
                 continue;
             }
-            for head in v.iter_mut() {
+            let mut heads_clone = heads.clone();
+            heads.clear();
+            for head in heads_clone.iter_mut() {
                 if head.is_unvalid() {
                     head.set_free();
                     ret.push(*head);
-                }
+                } else {
+                    heads.push(*head);
+                };
             }
             if ret.len() != 0 {
-                v.clear();
                 return Some(ret);
             }
         }
