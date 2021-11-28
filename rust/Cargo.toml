@@ -1,5 +1,5 @@
 [package]
-name = "rust"
+name = "joader"
 version = "0.1.0"
 authors = ["xiejian <jianxie0@gmail.com>"]
 edition = "2018"
@@ -11,7 +11,7 @@ build = "build.rs"
 futures = "0.3"
 log = "0.4"
 log4rs = "0.10.0"
-tokio = "1"
+tokio = { version = "1", features = ["full"] }
 rand = "0.8.4"
 crossbeam = "0.8.1"
 libc = "0.2"
@@ -25,5 +25,4 @@ tonic = "0.5"
 tonic-build = "0.5"
 
 [lib]
-name = "proto"
-path = "src/proto/mod.rs"
+name = "joader"

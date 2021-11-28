@@ -5,11 +5,13 @@ pub struct DataItem {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDatasetRequest {
-    #[prost(enumeration = "create_dataset_request::FileType", tag = "1")]
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(enumeration = "create_dataset_request::FileType", tag = "2")]
     pub r#type: i32,
-    #[prost(message, repeated, tag = "2")]
-    pub keys: ::prost::alloc::vec::Vec<DataItem>,
-    #[prost(uint32, repeated, tag = "3")]
+    #[prost(message, repeated, tag = "3")]
+    pub items: ::prost::alloc::vec::Vec<DataItem>,
+    #[prost(uint32, repeated, tag = "4")]
     pub weights: ::prost::alloc::vec::Vec<u32>,
 }
 /// Nested message and enum types in `CreateDatasetRequest`.
@@ -23,30 +25,28 @@ pub mod create_dataset_request {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDatasetResponse {
-    #[prost(uint32, tag = "1")]
-    pub dataset_id: u32,
     #[prost(message, optional, tag = "2")]
-    pub rsp: ::core::option::Option<super::common::Status>,
+    pub status: ::core::option::Option<super::common::Status>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteDatasetRequest {
-    #[prost(uint32, tag = "1")]
-    pub dataset_id: u32,
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteDatasetResponse {
     #[prost(message, optional, tag = "2")]
-    pub rsp: ::core::option::Option<super::common::Status>,
+    pub status: ::core::option::Option<super::common::Status>,
 }
 #[doc = r" Generated client implementations."]
-pub mod dataset_client {
+pub mod dataset_svc_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
     #[derive(Debug, Clone)]
-    pub struct DatasetClient<T> {
+    pub struct DatasetSvcClient<T> {
         inner: tonic::client::Grpc<T>,
     }
-    impl DatasetClient<tonic::transport::Channel> {
+    impl DatasetSvcClient<tonic::transport::Channel> {
         #[doc = r" Attempt to create a new client by connecting to a given endpoint."]
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
@@ -57,7 +57,7 @@ pub mod dataset_client {
             Ok(Self::new(conn))
         }
     }
-    impl<T> DatasetClient<T>
+    impl<T> DatasetSvcClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
         T::ResponseBody: Body + Send + Sync + 'static,
@@ -71,7 +71,7 @@ pub mod dataset_client {
         pub fn with_interceptor<F>(
             inner: T,
             interceptor: F,
-        ) -> DatasetClient<InterceptedService<T, F>>
+        ) -> DatasetSvcClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T: tonic::codegen::Service<
@@ -83,7 +83,7 @@ pub mod dataset_client {
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + Send + Sync,
         {
-            DatasetClient::new(InterceptedService::new(inner, interceptor))
+            DatasetSvcClient::new(InterceptedService::new(inner, interceptor))
         }
         #[doc = r" Compress requests with `gzip`."]
         #[doc = r""]
@@ -109,7 +109,7 @@ pub mod dataset_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/dataset.Dataset/CreateDataset");
+            let path = http::uri::PathAndQuery::from_static("/dataset.DatasetSvc/CreateDataset");
             self.inner.unary(request.into_request(), path, codec).await
         }
         pub async fn delete_dataset(
@@ -123,18 +123,18 @@ pub mod dataset_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/dataset.Dataset/DeleteDataset");
+            let path = http::uri::PathAndQuery::from_static("/dataset.DatasetSvc/DeleteDataset");
             self.inner.unary(request.into_request(), path, codec).await
         }
     }
 }
 #[doc = r" Generated server implementations."]
-pub mod dataset_server {
+pub mod dataset_svc_server {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
-    #[doc = "Generated trait containing gRPC methods that should be implemented for use with DatasetServer."]
+    #[doc = "Generated trait containing gRPC methods that should be implemented for use with DatasetSvcServer."]
     #[async_trait]
-    pub trait Dataset: Send + Sync + 'static {
+    pub trait DatasetSvc: Send + Sync + 'static {
         async fn create_dataset(
             &self,
             request: tonic::Request<super::CreateDatasetRequest>,
@@ -145,13 +145,13 @@ pub mod dataset_server {
         ) -> Result<tonic::Response<super::DeleteDatasetResponse>, tonic::Status>;
     }
     #[derive(Debug)]
-    pub struct DatasetServer<T: Dataset> {
+    pub struct DatasetSvcServer<T: DatasetSvc> {
         inner: _Inner<T>,
         accept_compression_encodings: (),
         send_compression_encodings: (),
     }
     struct _Inner<T>(Arc<T>);
-    impl<T: Dataset> DatasetServer<T> {
+    impl<T: DatasetSvc> DatasetSvcServer<T> {
         pub fn new(inner: T) -> Self {
             let inner = Arc::new(inner);
             let inner = _Inner(inner);
@@ -168,9 +168,9 @@ pub mod dataset_server {
             InterceptedService::new(Self::new(inner), interceptor)
         }
     }
-    impl<T, B> tonic::codegen::Service<http::Request<B>> for DatasetServer<T>
+    impl<T, B> tonic::codegen::Service<http::Request<B>> for DatasetSvcServer<T>
     where
-        T: Dataset,
+        T: DatasetSvc,
         B: Body + Send + Sync + 'static,
         B::Error: Into<StdError> + Send + 'static,
     {
@@ -183,10 +183,12 @@ pub mod dataset_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/dataset.Dataset/CreateDataset" => {
+                "/dataset.DatasetSvc/CreateDataset" => {
                     #[allow(non_camel_case_types)]
-                    struct CreateDatasetSvc<T: Dataset>(pub Arc<T>);
-                    impl<T: Dataset> tonic::server::UnaryService<super::CreateDatasetRequest> for CreateDatasetSvc<T> {
+                    struct CreateDatasetSvc<T: DatasetSvc>(pub Arc<T>);
+                    impl<T: DatasetSvc> tonic::server::UnaryService<super::CreateDatasetRequest>
+                        for CreateDatasetSvc<T>
+                    {
                         type Response = super::CreateDatasetResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
@@ -214,10 +216,12 @@ pub mod dataset_server {
                     };
                     Box::pin(fut)
                 }
-                "/dataset.Dataset/DeleteDataset" => {
+                "/dataset.DatasetSvc/DeleteDataset" => {
                     #[allow(non_camel_case_types)]
-                    struct DeleteDatasetSvc<T: Dataset>(pub Arc<T>);
-                    impl<T: Dataset> tonic::server::UnaryService<super::DeleteDatasetRequest> for DeleteDatasetSvc<T> {
+                    struct DeleteDatasetSvc<T: DatasetSvc>(pub Arc<T>);
+                    impl<T: DatasetSvc> tonic::server::UnaryService<super::DeleteDatasetRequest>
+                        for DeleteDatasetSvc<T>
+                    {
                         type Response = super::DeleteDatasetResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
@@ -256,7 +260,7 @@ pub mod dataset_server {
             }
         }
     }
-    impl<T: Dataset> Clone for DatasetServer<T> {
+    impl<T: DatasetSvc> Clone for DatasetSvcServer<T> {
         fn clone(&self) -> Self {
             let inner = self.inner.clone();
             Self {
@@ -266,7 +270,7 @@ pub mod dataset_server {
             }
         }
     }
-    impl<T: Dataset> Clone for _Inner<T> {
+    impl<T: DatasetSvc> Clone for _Inner<T> {
         fn clone(&self) -> Self {
             Self(self.0.clone())
         }
@@ -276,7 +280,7 @@ pub mod dataset_server {
             write!(f, "{:?}", self.0)
         }
     }
-    impl<T: Dataset> tonic::transport::NamedService for DatasetServer<T> {
-        const NAME: &'static str = "dataset.Dataset";
+    impl<T: DatasetSvc> tonic::transport::NamedService for DatasetSvcServer<T> {
+        const NAME: &'static str = "dataset.DatasetSvc";
     }
 }

@@ -1,4 +1,4 @@
-mod cache;
+pub mod cache;
 mod head;
 mod head_segment;
 mod freelist;

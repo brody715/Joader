@@ -11,25 +11,26 @@ message CreateDatasetRequest {
         FILESYSTEM = 0;
         LMDB=1;
     }
-    FileType type = 1;
-    repeated DataItem keys = 2;
-    repeated uint32 weights = 3;
+
+    string name = 1;
+    FileType type = 2;
+    repeated DataItem items = 3;
+    repeated uint32 weights = 4;
 }
 
 message CreateDatasetResponse {
-    uint32 dataset_id = 1;
-    common.Status rsp = 2;
+    common.Status status = 2;
 }
 
 message DeleteDatasetRequest {
-    uint32 dataset_id = 1;
+    string name = 1;
 }
 
 message DeleteDatasetResponse {
-    common.Status rsp = 2;
+    common.Status status = 2;
 }
 
-service Dataset {
+service DatasetSvc {
     rpc CreateDataset(CreateDatasetRequest) returns (CreateDatasetResponse);
     rpc DeleteDataset(DeleteDatasetRequest) returns (DeleteDatasetResponse);
 }

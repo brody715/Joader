@@ -5,7 +5,7 @@ import grpc
 import dataloader_pb2 as dataloader__pb2
 
 
-class DataLoaderStub(object):
+class DataLoaderSvcStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -15,23 +15,23 @@ class DataLoaderStub(object):
             channel: A grpc.Channel.
         """
         self.CreateDataloader = channel.unary_unary(
-                '/DataLoader/CreateDataloader',
+                '/dataloader.DataLoaderSvc/CreateDataloader',
                 request_serializer=dataloader__pb2.CreateDataloaderRequest.SerializeToString,
                 response_deserializer=dataloader__pb2.CreateDataloaderResponse.FromString,
                 )
         self.Next = channel.unary_unary(
-                '/DataLoader/Next',
+                '/dataloader.DataLoaderSvc/Next',
                 request_serializer=dataloader__pb2.NextRequest.SerializeToString,
                 response_deserializer=dataloader__pb2.NextResponse.FromString,
                 )
         self.DeleteDataloader = channel.unary_unary(
-                '/DataLoader/DeleteDataloader',
+                '/dataloader.DataLoaderSvc/DeleteDataloader',
                 request_serializer=dataloader__pb2.DeleteDataloaderRequest.SerializeToString,
                 response_deserializer=dataloader__pb2.DeleteDataloaderResponse.FromString,
                 )
 
 
-class DataLoaderServicer(object):
+class DataLoaderSvcServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def CreateDataloader(self, request, context):
@@ -53,7 +53,7 @@ class DataLoaderServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_DataLoaderServicer_to_server(servicer, server):
+def add_DataLoaderSvcServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'CreateDataloader': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateDataloader,
@@ -72,12 +72,12 @@ def add_DataLoaderServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'DataLoader', rpc_method_handlers)
+            'dataloader.DataLoaderSvc', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class DataLoader(object):
+class DataLoaderSvc(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -91,7 +91,7 @@ class DataLoader(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/DataLoader/CreateDataloader',
+        return grpc.experimental.unary_unary(request, target, '/dataloader.DataLoaderSvc/CreateDataloader',
             dataloader__pb2.CreateDataloaderRequest.SerializeToString,
             dataloader__pb2.CreateDataloaderResponse.FromString,
             options, channel_credentials,
@@ -108,7 +108,7 @@ class DataLoader(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/DataLoader/Next',
+        return grpc.experimental.unary_unary(request, target, '/dataloader.DataLoaderSvc/Next',
             dataloader__pb2.NextRequest.SerializeToString,
             dataloader__pb2.NextResponse.FromString,
             options, channel_credentials,
@@ -125,7 +125,7 @@ class DataLoader(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/DataLoader/DeleteDataloader',
+        return grpc.experimental.unary_unary(request, target, '/dataloader.DataLoaderSvc/DeleteDataloader',
             dataloader__pb2.DeleteDataloaderRequest.SerializeToString,
             dataloader__pb2.DeleteDataloaderResponse.FromString,
             options, channel_credentials,

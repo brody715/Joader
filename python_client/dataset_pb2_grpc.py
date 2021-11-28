@@ -5,7 +5,7 @@ import grpc
 import dataset_pb2 as dataset__pb2
 
 
-class DatasetStub(object):
+class DatasetSvcStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -15,18 +15,18 @@ class DatasetStub(object):
             channel: A grpc.Channel.
         """
         self.CreateDataset = channel.unary_unary(
-                '/Dataset/CreateDataset',
+                '/dataset.DatasetSvc/CreateDataset',
                 request_serializer=dataset__pb2.CreateDatasetRequest.SerializeToString,
                 response_deserializer=dataset__pb2.CreateDatasetResponse.FromString,
                 )
         self.DeleteDataset = channel.unary_unary(
-                '/Dataset/DeleteDataset',
+                '/dataset.DatasetSvc/DeleteDataset',
                 request_serializer=dataset__pb2.DeleteDatasetRequest.SerializeToString,
                 response_deserializer=dataset__pb2.DeleteDatasetResponse.FromString,
                 )
 
 
-class DatasetServicer(object):
+class DatasetSvcServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def CreateDataset(self, request, context):
@@ -42,7 +42,7 @@ class DatasetServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_DatasetServicer_to_server(servicer, server):
+def add_DatasetSvcServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'CreateDataset': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateDataset,
@@ -56,12 +56,12 @@ def add_DatasetServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'Dataset', rpc_method_handlers)
+            'dataset.DatasetSvc', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class Dataset(object):
+class DatasetSvc(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -75,7 +75,7 @@ class Dataset(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/Dataset/CreateDataset',
+        return grpc.experimental.unary_unary(request, target, '/dataset.DatasetSvc/CreateDataset',
             dataset__pb2.CreateDatasetRequest.SerializeToString,
             dataset__pb2.CreateDatasetResponse.FromString,
             options, channel_credentials,
@@ -92,7 +92,7 @@ class Dataset(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/Dataset/DeleteDataset',
+        return grpc.experimental.unary_unary(request, target, '/dataset.DatasetSvc/DeleteDataset',
             dataset__pb2.DeleteDatasetRequest.SerializeToString,
             dataset__pb2.DeleteDatasetResponse.FromString,
             options, channel_credentials,

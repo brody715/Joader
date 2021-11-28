@@ -30,17 +30,17 @@ pub struct DeleteDataloaderRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteDataloaderResponse {
     #[prost(message, optional, tag = "3")]
-    pub resp: ::core::option::Option<super::common::Status>,
+    pub status: ::core::option::Option<super::common::Status>,
 }
 #[doc = r" Generated client implementations."]
-pub mod data_loader_client {
+pub mod data_loader_svc_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
     #[derive(Debug, Clone)]
-    pub struct DataLoaderClient<T> {
+    pub struct DataLoaderSvcClient<T> {
         inner: tonic::client::Grpc<T>,
     }
-    impl DataLoaderClient<tonic::transport::Channel> {
+    impl DataLoaderSvcClient<tonic::transport::Channel> {
         #[doc = r" Attempt to create a new client by connecting to a given endpoint."]
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
@@ -51,7 +51,7 @@ pub mod data_loader_client {
             Ok(Self::new(conn))
         }
     }
-    impl<T> DataLoaderClient<T>
+    impl<T> DataLoaderSvcClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
         T::ResponseBody: Body + Send + Sync + 'static,
@@ -65,7 +65,7 @@ pub mod data_loader_client {
         pub fn with_interceptor<F>(
             inner: T,
             interceptor: F,
-        ) -> DataLoaderClient<InterceptedService<T, F>>
+        ) -> DataLoaderSvcClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T: tonic::codegen::Service<
@@ -77,7 +77,7 @@ pub mod data_loader_client {
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + Send + Sync,
         {
-            DataLoaderClient::new(InterceptedService::new(inner, interceptor))
+            DataLoaderSvcClient::new(InterceptedService::new(inner, interceptor))
         }
         #[doc = r" Compress requests with `gzip`."]
         #[doc = r""]
@@ -104,7 +104,7 @@ pub mod data_loader_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path =
-                http::uri::PathAndQuery::from_static("/dataloader.DataLoader/CreateDataloader");
+                http::uri::PathAndQuery::from_static("/dataloader.DataLoaderSvc/CreateDataloader");
             self.inner.unary(request.into_request(), path, codec).await
         }
         pub async fn next(
@@ -118,7 +118,7 @@ pub mod data_loader_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/dataloader.DataLoader/Next");
+            let path = http::uri::PathAndQuery::from_static("/dataloader.DataLoaderSvc/Next");
             self.inner.unary(request.into_request(), path, codec).await
         }
         pub async fn delete_dataloader(
@@ -133,18 +133,18 @@ pub mod data_loader_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path =
-                http::uri::PathAndQuery::from_static("/dataloader.DataLoader/DeleteDataloader");
+                http::uri::PathAndQuery::from_static("/dataloader.DataLoaderSvc/DeleteDataloader");
             self.inner.unary(request.into_request(), path, codec).await
         }
     }
 }
 #[doc = r" Generated server implementations."]
-pub mod data_loader_server {
+pub mod data_loader_svc_server {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
-    #[doc = "Generated trait containing gRPC methods that should be implemented for use with DataLoaderServer."]
+    #[doc = "Generated trait containing gRPC methods that should be implemented for use with DataLoaderSvcServer."]
     #[async_trait]
-    pub trait DataLoader: Send + Sync + 'static {
+    pub trait DataLoaderSvc: Send + Sync + 'static {
         async fn create_dataloader(
             &self,
             request: tonic::Request<super::CreateDataloaderRequest>,
@@ -159,13 +159,13 @@ pub mod data_loader_server {
         ) -> Result<tonic::Response<super::DeleteDataloaderResponse>, tonic::Status>;
     }
     #[derive(Debug)]
-    pub struct DataLoaderServer<T: DataLoader> {
+    pub struct DataLoaderSvcServer<T: DataLoaderSvc> {
         inner: _Inner<T>,
         accept_compression_encodings: (),
         send_compression_encodings: (),
     }
     struct _Inner<T>(Arc<T>);
-    impl<T: DataLoader> DataLoaderServer<T> {
+    impl<T: DataLoaderSvc> DataLoaderSvcServer<T> {
         pub fn new(inner: T) -> Self {
             let inner = Arc::new(inner);
             let inner = _Inner(inner);
@@ -182,9 +182,9 @@ pub mod data_loader_server {
             InterceptedService::new(Self::new(inner), interceptor)
         }
     }
-    impl<T, B> tonic::codegen::Service<http::Request<B>> for DataLoaderServer<T>
+    impl<T, B> tonic::codegen::Service<http::Request<B>> for DataLoaderSvcServer<T>
     where
-        T: DataLoader,
+        T: DataLoaderSvc,
         B: Body + Send + Sync + 'static,
         B::Error: Into<StdError> + Send + 'static,
     {
@@ -197,10 +197,11 @@ pub mod data_loader_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/dataloader.DataLoader/CreateDataloader" => {
+                "/dataloader.DataLoaderSvc/CreateDataloader" => {
                     #[allow(non_camel_case_types)]
-                    struct CreateDataloaderSvc<T: DataLoader>(pub Arc<T>);
-                    impl<T: DataLoader> tonic::server::UnaryService<super::CreateDataloaderRequest>
+                    struct CreateDataloaderSvc<T: DataLoaderSvc>(pub Arc<T>);
+                    impl<T: DataLoaderSvc>
+                        tonic::server::UnaryService<super::CreateDataloaderRequest>
                         for CreateDataloaderSvc<T>
                     {
                         type Response = super::CreateDataloaderResponse;
@@ -230,10 +231,10 @@ pub mod data_loader_server {
                     };
                     Box::pin(fut)
                 }
-                "/dataloader.DataLoader/Next" => {
+                "/dataloader.DataLoaderSvc/Next" => {
                     #[allow(non_camel_case_types)]
-                    struct NextSvc<T: DataLoader>(pub Arc<T>);
-                    impl<T: DataLoader> tonic::server::UnaryService<super::NextRequest> for NextSvc<T> {
+                    struct NextSvc<T: DataLoaderSvc>(pub Arc<T>);
+                    impl<T: DataLoaderSvc> tonic::server::UnaryService<super::NextRequest> for NextSvc<T> {
                         type Response = super::NextResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
@@ -261,10 +262,11 @@ pub mod data_loader_server {
                     };
                     Box::pin(fut)
                 }
-                "/dataloader.DataLoader/DeleteDataloader" => {
+                "/dataloader.DataLoaderSvc/DeleteDataloader" => {
                     #[allow(non_camel_case_types)]
-                    struct DeleteDataloaderSvc<T: DataLoader>(pub Arc<T>);
-                    impl<T: DataLoader> tonic::server::UnaryService<super::DeleteDataloaderRequest>
+                    struct DeleteDataloaderSvc<T: DataLoaderSvc>(pub Arc<T>);
+                    impl<T: DataLoaderSvc>
+                        tonic::server::UnaryService<super::DeleteDataloaderRequest>
                         for DeleteDataloaderSvc<T>
                     {
                         type Response = super::DeleteDataloaderResponse;
@@ -305,7 +307,7 @@ pub mod data_loader_server {
             }
         }
     }
-    impl<T: DataLoader> Clone for DataLoaderServer<T> {
+    impl<T: DataLoaderSvc> Clone for DataLoaderSvcServer<T> {
         fn clone(&self) -> Self {
             let inner = self.inner.clone();
             Self {
@@ -315,7 +317,7 @@ pub mod data_loader_server {
             }
         }
     }
-    impl<T: DataLoader> Clone for _Inner<T> {
+    impl<T: DataLoaderSvc> Clone for _Inner<T> {
         fn clone(&self) -> Self {
             Self(self.0.clone())
         }
@@ -325,7 +327,7 @@ pub mod data_loader_server {
             write!(f, "{:?}", self.0)
         }
     }
-    impl<T: DataLoader> tonic::transport::NamedService for DataLoaderServer<T> {
-        const NAME: &'static str = "dataloader.DataLoader";
+    impl<T: DataLoaderSvc> tonic::transport::NamedService for DataLoaderSvcServer<T> {
+        const NAME: &'static str = "dataloader.DataLoaderSvc";
     }
 }

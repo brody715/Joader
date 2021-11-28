@@ -30,10 +30,10 @@ message DeleteDataloaderRequest {
 }
 
 message DeleteDataloaderResponse {
-    common.Status resp = 3;
+    common.Status status = 3;
 }
 
-service DataLoader {
+service DataLoaderSvc {
     rpc CreateDataloader(CreateDataloaderRequest) returns (CreateDataloaderResponse);
     rpc Next(NextRequest) returns (NextResponse);
     rpc DeleteDataloader(DeleteDataloaderRequest) returns (DeleteDataloaderResponse);
