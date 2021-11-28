@@ -1,62 +1,29 @@
-use crate::dataset::DataRequest;
-use std::fs::File;
-use std::io::Read;
+use crate::proto::dataloader::CreateDataloaderRequest;
 
-pub struct LoaderManager {}
+// Loader store the information of schema, dataset and filter
+#[derive(Default, Debug)]
+pub struct Loader {
+    dataset: String,
+}
 
-impl LoaderManager {
-    pub fn new() -> LoaderManager {
-        todo!()
-    }
+// Loader table store the information of dataset_table and loader
+#[derive(Default, Debug)]
+pub struct LoaderTable {}
 
-    pub fn load(&mut self, req: DataRequest) {
-        // match req.dataset {
-        //     DatasetType::FileSystem => self.load_file(&req.key.keys()),
-        //     DatasetType::LMDB(_) => todo!(),
-        // }
-        todo!()
-    }
-
-    pub fn filesystem_load(&mut self, key: &[String]) {
-        todo!()
-        // for path in key {
-        //     let mut file = File::open(path).expect("open file error");
-        //     let mut block = self.cache.next_block(None, 0);
-        //     let size = file.read(block.as_mut_slice()).expect("reading data error");
-        //     let mut remain_block = block.occupy(size);
-        //     loop {
-        //         // write flow:
-        //         // allocate block -> write -> occupy(size)
-        //         // if size < block, then some space remain
-        //         // if size = block, then return None
-        //         // if size == 0, then finish writing and free current block
-        //         let mut last_block = block;
-        //         if let Some(_b) = remain_block {
-        //             block = _b;
-        //         } else {
-        //             block = self.cache.next_block(Some(last_block), 0);
-        //         }
-        //         let size = file.read(block.as_mut_slice()).expect("reading data error");
-        //         // better way to solve the problem of size < block.size()
-        //         remain_block = block.occupy(size);
-        //         if size == 0 {
-        //             self.cache.free_block(block);
-        //             last_block.finish();
-        //             break;
-        //         }
-        //     }
-        // }
+impl Loader {
+    pub fn from_proto(req: CreateDataloaderRequest) -> Loader {
+        Loader {
+            dataset: req.dataset_name,
+        }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    struct T {
-        x: i32,
-        y: i32,
+impl LoaderTable {
+    pub fn new() -> LoaderTable {
+        todo!()
     }
-    #[test]
-    fn test() {
-        let mut t = T { x: 1, y: 2 };
+
+    pub fn insert(&mut self, loader: Loader) -> Result<(), String> {
+        todo!()
     }
 }

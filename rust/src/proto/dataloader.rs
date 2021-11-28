@@ -1,9 +1,7 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDataloaderRequest {
-    #[prost(uint32, tag = "1")]
-    pub dataset_id: u32,
-    #[prost(uint32, repeated, tag = "2")]
-    pub keys: ::prost::alloc::vec::Vec<u32>,
+    #[prost(string, tag = "1")]
+    pub dataset_name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDataloaderResponse {
@@ -11,6 +9,8 @@ pub struct CreateDataloaderResponse {
     pub shared_mem_file: ::prost::alloc::string::String,
     #[prost(uint64, tag = "3")]
     pub loader_id: u64,
+    #[prost(message, optional, tag = "4")]
+    pub status: ::core::option::Option<super::common::Status>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct NextRequest {
