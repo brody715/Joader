@@ -1,10 +1,10 @@
-
 syntax = "proto3";
 
-enum LoaderStatus {
-    Ok = 0;
-    False = 1;
-}
+import "common.proto";
+
+
+package dataloader;
+
 
 message CreateDataloaderRequest {
     uint32 dataset_id = 1;
@@ -30,7 +30,7 @@ message DeleteDataloaderRequest {
 }
 
 message DeleteDataloaderResponse {
-    LoaderStatus resp = 3;
+    common.Status resp = 3;
 }
 
 service DataLoader {
