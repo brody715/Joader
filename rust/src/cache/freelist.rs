@@ -1,7 +1,6 @@
 use super::head::HEAD_SIZE;
 use std::{
     collections::{HashMap, LinkedList},
-    marker::PhantomPinned,
     rc::Rc,
 };
 

@@ -1,14 +1,16 @@
-use crate::dataset::{Dataset, DatasetTable};
+use crate::joader::joader_table::JoaderTable;
 use crate::proto::dataset::dataset_svc_server::DatasetSvc;
 use crate::proto::dataset::*;
-use futures::lock::Mutex;
+use crate::{dataset, joader::joader::Joader};
 use std::sync::Arc;
+use tokio::sync::Mutex;
+use tokio::sync::mpsc;
 use tonic::{async_trait, Request, Response, Status};
 
 use super::to_status;
 #[derive(Debug, Default)]
 pub struct DatasetSvcImpl {
-    dataset_table: Arc<Mutex<DatasetTable>>,
+    joader_table: Arc<Mutex<JoaderTable>>,
 }
 
 #[async_trait]
@@ -18,15 +20,14 @@ impl DatasetSvc for DatasetSvcImpl {
         request: Request<CreateDatasetRequest>,
     ) -> Result<Response<CreateDatasetResponse>, Status> {
         log::info!("call create dataset {:?}", request);
-
         // insert dataset to dataset table
-        let dataset = Dataset::from_proto(request.into_inner());
+        let joader = Joader::new(dataset::from_proto(request.into_inner()));
         let ret = {
-            let mut table = self.dataset_table.lock().await;
-            table.insert(dataset)
+            let mut table = self.joader_table.lock().await;
+            table.add_joader(joader)
         };
         Ok(Response::new(CreateDatasetResponse {
-            status: Some(to_status(ret)),
+            status: Some(to_status(&ret)),
         }))
     }
     async fn delete_dataset(
@@ -36,11 +37,11 @@ impl DatasetSvc for DatasetSvcImpl {
         log::info!("call delete dataset {:?}", request);
 
         let ret = {
-            let mut table = self.dataset_table.lock().await;
-            table.remove(&request.into_inner().name)
+            let mut table = self.joader_table.lock().await;
+            table.del_joader(&request.into_inner().name)
         };
         Ok(Response::new(DeleteDatasetResponse {
-            status: Some(to_status(ret)),
+            status: Some(to_status(&ret)),
         }))
     }
 }

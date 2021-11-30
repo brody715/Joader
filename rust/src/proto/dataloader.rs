@@ -1,12 +1,12 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDataloaderRequest {
     #[prost(string, tag = "1")]
-    pub dataset_name: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDataloaderResponse {
     #[prost(string, tag = "2")]
-    pub shared_mem_file: ::prost::alloc::string::String,
+    pub shm_path: ::prost::alloc::string::String,
     #[prost(uint64, tag = "3")]
     pub loader_id: u64,
     #[prost(message, optional, tag = "4")]

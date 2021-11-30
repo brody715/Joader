@@ -17,10 +17,8 @@ pub struct Cache {
     start_ptr: *mut u8,
 }
 
-const HEAD_NUM: u64 = 128;
-
 impl Cache {
-    pub fn new(capacity: usize, name: String) -> Cache {
+    pub fn new(capacity: usize, name: String, head_num: u64) -> Cache {
         let (_, addr) = unsafe {
             let shmpath = name.as_ptr() as *const i8;
             let fd = shm_open(shmpath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
@@ -28,7 +26,7 @@ impl Cache {
             let addr = mmap(ptr::null_mut(), capacity, PROT_WRITE, MAP_SHARED, fd, 0);
             (fd, addr as *mut u8)
         };
-        let head_segment = HeadSegment::new(addr, HEAD_NUM);
+        let head_segment = HeadSegment::new(addr, head_num);
         let data_segment = unsafe {
             DataSegment::new(
                 addr.offset(head_segment.size() as isize),
@@ -146,7 +144,7 @@ impl Cache {
         // print head
         for i in 0..self.head_segment.size() / super::head::HEAD_SIZE {
             unsafe {
-                let mut head: super::head::Head =
+                let head: super::head::Head =
                     (self.start_ptr.offset((i * super::head::HEAD_SIZE) as isize)).into();
                 print!("{:?}{:?}\n", head.is_readed(), head.get());
             }
@@ -167,7 +165,8 @@ mod test {
         log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
         let len = 256;
         let name = "DLCache".to_string();
-        let mut cache = Cache::new(len, name.clone());
+        let head_num = 8;
+        let mut cache = Cache::new(len, name.clone(), head_num);
 
         let size_list = &[(20, 0), (27, 1), (60, 2), (20, 3)];
         let mut idx_list = vec![];
@@ -213,12 +212,13 @@ mod test {
     fn two_thread_test() {
         log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
         const TURN: usize = 10000;
-        let len = (HEAD_SIZE as usize) * (TURN*12 + 2 * HEAD_NUM as usize);
+        let head_num = 128;
+        let len = (HEAD_SIZE as usize) * (TURN * 12 + 2 * head_num as usize);
         let name = "DLCache".to_string();
         let (wc, rc) = unbounded::<usize>();
         let (addr_wc, addr_rc) = unbounded();
         let writer = thread::spawn(move || {
-            let cache = Cache::new(len, name.clone());
+            let cache = Cache::new(len, name.clone(), head_num);
             log::info!("writer start {:?}", cache.start_ptr());
             addr_wc.send(AtomicPtr::new(cache.start_ptr())).unwrap();
             writer_func(cache, TURN, wc);

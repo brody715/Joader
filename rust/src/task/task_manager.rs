@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use futures::sink::Send;
 use crossbeam::channel::Sender;
 use crate::{sampler::SamplerManager, task::TaskRef};
 
