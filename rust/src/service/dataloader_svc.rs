@@ -49,7 +49,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
 
         let address = {
             let mut loader_table = self.loader_table.lock().await;
-            loader_table.get_mut(&loader_id).unwrap().next()
+            loader_table.get_mut(&loader_id).unwrap().next().await
         };
         Ok(Response::new(NextResponse { address }))
     }

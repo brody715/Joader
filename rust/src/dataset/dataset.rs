@@ -1,34 +1,45 @@
+use crate::{
+    cache::cache::Cache,
+    proto::dataset::{CreateDatasetRequest, DataItem},
+};
 use std::sync::Arc;
-
-use crate::proto::dataset::{CreateDatasetRequest, DataItem};
-use crossbeam::channel::Sender;
 
 pub type DatasetRef = Arc<dyn Dataset>;
 
-#[derive(Clone, Debug)]
-pub enum DatasetType {
-    FileSystem(String),
-    LMDB(String),
-    None,
-}
-
-impl Default for DatasetType {
-    fn default() -> DatasetType {
-        DatasetType::None
-    }
-}
-pub struct DataRequest {
-    pub sender: Vec<Sender<u64>>,
-    pub key: DataItem,
-    pub dataset: DatasetType,
-}
-
 pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
-    todo!()
+    let name = request.name;
+    let items = request.items;
+    Arc::new(FileDataset {
+        items,
+        root: "".into(),
+        name,
+    })
 }
-pub trait Dataset {}
+pub trait Dataset {
+    fn get_name(&self) -> &str;
+    fn get_indices(&self) -> Vec<u64>;
+    fn read(&self, cache: &mut Cache) -> u64;
+}
 
 #[derive(Clone, Default, Debug)]
 pub struct FileDataset {
     items: Vec<DataItem>,
+    root: String,
+    name: String,
+}
+
+impl Dataset for FileDataset {
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    fn get_indices(&self) -> Vec<u64> {
+        let start = 0u64;
+        let end = self.items.len() as u64;
+        (start..end).collect::<Vec<_>>()
+    }
+
+    fn read(&self, cache: &mut Cache) -> u64 {
+        todo!()
+    }
 }

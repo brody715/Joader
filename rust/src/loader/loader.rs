@@ -1,17 +1,46 @@
-use tonic::codegen::http::request;
+use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
 use crate::proto::dataloader::CreateDataloaderRequest;
 // Loader store the information of schema, dataset and filter
-#[derive(Default, Debug)]
-pub struct Sloader {}
-#[derive(Debug, Default)]
-pub struct Rloader {}
+#[derive(Default, Debug, Clone)]
+struct Loader {
+    dataset_name: String,
+    id: u64,
+}
+
+#[derive(Debug)]
+pub struct Sloader {
+    loader: Loader,
+    s: UnboundedSender<u64>,
+}
+#[derive(Debug)]
+pub struct Rloader {
+    loader: Loader,
+    r: UnboundedReceiver<u64>,
+}
 pub fn from_proto(request: CreateDataloaderRequest) -> (Sloader, Rloader) {
-    todo!()
+    let loader = Loader {
+        dataset_name: request.name,
+        id: todo!(),
+    };
+    let (s, r) = mpsc::unbounded_channel::<u64>();
+    (
+        Sloader {
+            loader: loader.clone(),
+            s,
+        },
+        Rloader { loader, r },
+    )
 }
 
 impl Rloader {
-    pub fn next(&mut self) -> u64 {
-        todo!()
+    pub async fn next(&mut self) -> u64 {
+        self.r.recv().await.unwrap()
+    }
+}
+
+impl Sloader {
+    pub fn get_id(&self) -> u64 {
+        self.loader.id
     }
 }

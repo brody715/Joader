@@ -1,6 +1,4 @@
-use tokio::sync::mpsc::UnboundedSender;
-
-use crate::{dataset::DatasetRef, loader::Sloader};
+use crate::{dataset::DatasetRef, loader::{Rloader, Sloader}};
 
 pub struct Joader {}
 
@@ -13,7 +11,7 @@ impl Joader {
         todo!()
     }
 
-    pub fn insert(&mut self) {
+    pub fn del(&mut self, r: Rloader) {
         todo!()
     }
 
