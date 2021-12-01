@@ -8,14 +8,13 @@ pub struct Decision {
 
 impl Hash for Decision {
     fn hash<H: Hasher>(&self, _state: &mut H) {
-        self.node.as_ref().borrow().get_loader_set().hasher();
+        self.node.as_ref().borrow().get_loader_id().hasher();
     }
 }
 
 impl PartialEq for Decision {
     fn eq(&self, other: &Self) -> bool {
-        self.node.as_ref().borrow().get_loader_set()
-            == other.node.as_ref().borrow().get_loader_set()
+        self.node.as_ref().borrow().get_loader_id() == other.node.as_ref().borrow().get_loader_id()
     }
 }
 

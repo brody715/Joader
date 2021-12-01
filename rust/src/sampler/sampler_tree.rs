@@ -16,21 +16,7 @@ impl SamplerTree {
         }
     }
 
-    fn keep_sort(&mut self) {
-        let len = self.loader_set.len();
-        for i in 0..len {
-            if self.loader_set[i].1 > self.loader_set[len - 1].1 {
-                let mid = self.loader_set[i].clone();
-                self.loader_set[i] = self.loader_set[len - 1];
-                self.loader_set[len - 1] = mid;
-                return;
-            }
-        }
-    }
-
     pub fn insert(&mut self, indices: Vec<u32>, id: u64) {
-        self.loader_set.push((id, indices.len()));
-        self.keep_sort();
         let mut loader_set = HashSet::new();
         loader_set.insert(id);
         let node = Node::new(indices, loader_set);
@@ -39,6 +25,12 @@ impl SamplerTree {
         } else {
             self.root = Some(node);
         }
+        self.loader_set.clear();
+        self.root
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .get_loader_set(&mut self.loader_set, 0);
     }
 
     pub fn get_task_values(&self, loader_id: u64) -> Vec<u32> {
@@ -67,6 +59,11 @@ impl SamplerTree {
             let ret = decision.execute();
             res.insert(ret, decision.get_loaders());
         }
+        for (_, len) in self.loader_set.iter_mut() {
+            if *len != 0 {
+                *len -= 1;
+            }
+        }
         res
     }
 }
@@ -78,21 +75,23 @@ mod tests {
     use std::{iter::FromIterator, time::Instant};
     #[test]
     fn test_sampler() {
-        sample(8);
+        sample(3);
     }
 
     fn sample(tasks: u64) {
         let mut sampler = SamplerTree::new();
         let mut rng = rand::thread_rng();
         let mut vec_keys = Vec::<HashSet<u32>>::new();
+        let mut map: HashMap<u64, HashSet<u32>> = HashMap::new();
+
         for id in 0..tasks {
-            let size = rng.gen_range(1000..10000);
+            let size = rng.gen_range(1..10);
             let keys = (0..size).into_iter().collect::<Vec<u32>>();
             vec_keys.push(HashSet::from_iter(keys.iter().cloned()));
-            sampler.insert(keys, id)
+            sampler.insert(keys, id);
+            map.insert(id, HashSet::new());
         }
 
-        let mut map: HashMap<u64, HashSet<u32>> = HashMap::new();
         let mut time;
         loop {
             let now = Instant::now();
@@ -110,38 +109,35 @@ mod tests {
         println!("time cost in one turn: {}", time);
         for (task, set) in &map {
             let keys = &vec_keys[(*task) as usize];
-            assert!(keys.eq(set));
+            assert_eq!(keys, set);
         }
     }
     #[test]
     fn test_insert() {
-        sample(8);
+        insert(124);
     }
-    // fn insert(tasks: u32) {
-    //     let mut sampler = Sampler::new();
-    //     let mut rng = rand::thread_rng();
-    //     let mut vec_keys = Vec::<Vec<u32>>::new();
+    fn insert(tasks: u32) {
+        let mut sampler = SamplerTree::new();
+        let mut rng = rand::thread_rng();
+        let mut vec_keys = Vec::<Vec<u32>>::new();
 
-    //     for _i in 0..tasks {
-    //         let size = rng.gen_range(5..100);
-    //         let keys = (0..size).into_iter().collect();
-    //         vec_keys.push(keys);
-    //     }
+        for _i in 0..tasks {
+            let size = rng.gen_range(100..1000);
+            let keys = (0..size).into_iter().collect();
+            vec_keys.push(keys);
+        }
 
-    //     let mut vec_tasks = Vec::new();
-    //     for (idx, keys) in vec_keys.iter().enumerate() {
-    //         let (s, _) = channel::unbounded();
-    //         let task = TaskRef::new(idx as u64, 0, &keys, s);
-    //         vec_tasks.push(task.clone());
-    //         sampler.insert(task);
-    //     }
+        let vec_tasks = Vec::new();
+        for (idx, keys) in vec_keys.iter().enumerate() {
+            sampler.insert(keys.clone(), idx as u64);
+        }
 
-    //     for task in vec_tasks {
-    //         let mut values = sampler.get_task_values(task.clone());
-    //         values.sort();
-    //         let mut keys = task.keys().clone();
-    //         keys.sort();
-    //         assert!(values.eq(&keys));
-    //     }
-    // }
+        for task in vec_tasks {
+            let mut values = sampler.get_task_values(task);
+            values.sort();
+            let mut keys = vec_keys[task as usize].clone();
+            keys.sort();
+            assert!(values.eq(&keys));
+        }
+    }
 }
