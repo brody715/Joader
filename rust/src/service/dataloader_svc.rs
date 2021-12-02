@@ -35,7 +35,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         log::info!("call create loader {:?}", request);
         let loader_id: u64 = {
             let mut id = self.id.lock().await;
-            (*id) += 1;
+            *id += 1;
             *id
         };
         let (s, r) = loader::from_proto(request.into_inner(), loader_id);

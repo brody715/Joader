@@ -23,6 +23,7 @@ impl JoaderTable {
     }
 
     pub fn add_joader(&mut self, joader: Joader) -> Result<(), String> {
+        log::info!("Add Joader {:?}", joader);
         let name = joader.get_name();
         if self.joader_table.contains_key(name) {
             return Err("Dataset has existed".into());
@@ -49,6 +50,7 @@ impl JoaderTable {
     }
 
     pub fn del_loader(&mut self, loader: Rloader) -> Result<(), String> {
+        log::info!("Del Joader {:?}", loader);
         self.get(loader.get_name())?.del(loader);
         Ok(())
     }

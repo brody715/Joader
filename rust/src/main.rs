@@ -20,7 +20,7 @@ struct Opts {
     shm_path: String,
     #[clap(long, default_value = "128")]
     head_num: u64,
-    #[clap(long, default_value = "1024*1024")]
+    #[clap(long, default_value = "1048576")]
     cache_capacity: usize,
 }
 
