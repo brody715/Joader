@@ -15,7 +15,7 @@ pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
         name,
     })
 }
-pub trait Dataset {
+pub trait Dataset: Sync + Send {
     fn get_name(&self) -> &str;
     fn get_indices(&self) -> Vec<u64>;
     fn read(&self, cache: &mut Cache) -> u64;

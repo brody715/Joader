@@ -1,3 +1,3 @@
 mod sampler_node;
-mod sampler_tree;
+pub mod sampler_tree;
 mod decision;

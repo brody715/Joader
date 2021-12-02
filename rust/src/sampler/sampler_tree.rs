@@ -1,5 +1,3 @@
-use crate::sampler::decision;
-
 use super::sampler_node::{Node, NodeRef};
 use std::collections::{HashMap, HashSet};
 
@@ -22,22 +20,21 @@ impl SamplerTree {
         let mut loader_set = HashSet::new();
         loader_set.insert(id);
         let node = Node::new(indices, loader_set);
-        if let Some(root) = &self.root {
-            self.root = Some(Node::insert(root.clone(), node));
+        if let Some(root) = &mut self.root {
+            self.root = Some(root.insert(node));
         } else {
             self.root = Some(node);
         }
         self.loader_set.clear();
         self.root
-            .as_ref()
+            .clone()
             .unwrap()
-            .borrow()
             .get_loader_set(&mut self.loader_set, 0);
     }
 
     pub fn get_task_values(&self, loader_id: u64) -> Vec<u32> {
         if let Some(root) = &self.root {
-            return root.as_ref().borrow().get_loader_values(loader_id);
+            return root.get_loader_values(loader_id);
         }
         Vec::new()
     }
@@ -52,12 +49,10 @@ impl SamplerTree {
         log::info!("Sampler sample {:?}", loaders);
         let mut decisions = Vec::new();
         let mut res = HashMap::<u32, HashSet<u64>>::new();
-        Node::decide(
-            self.root.clone().unwrap(),
-            &mut loaders,
-            &mut decisions,
-            vec![],
-        );
+        self.root
+            .clone()
+            .unwrap()
+            .decide(&mut loaders, &mut decisions, vec![]);
 
         for decision in decisions.iter_mut() {
             let ret = decision.execute();

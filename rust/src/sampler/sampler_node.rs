@@ -4,12 +4,7 @@ use rand::{
     prelude::{Distribution, ThreadRng},
     Rng,
 };
-use std::{
-    cell::{Ref, RefCell, RefMut},
-    collections::HashSet,
-    iter::FromIterator,
-    sync::Arc,
-};
+use std::{collections::HashSet, iter::FromIterator, sync::Arc};
 #[derive(Clone, Debug)]
 pub struct Node {
     values: Vec<u32>,
@@ -22,18 +17,22 @@ pub struct Node {
     right: Option<NodeRef>,
 }
 
-pub type NodeRef = Arc<RefCell<Node>>;
+pub type NodeRef = Arc<Node>;
 
 impl Node {
+    pub fn get_mut_unchecked<'a>(self: &'a mut NodeRef) -> &'a mut Self {
+        unsafe { Arc::get_mut_unchecked(self) }
+    }
+
     pub fn new(values: Vec<u32>, loader_id: HashSet<u64>) -> NodeRef {
-        Arc::new(RefCell::new(Node {
+        Arc::new(Node {
             values_set: values.iter().map(|x| *x).collect::<HashSet<u32>>(),
             values,
             loader_id,
             rng: ThreadRng::default(),
             left: None,
             right: None,
-        }))
+        })
     }
 
     pub fn get_loader_id(&self) -> &HashSet<u64> {
@@ -47,7 +46,7 @@ impl Node {
     fn min_task_length(&self) -> usize {
         let mut l = self.len();
         if let Some(left) = &self.left {
-            l += left.as_ref().borrow().len();
+            l += left.len();
         }
         l
     }
@@ -67,7 +66,7 @@ impl Node {
         self.values_set.remove(&value);
     }
 
-    fn intersect_update(&mut self, mut other: RefMut<Node>) -> NodeRef {
+    fn intersect_update(&mut self, other: &mut Node) -> NodeRef {
         let values_set = self
             .values_set
             .intersection(&other.values_set)
@@ -83,44 +82,44 @@ impl Node {
             self.remove_value(*v);
             other.remove_value(*v);
         }
-        Arc::new(RefCell::new(Node {
+        Arc::new(Node {
             values,
             values_set,
             loader_id,
             rng: rand::thread_rng(),
             left: None,
             right: None,
-        }))
+        })
     }
 
-    fn pushdown(node: RefMut<Node>) -> (Option<NodeRef>, Option<NodeRef>) {
-        let left = node.left.clone().unwrap();
-        let right = node.right.clone().unwrap();
-        for v in &node.values_set {
-            left.as_ref().borrow_mut().append_value(*v);
-            right.as_ref().borrow_mut().append_value(*v);
+    fn pushdown(&mut self) -> (Option<NodeRef>, Option<NodeRef>) {
+        let mut left = self.left.clone().unwrap();
+        let mut right = self.right.clone().unwrap();
+        for v in &self.values_set {
+            left.get_mut_unchecked().append_value(*v);
+            right.get_mut_unchecked().append_value(*v);
         }
         return (Some(left), Some(right));
     }
 
-    pub fn insert(me: NodeRef, other: NodeRef) -> NodeRef {
-        let new_root;
-        let mut root_ref = me.as_ref().borrow_mut();
-        if other.as_ref().borrow().len() <= root_ref.min_task_length() {
-            new_root = root_ref.intersect_update(other.as_ref().borrow_mut());
-            let mut new_root_ref = new_root.as_ref().borrow_mut();
+    pub fn insert(self: &mut NodeRef, mut other: NodeRef) -> NodeRef {
+        let mut new_root;
+        let root_ref = self.get_mut_unchecked();
+        if other.len() <= root_ref.min_task_length() {
+            new_root = root_ref.intersect_update(other.get_mut_unchecked());
+            let mut new_root_ref = new_root.get_mut_unchecked();
             new_root_ref.left = Some(other.clone());
-            new_root_ref.right = Some(me.clone());
+            new_root_ref.right = Some(self.clone());
         } else {
-            new_root = root_ref.intersect_update(other.as_ref().borrow_mut());
-            let mut new_root_ref = new_root.as_ref().borrow_mut();
+            new_root = root_ref.intersect_update(other.get_mut_unchecked());
+            let mut new_root_ref = new_root.get_mut_unchecked();
             if let None = root_ref.left {
-                new_root_ref.left = Some(me.clone());
+                new_root_ref.left = Some(self.clone());
                 new_root_ref.right = Some(other.clone());
             } else {
                 let (left_tree, right_tree) = Node::pushdown(root_ref);
                 new_root_ref.left = left_tree;
-                new_root_ref.right = Some(Node::insert(right_tree.unwrap(), other));
+                new_root_ref.right = Some(right_tree.unwrap().insert(other));
             }
         }
         return new_root;
@@ -131,11 +130,11 @@ impl Node {
         if self.loader_id.contains(&loader_id) {
             res.append(&mut self.values.clone());
             if let Some(left) = &self.left {
-                let mut left_v = left.as_ref().borrow().get_loader_values(loader_id);
+                let mut left_v = left.get_loader_values(loader_id);
                 res.append(&mut left_v);
             }
             if let Some(right) = &self.right {
-                let mut right_v = right.as_ref().borrow().get_loader_values(loader_id);
+                let mut right_v = right.get_loader_values(loader_id);
                 res.append(&mut right_v);
             }
         }
@@ -146,13 +145,13 @@ impl Node {
         pre_len += self.len();
         loader_set.push((*self.loader_id.iter().next().unwrap(), pre_len));
         if let Some(right) = &self.right {
-            let left: Ref<Self> = self.left.as_ref().unwrap().borrow();
+            let left = self.left.as_ref().unwrap();
             loader_set.pop();
             loader_set.push((
                 *left.get_loader_id().iter().next().unwrap(),
                 pre_len + left.len(),
             ));
-            right.as_ref().borrow().get_loader_set(loader_set, pre_len);
+            right.get_loader_set(loader_set, pre_len);
         }
     }
 }
@@ -160,7 +159,7 @@ impl Node {
 // sampling
 impl Node {
     pub fn decide(
-        node: NodeRef,
+        self: &mut NodeRef,
         loaders: &mut Vec<(u64, usize)>,
         decisions: &mut Vec<Decision>,
         mut node_set: Vec<NodeRef>,
@@ -168,27 +167,25 @@ impl Node {
         if loaders.is_empty() {
             return;
         }
-        if node.as_ref().borrow().len() != 0 {
-            node_set.push(node.clone());
+        if self.len() != 0 {
+            node_set.push(self.clone());
         }
 
         // push down and add self in node set
         let loader_id: HashSet<_> = HashSet::from_iter(loaders.iter().map(|(id, _)| *id));
-        if !node.as_ref().borrow().loader_id.eq(&loader_id) {
-            if let Some(right) = &node.as_ref().borrow().right {
-                Node::decide(right.clone(), loaders, decisions, node_set)
+        if !self.loader_id.eq(&loader_id) {
+            if let Some(mut right) = self.right.clone() {
+                right.decide(loaders, decisions, node_set);
             }
             return;
         }
 
-        let common = node_set
-            .iter()
-            .fold(0, |x, n| x + n.as_ref().borrow().len());
+        let common = node_set.iter().fold(0, |x, n| x + n.len());
         let mut last_common = common;
         let loaders_cloned = loaders.clone();
         let mut decided_loader = HashSet::new();
         for (id, len) in loaders_cloned.iter().cloned() {
-            let p: f32 = node.as_ref().borrow_mut().rng.gen();
+            let p: f32 = self.get_mut_unchecked().rng.gen();
             if p >= (last_common as f32) / (len as f32) {
                 break;
             }
@@ -205,20 +202,14 @@ impl Node {
             log::info!(
                 "Dicide: {:?} decide node [{:?}]",
                 loader_set,
-                node.as_ref()
-                    .borrow()
-                    .left
-                    .as_ref()
-                    .unwrap()
-                    .borrow()
-                    .get_loader_id()
+                self.left.as_ref().unwrap().get_loader_id()
             );
             loaders.remove(0);
-            let decision = Decision::new(node.as_ref().borrow().left.clone().unwrap(), loader_set);
+            let decision = Decision::new(self.left.clone().unwrap(), loader_set);
             decisions.push(decision);
         } else {
             // Some tasks choose intersection
-            Node::choose_intersection(node.clone(), decisions, decided_loader, &node_set);
+            self.choose_intersection(decisions, decided_loader, &node_set);
         }
 
         if !loaders.is_empty() {
@@ -226,32 +217,29 @@ impl Node {
                 *len -= common;
             }
             // Other tasks push down right child
-            if let Some(right) = node.as_ref().borrow().right.clone() {
-                Node::decide(right, loaders, decisions, vec![])
+            if let Some(mut right) = self.right.clone() {
+                right.decide(loaders, decisions, vec![])
             }
         }
     }
 
     fn choose_intersection(
-        node: NodeRef,
+        self: &mut NodeRef,
         decisions: &mut Vec<Decision>,
         loader_set: HashSet<u64>,
         node_set: &Vec<NodeRef>,
     ) {
-        let weights = node_set
-            .iter()
-            .map(|x| x.as_ref().borrow().len())
-            .collect::<Vec<_>>();
+        let weights = node_set.iter().map(|x| x.len()).collect::<Vec<_>>();
         if weights.iter().sum::<usize>() == 0 {
             return;
         }
 
         let dist = WeightedIndex::new(&weights).unwrap();
-        let intersection = node_set[dist.sample(&mut node.as_ref().borrow_mut().rng)].clone();
+        let intersection = node_set[dist.sample(&mut self.get_mut_unchecked().rng)].clone();
         log::info!(
             "Dicide: {:?} decide node [{:?}]",
             loader_set,
-            intersection.as_ref().borrow().get_loader_id()
+            intersection.get_loader_id()
         );
         let decision = Decision::new(intersection, loader_set);
         decisions.push(decision);
@@ -295,9 +283,9 @@ impl Node {
                 comp.remove(task);
             }
         }
-        if let (Some(left), Some(right)) = (self.left.clone(), self.right.clone()) {
-            left.as_ref().borrow_mut().complent(comp, item);
-            right.as_ref().borrow_mut().complent(comp, item);
+        if let (Some(left), Some(right)) = (&mut self.left, &mut self.right) {
+            left.get_mut_unchecked().complent(comp, item);
+            right.get_mut_unchecked().complent(comp, item);
         }
     }
 }

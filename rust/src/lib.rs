@@ -1,3 +1,4 @@
+#![feature(get_mut_unchecked)]
 pub mod cache;
 pub mod dataset;
 pub mod joader;

@@ -1,14 +1,26 @@
-use crate::{dataset::DatasetRef, loader::{Rloader, Sloader}};
+use std::collections::HashMap;
+use crate::dataset::DatasetRef;
+use crate::loader::{Rloader, Sloader};
+use crate::sampler::sampler_tree::SamplerTree;
 
-pub struct Joader {}
+pub struct Joader {
+    // dataset: DatasetRef,
+    // sampler: SamplerTree,
+    // loader_table: HashMap<u64, Sloader>,
+}
 
 impl Joader {
     pub fn new(dataset: DatasetRef) -> Joader {
-        todo!()
+        Joader {
+            // dataset,
+            // sampler: SamplerTree::new(),
+            // loader_table: HashMap::new(),
+        }
     }
 
     pub fn next(&mut self) {
-        todo!()
+        // let data_table = self.sampler.sample();
+
     }
 
     pub fn del(&mut self, r: Rloader) {
@@ -16,7 +28,7 @@ impl Joader {
     }
 
     pub fn add(&mut self, s: Sloader) -> Result<u64, String> {
-        // Id > 0
+        // let len = self.loader_table.len();
         todo!()
     }
 }
