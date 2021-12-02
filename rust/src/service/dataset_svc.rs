@@ -3,7 +3,7 @@ use crate::proto::dataset::dataset_svc_server::DatasetSvc;
 use crate::proto::dataset::*;
 use crate::{dataset, joader::joader::Joader};
 use std::sync::Arc;
-use std::sync::Mutex;
+use tokio::sync::Mutex;
 use tonic::{async_trait, Request, Response, Status};
 
 use super::to_status;
@@ -21,7 +21,7 @@ impl DatasetSvc for DatasetSvcImpl {
         log::info!("call create dataset {:?}", request);
         // insert dataset to dataset table
         let joader = Joader::new(dataset::from_proto(request.into_inner()));
-        let ret = self.joader_table.lock().unwrap().add_joader(joader);
+        let ret = self.joader_table.lock().await.add_joader(joader);
         Ok(Response::new(CreateDatasetResponse {
             status: Some(to_status(&ret)),
         }))
@@ -34,7 +34,7 @@ impl DatasetSvc for DatasetSvcImpl {
         log::info!("call delete dataset {:?}", request);
 
         let ret = {
-            let mut table = self.joader_table.lock().unwrap();
+            let mut table = self.joader_table.lock().await;
             table.del_joader(&request.into_inner().name)
         };
         Ok(Response::new(DeleteDatasetResponse {

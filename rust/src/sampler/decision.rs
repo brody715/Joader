@@ -1,7 +1,6 @@
-use super::sampler_node::{Node, NodeRef};
+use super::sampler_node::NodeRef;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Decision {
@@ -13,15 +12,13 @@ pub struct Decision {
 
 impl Hash for Decision {
     fn hash<H: Hasher>(&self, _state: &mut H) {
-        unsafe {
-            self.node.get_loader_id().hasher();
-        }
+        self.node.get_loader_id().hasher();
     }
 }
 
 impl PartialEq for Decision {
     fn eq(&self, other: &Self) -> bool {
-        unsafe { self.node.get_loader_id() == other.node.get_loader_id() }
+        self.node.get_loader_id() == other.node.get_loader_id()
     }
 }
 
@@ -38,7 +35,7 @@ impl Decision {
     }
 
     pub fn execute(&mut self) -> u32 {
-        let mut mut_ref = self.node.get_mut_unchecked();
+        let mut_ref = self.node.get_mut_unchecked();
         let (ret, comp) = mut_ref.random_choose(self.loader_ids.clone());
         self.compensation = comp;
         self.item = ret;
@@ -49,8 +46,7 @@ impl Decision {
         if self.compensation.is_empty() {
             return;
         }
-        let mut mut_ref = self
-            .node
+        self.node
             .get_mut_unchecked()
             .complent(&mut self.compensation, self.item);
     }
