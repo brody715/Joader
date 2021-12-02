@@ -202,6 +202,17 @@ impl Node {
             //The first task choose diff
             let mut loader_set = HashSet::new();
             loader_set.insert(loaders[0].0);
+            log::info!(
+                "Dicide: {:?} decide node [{:?}]",
+                loader_set,
+                node.as_ref()
+                    .borrow()
+                    .left
+                    .as_ref()
+                    .unwrap()
+                    .borrow()
+                    .get_loader_id()
+            );
             loaders.remove(0);
             let decision = Decision::new(node.as_ref().borrow().left.clone().unwrap(), loader_set);
             decisions.push(decision);
@@ -238,7 +249,7 @@ impl Node {
         let dist = WeightedIndex::new(&weights).unwrap();
         let intersection = node_set[dist.sample(&mut node.as_ref().borrow_mut().rng)].clone();
         log::info!(
-            "Loaders {:?} choose node [{:?}]",
+            "Dicide: {:?} decide node [{:?}]",
             loader_set,
             intersection.as_ref().borrow().get_loader_id()
         );
@@ -252,7 +263,7 @@ impl Node {
         let choice_item = self.values[choice_idx];
 
         log::info!(
-            "Loaders {:?} choose {:} from node [{:?}:{:?}]",
+            "Choose: {:?} choose {:} from node [{:?}:{:?}]",
             loader_ids,
             choice_item,
             self.loader_id,
@@ -260,10 +271,8 @@ impl Node {
         );
         self.values.remove(choice_idx);
         self.values_set.remove(&choice_item);
-        let mut compensation: HashSet<_> =
+        let compensation: HashSet<_> =
             HashSet::from_iter(self.loader_id.difference(&loader_ids).cloned());
-        self.complent(&mut compensation, choice_item);
-        assert!(compensation.is_empty());
         (choice_item, compensation)
     }
 
@@ -276,7 +285,7 @@ impl Node {
             self.values.push(item as u32);
             self.values_set.insert(item as u32);
             log::info!(
-                "Complent {:?} in node [{:?}:{:?}] with compset {:?}",
+                "Complent: {:?} in node [{:?}:{:?}] with compset {:?}",
                 item,
                 self.loader_id,
                 self.values,

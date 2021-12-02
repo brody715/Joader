@@ -49,6 +49,7 @@ impl SamplerTree {
                 loaders.push(loader.clone())
             }
         }
+        log::info!("Sampler sample {:?}", loaders);
         let mut decisions = Vec::new();
         let mut res = HashMap::<u32, HashSet<u64>>::new();
         Node::decide(
@@ -60,7 +61,13 @@ impl SamplerTree {
 
         for decision in decisions.iter_mut() {
             let ret = decision.execute();
-            res.insert(ret, decision.get_loaders());
+            if let Some(loader_set) = res.get_mut(&ret) {
+                for loader in decision.get_loaders() {
+                    loader_set.insert(loader);
+                }
+            } else {
+                res.insert(ret, decision.get_loaders());
+            }
         }
         for decision in decisions.iter_mut() {
             decision.complent();
@@ -82,8 +89,8 @@ mod tests {
     use std::{iter::FromIterator, time::Instant};
     #[test]
     fn test_sampler() {
-        log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
-        sample(5);
+        // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+        sample(4);
     }
 
     fn sample(tasks: u64) {
@@ -92,10 +99,10 @@ mod tests {
         let mut vec_keys = Vec::<HashSet<u32>>::new();
         let mut map: HashMap<u64, HashSet<u32>> = HashMap::new();
 
-        let sizes = [2, 10, 1, 9, 3];
+        // let sizes = [1, 2, 4, 8, 16];
         for id in 0..tasks {
-            // let size = rng.gen_range(1..20);
-            let size = sizes[id as usize];
+            let size = rng.gen_range(10000..100000);
+            // let size = sizes[id as usize];
             let keys = (0..size).into_iter().collect::<Vec<u32>>();
             vec_keys.push(HashSet::from_iter(keys.iter().cloned()));
             sampler.insert(keys, id);
@@ -106,7 +113,7 @@ mod tests {
         loop {
             let now = Instant::now();
             let res = sampler.sample();
-            time = now.elapsed().as_micros();
+            time = now.elapsed().as_secs_f32();
             if res.is_empty() {
                 break;
             }
