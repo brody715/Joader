@@ -1,3 +1,5 @@
+use crate::sampler::decision;
+
 use super::sampler_node::{Node, NodeRef};
 use std::collections::{HashMap, HashSet};
 
@@ -47,7 +49,7 @@ impl SamplerTree {
                 loaders.push(loader.clone())
             }
         }
-        let mut decisions = HashSet::new();
+        let mut decisions = Vec::new();
         let mut res = HashMap::<u32, HashSet<u64>>::new();
         Node::decide(
             self.root.clone().unwrap(),
@@ -55,15 +57,20 @@ impl SamplerTree {
             &mut decisions,
             vec![],
         );
-        for decision in decisions {
+
+        for decision in decisions.iter_mut() {
             let ret = decision.execute();
             res.insert(ret, decision.get_loaders());
+        }
+        for decision in decisions.iter_mut() {
+            decision.complent();
         }
         for (_, len) in self.loader_set.iter_mut() {
             if *len != 0 {
                 *len -= 1;
             }
         }
+        log::info!("Sampler get {:?}", res);
         res
     }
 }
@@ -75,7 +82,8 @@ mod tests {
     use std::{iter::FromIterator, time::Instant};
     #[test]
     fn test_sampler() {
-        sample(3);
+        log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+        sample(5);
     }
 
     fn sample(tasks: u64) {
@@ -84,8 +92,10 @@ mod tests {
         let mut vec_keys = Vec::<HashSet<u32>>::new();
         let mut map: HashMap<u64, HashSet<u32>> = HashMap::new();
 
+        let sizes = [2, 10, 1, 9, 3];
         for id in 0..tasks {
-            let size = rng.gen_range(1..10);
+            // let size = rng.gen_range(1..20);
+            let size = sizes[id as usize];
             let keys = (0..size).into_iter().collect::<Vec<u32>>();
             vec_keys.push(HashSet::from_iter(keys.iter().cloned()));
             sampler.insert(keys, id);
@@ -114,7 +124,7 @@ mod tests {
     }
     #[test]
     fn test_insert() {
-        insert(124);
+        insert(128);
     }
     fn insert(tasks: u32) {
         let mut sampler = SamplerTree::new();
@@ -122,7 +132,7 @@ mod tests {
         let mut vec_keys = Vec::<Vec<u32>>::new();
 
         for _i in 0..tasks {
-            let size = rng.gen_range(100..1000);
+            let size = rng.gen_range(100..10000);
             let keys = (0..size).into_iter().collect();
             vec_keys.push(keys);
         }

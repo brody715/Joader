@@ -3,6 +3,13 @@ refresh_rate: 30 seconds
 appenders:
   stdout:
     kind: console
+  sampler:
+    kind: file
+    path: "./log/sampler.log"
+    append: false
+    encoder:
+      # log 信息模式
+      pattern: "{d} - {m}{n}"
   cache:
     kind: file
     path: "./log/cache.log"
@@ -21,4 +28,9 @@ loggers:
     level: info
     appenders:
       - cache
+    additive: false
+  joader::sampler:
+    level: info
+    appenders:
+      - sampler
     additive: false

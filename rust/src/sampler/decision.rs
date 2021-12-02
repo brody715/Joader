@@ -1,9 +1,13 @@
 use super::sampler_node::NodeRef;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
+
+#[derive(Clone)]
 pub struct Decision {
     node: NodeRef,
     loader_ids: HashSet<u64>,
+    compensation: HashSet<u64>,
+    item: u32,
 }
 
 impl Hash for Decision {
@@ -22,12 +26,28 @@ impl Eq for Decision {}
 
 impl Decision {
     pub fn new(node: NodeRef, loader_ids: HashSet<u64>) -> Self {
-        Self { node, loader_ids }
+        Self {
+            node,
+            loader_ids,
+            compensation: HashSet::new(),
+            item: 0,
+        }
     }
 
-    pub fn execute(&self) -> u32 {
+    pub fn execute(&mut self) -> u32 {
         let mut mut_ref = self.node.as_ref().borrow_mut();
-        mut_ref.random_choose(self.loader_ids.clone())
+        let (ret, comp) = mut_ref.random_choose(self.loader_ids.clone());
+        self.compensation = comp;
+        self.item = ret;
+        ret
+    }
+
+    pub fn complent(&mut self) {
+        if self.compensation.is_empty() {
+            return;
+        }
+        let mut mut_ref = self.node.as_ref().borrow_mut();
+        mut_ref.complent(&mut self.compensation, self.item);
     }
 
     pub fn get_loaders(&self) -> HashSet<u64> {

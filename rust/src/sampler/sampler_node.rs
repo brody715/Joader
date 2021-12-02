@@ -5,7 +5,7 @@ use rand::{
     Rng,
 };
 use std::{
-    cell::{RefCell, RefMut},
+    cell::{Ref, RefCell, RefMut},
     collections::HashSet,
     iter::FromIterator,
     sync::Arc,
@@ -146,7 +146,7 @@ impl Node {
         pre_len += self.len();
         loader_set.push((*self.loader_id.iter().next().unwrap(), pre_len));
         if let Some(right) = &self.right {
-            let left = self.left.as_ref().unwrap().borrow();
+            let left: Ref<Self> = self.left.as_ref().unwrap().borrow();
             loader_set.pop();
             loader_set.push((
                 *left.get_loader_id().iter().next().unwrap(),
@@ -162,7 +162,7 @@ impl Node {
     pub fn decide(
         node: NodeRef,
         loaders: &mut Vec<(u64, usize)>,
-        decisions: &mut HashSet<Decision>,
+        decisions: &mut Vec<Decision>,
         mut node_set: Vec<NodeRef>,
     ) {
         if loaders.is_empty() {
@@ -204,7 +204,7 @@ impl Node {
             loader_set.insert(loaders[0].0);
             loaders.remove(0);
             let decision = Decision::new(node.as_ref().borrow().left.clone().unwrap(), loader_set);
-            decisions.insert(decision);
+            decisions.push(decision);
         } else {
             // Some tasks choose intersection
             Node::choose_intersection(node.clone(), decisions, decided_loader, &node_set);
@@ -223,7 +223,7 @@ impl Node {
 
     fn choose_intersection(
         node: NodeRef,
-        decisions: &mut HashSet<Decision>,
+        decisions: &mut Vec<Decision>,
         loader_set: HashSet<u64>,
         node_set: &Vec<NodeRef>,
     ) {
@@ -234,31 +234,54 @@ impl Node {
         if weights.iter().sum::<usize>() == 0 {
             return;
         }
+
         let dist = WeightedIndex::new(&weights).unwrap();
         let intersection = node_set[dist.sample(&mut node.as_ref().borrow_mut().rng)].clone();
+        log::info!(
+            "Loaders {:?} choose node [{:?}]",
+            loader_set,
+            intersection.as_ref().borrow().get_loader_id()
+        );
         let decision = Decision::new(intersection, loader_set);
-        decisions.insert(decision);
+        decisions.push(decision);
     }
 
-    pub fn random_choose(&mut self, loader_ids: HashSet<u64>) -> u32 {
+    pub fn random_choose(&mut self, loader_ids: HashSet<u64>) -> (u32, HashSet<u64>) {
         let len = self.values.len();
         let choice_idx = self.rng.gen_range(0..len);
         let choice_item = self.values[choice_idx];
+
+        log::info!(
+            "Loaders {:?} choose {:} from node [{:?}:{:?}]",
+            loader_ids,
+            choice_item,
+            self.loader_id,
+            self.values
+        );
         self.values.remove(choice_idx);
         self.values_set.remove(&choice_item);
         let mut compensation: HashSet<_> =
             HashSet::from_iter(self.loader_id.difference(&loader_ids).cloned());
         self.complent(&mut compensation, choice_item);
         assert!(compensation.is_empty());
-        choice_item
+        (choice_item, compensation)
     }
 
-    fn complent(&mut self, comp: &mut HashSet<u64>, item: u32) {
+    pub fn complent(&mut self, comp: &mut HashSet<u64>, item: u32) {
         if comp.is_empty() {
             return;
         }
         if self.loader_id.is_subset(comp) {
-            self.append_value(item);
+            // We should complent in next turn to avoild sample it in this turn
+            self.values.push(item as u32);
+            self.values_set.insert(item as u32);
+            log::info!(
+                "Complent {:?} in node [{:?}:{:?}] with compset {:?}",
+                item,
+                self.loader_id,
+                self.values,
+                comp
+            );
             for task in &self.loader_id {
                 comp.remove(task);
             }
