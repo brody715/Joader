@@ -7,13 +7,13 @@ package dataloader;
 
 
 message CreateDataloaderRequest {
-    uint32 dataset_id = 1;
-    repeated uint32 keys = 2;
+    string name = 1;
 }
 
 message CreateDataloaderResponse {
-    string shared_mem_file = 2;
+    string shm_path = 2;
     uint64 loader_id = 3;
+    common.Status status = 4;
 }
 
 
