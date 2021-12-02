@@ -10,7 +10,7 @@ use super::data_block::{Data, DataBlock};
 use super::head::{Head, HEAD_SIZE};
 
 pub struct Cache {
-    name: String,
+    shmpath: String,
     capacity: usize,
     head_segment: HeadSegment,
     data_segment: DataSegment,
@@ -18,9 +18,9 @@ pub struct Cache {
 }
 
 impl Cache {
-    pub fn new(capacity: usize, name: String, head_num: u64) -> Cache {
+    pub fn new(capacity: usize, shmpath: String, head_num: u64) -> Cache {
         let (_, addr) = unsafe {
-            let shmpath = name.as_ptr() as *const i8;
+            let shmpath = shmpath.as_ptr() as *const i8;
             let fd = shm_open(shmpath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
             let _res = ftruncate(fd, capacity as off_t);
             let addr = mmap(ptr::null_mut(), capacity, PROT_WRITE, MAP_SHARED, fd, 0);
@@ -36,7 +36,7 @@ impl Cache {
         };
 
         Cache {
-            name,
+            shmpath,
             capacity,
             head_segment,
             data_segment,
@@ -133,9 +133,9 @@ impl Cache {
         self.start_ptr.clone()
     }
 
-    pub fn close(name: String) {
+    pub fn close(shmpath: String) {
         unsafe {
-            let shmpath = name.as_ptr() as *const i8;
+            let shmpath = shmpath.as_ptr() as *const i8;
             shm_unlink(shmpath);
         }
     }
@@ -151,6 +151,10 @@ impl Cache {
         }
         print!("{:?}", self.data_segment.data().as_mut_slice());
         // print data
+    }
+
+    fn get_shm_path(&self) -> &str {
+        &self.shmpath
     }
 }
 

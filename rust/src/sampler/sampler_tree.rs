@@ -1,7 +1,7 @@
 use super::sampler_node::{Node, NodeRef};
 use std::collections::{HashMap, HashSet};
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct SamplerTree {
     root: Option<NodeRef>,
     // (loader_id, loader size)
@@ -96,7 +96,7 @@ mod tests {
 
         // let sizes = [1, 2, 4, 8, 16];
         for id in 0..tasks {
-            let size = rng.gen_range(10000..100000);
+            let size = rng.gen_range(1..200);
             // let size = sizes[id as usize];
             let keys = (0..size).into_iter().collect::<Vec<u32>>();
             vec_keys.push(HashSet::from_iter(keys.iter().cloned()));

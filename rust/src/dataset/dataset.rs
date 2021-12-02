@@ -2,7 +2,7 @@ use crate::{
     cache::cache::Cache,
     proto::dataset::{CreateDatasetRequest, DataItem},
 };
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 
 pub type DatasetRef = Arc<dyn Dataset>;
 
@@ -15,7 +15,7 @@ pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
         name,
     })
 }
-pub trait Dataset: Sync + Send {
+pub trait Dataset: Sync + Send + Debug {
     fn get_name(&self) -> &str;
     fn get_indices(&self) -> Vec<u64>;
     fn read(&self, cache: &mut Cache) -> u64;
@@ -39,7 +39,7 @@ impl Dataset for FileDataset {
         (start..end).collect::<Vec<_>>()
     }
 
-    fn read(&self, cache: &mut Cache) -> u64 {
-        todo!()
+    fn read(&self, cache: &mut Cache, idx: u32) -> u64 {
+        idx as u64
     }
 }
