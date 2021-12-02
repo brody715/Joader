@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0c\x63ommon.proto\x12\x06\x63ommon\"Q\n\x06Status\x12!\n\x04\x63ode\x18\x01 \x01(\x0e\x32\x13.common.Status.Code\x12\x0b\n\x03mes\x18\x02 \x01(\t\"\x17\n\x04\x43ode\x12\x06\n\x02Ok\x10\x00\x12\x07\n\x03\x45rr\x10\x01\x62\x06proto3'
+  serialized_pb=b'\n\x0c\x63ommon.proto\x12\x06\x63ommon\"Q\n\x06Status\x12!\n\x04\x63ode\x18\x01 \x01(\x0e\x32\x13.common.Status.Code\x12\x0b\n\x03msg\x18\x02 \x01(\t\"\x17\n\x04\x43ode\x12\x06\n\x02Ok\x10\x00\x12\x07\n\x03\x45rr\x10\x01\x62\x06proto3'
 )
 
 
@@ -66,7 +66,7 @@ _STATUS = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='mes', full_name='common.Status.mes', index=1,
+      name='msg', full_name='common.Status.msg', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
