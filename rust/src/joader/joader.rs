@@ -4,18 +4,18 @@ use crate::loader::{Rloader, Sloader};
 use crate::sampler::sampler_tree::SamplerTree;
 
 pub struct Joader {
-    // dataset: DatasetRef,
+    dataset: DatasetRef,
     sampler: SamplerTree,
-    // loader_table: HashMap<u64, Sloader>,
+    loader_table: HashMap<u64, Sloader>,
 }
 
 
 impl Joader {
     pub fn new(dataset: DatasetRef) -> Joader {
         Joader {
-            // dataset,
+            dataset,
             sampler: SamplerTree::new(),
-            // loader_table: HashMap::new(),
+            loader_table: HashMap::new(),
         }
     }
 

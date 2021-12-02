@@ -1,8 +1,8 @@
 use super::decision::Decision;
 use rand::{
     distributions::WeightedIndex,
-    prelude::{Distribution, ThreadRng},
-    Rng,
+    prelude::Distribution,
+    thread_rng
 };
 use std::{collections::HashSet, iter::FromIterator, sync::Arc};
 #[derive(Clone, Debug)]
@@ -11,15 +11,24 @@ pub struct Node {
     values_set: HashSet<u32>,
     // The LoaderId set which hold the data in the Node
     loader_id: HashSet<u64>,
-    rng: ThreadRng,
     // The left is smaller task, and the right is larger
     left: Option<NodeRef>,
     right: Option<NodeRef>,
 }
 
+#[inline]
+fn random_probility() -> f32 {
+    rand::random::<f32>()
+}
+
+fn random_weight(weights: &[usize]) -> usize {
+    let dist = WeightedIndex::new(weights).unwrap();
+    dist.sample(&mut thread_rng())
+}
 pub type NodeRef = Arc<Node>;
 
 impl Node {
+    #[inline]
     pub fn get_mut_unchecked<'a>(self: &'a mut NodeRef) -> &'a mut Self {
         unsafe { Arc::get_mut_unchecked(self) }
     }
@@ -29,7 +38,6 @@ impl Node {
             values_set: values.iter().map(|x| *x).collect::<HashSet<u32>>(),
             values,
             loader_id,
-            rng: ThreadRng::default(),
             left: None,
             right: None,
         })
@@ -86,7 +94,6 @@ impl Node {
             values,
             values_set,
             loader_id,
-            rng: rand::thread_rng(),
             left: None,
             right: None,
         })
@@ -185,8 +192,7 @@ impl Node {
         let loaders_cloned = loaders.clone();
         let mut decided_loader = HashSet::new();
         for (id, len) in loaders_cloned.iter().cloned() {
-            let p: f32 = self.get_mut_unchecked().rng.gen();
-            if p >= (last_common as f32) / (len as f32) {
+            if random_probility() >= (last_common as f32) / (len as f32) {
                 break;
             }
             //choose current node
@@ -233,9 +239,7 @@ impl Node {
         if weights.iter().sum::<usize>() == 0 {
             return;
         }
-
-        let dist = WeightedIndex::new(&weights).unwrap();
-        let intersection = node_set[dist.sample(&mut self.get_mut_unchecked().rng)].clone();
+        let intersection = node_set[random_weight(&weights)].clone();
         log::info!(
             "Dicide: {:?} decide node [{:?}]",
             loader_set,
@@ -247,7 +251,7 @@ impl Node {
 
     pub fn random_choose(&mut self, loader_ids: HashSet<u64>) -> (u32, HashSet<u64>) {
         let len = self.values.len();
-        let choice_idx = self.rng.gen_range(0..len);
+        let choice_idx = (random_probility() * (len as f32)) as usize;
         let choice_item = self.values[choice_idx];
 
         log::info!(
