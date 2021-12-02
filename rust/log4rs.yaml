@@ -10,6 +10,13 @@ appenders:
     encoder:
       # log 信息模式
       pattern: "{d} - {m}{n}"
+  joader:
+    kind: file
+    path: "./log/joader.log"
+    append: false
+    encoder:
+      # log 信息模式
+      pattern: "{d} - {m}{n}"
   cache:
     kind: file
     path: "./log/cache.log"
@@ -33,4 +40,9 @@ loggers:
     level: info
     appenders:
       - sampler
+    additive: false
+  joader::joader:
+    level: info
+    appenders:
+      - joader
     additive: false

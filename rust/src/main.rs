@@ -7,6 +7,7 @@ use joader::service::{DataLoaderSvcImpl, DatasetSvcImpl};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::time::{sleep, Duration};
 use tonic::transport::Server;
 
 #[derive(Parser)]
@@ -25,8 +26,16 @@ struct Opts {
 }
 
 async fn start(joader_table: Arc<Mutex<JoaderTable>>) {
+    log::info!("start joader loop ....");
     loop {
-        joader_table.lock().await.next().await
+        let mut joader_table = joader_table.lock().await;
+        if joader_table.is_empty() {
+            log::info!("sleep ....");
+            sleep(Duration::from_millis(500)).await;
+            continue;
+        }
+        log::info!("next ....");
+        joader_table.next().await
     }
 }
 
@@ -43,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let data_loader_svc = DataLoaderSvcImpl::new(joader_table.clone());
 
     // start joader
-    tokio::spawn(async move { start(joader_table) });
+    tokio::spawn(async move { start(joader_table).await });
 
     log::info!("start joader at {:?}......\n", addr);
     Server::builder()

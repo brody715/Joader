@@ -32,6 +32,7 @@ impl JoaderTable {
         Ok(())
     }
     pub fn del_joader(&mut self, name: &str) -> Result<(), String> {
+        log::info!("Del joader {:?}", name);
         if let None = self.joader_table.remove(name) {
             return Err("Dataset has not existed".into());
         }
@@ -45,12 +46,13 @@ impl JoaderTable {
     }
 
     pub fn add_loader(&mut self, loader: Sloader) -> Result<(), String> {
+        log::info!("Add Loader {:?}", loader);
         self.get(loader.get_name())?.add(loader)?;
         Ok(())
     }
 
     pub fn del_loader(&mut self, loader: Rloader) -> Result<(), String> {
-        log::info!("Del Joader {:?}", loader);
+        log::info!("Del Loader {:?}", loader);
         self.get(loader.get_name())?.del(loader);
         Ok(())
     }
