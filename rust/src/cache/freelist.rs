@@ -1,9 +1,11 @@
 use super::head::HEAD_SIZE;
 use std::{
     collections::{HashMap, LinkedList},
-    rc::Rc,
+    sync::Arc,
 };
 
+
+#[derive(Debug)]
 struct Zone {
     start: u64,
     end: u64,
@@ -24,11 +26,13 @@ impl Zone {
     }
 }
 
+
+#[derive(Debug)]
 pub struct FreeList {
     // the list store the start and the end
-    free_list: LinkedList<Rc<Zone>>,
-    start_hash: HashMap<u64, Rc<Zone>>,
-    end_hash: HashMap<u64, Rc<Zone>>,
+    free_list: LinkedList<Arc<Zone>>,
+    start_hash: HashMap<u64, Arc<Zone>>,
+    end_hash: HashMap<u64, Arc<Zone>>,
 }
 
 impl FreeList {
@@ -53,7 +57,7 @@ impl FreeList {
             // |start .. end|old_start .. old_end| => |start .. end|
             end = v.end;
         }
-        self.free_list.push_back(Rc::new(Zone { start, end }));
+        self.free_list.push_back(Arc::new(Zone { start, end }));
         self.start_hash
             .insert(start, self.free_list.back_mut().unwrap().clone());
         self.end_hash
@@ -63,7 +67,7 @@ impl FreeList {
     pub fn get(&mut self) -> Option<(u64, u64)> {
         //Todo(xj): find the biggest block
         // find the block larger than head
-        let mut max_zone: Option<&Rc<Zone>> = None;
+        let mut max_zone: Option<&Arc<Zone>> = None;
         for zone in self.free_list.iter() {
             if self.is_valid(zone) {
                 if let Some(_zone) = max_zone {

@@ -1,6 +1,8 @@
 use crate::cache::head::Head;
 use crate::cache::head::HEAD_SIZE;
 
+
+#[derive(Debug)]
 pub struct HeadSegment {
     head_segment: Vec<Head>,
     // Record the ref cnt of each data in the sampling tree, 64 level
@@ -83,7 +85,7 @@ mod tests {
             head.set(true, i, i as u64);
         }
         for i in 0..1024 {
-            let mut head: Head = bytes[i * HEAD_SIZE as usize..(i + 1) * HEAD_SIZE as usize]
+            let head: Head = bytes[i * HEAD_SIZE as usize..(i + 1) * HEAD_SIZE as usize]
                 .as_mut_ptr()
                 .into();
             let (end, len, off) = head.get();

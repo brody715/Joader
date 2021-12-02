@@ -9,6 +9,7 @@ use std::{ptr, thread, usize};
 use super::data_block::{Data, DataBlock};
 use super::head::{Head, HEAD_SIZE};
 
+#[derive(Debug)]
 pub struct Cache {
     shmpath: String,
     capacity: usize,
@@ -16,6 +17,7 @@ pub struct Cache {
     data_segment: DataSegment,
     start_ptr: *mut u8,
 }
+unsafe impl Send for Cache {}
 
 impl Cache {
     pub fn new(capacity: usize, shmpath: String, head_num: u64) -> Cache {
@@ -140,20 +142,7 @@ impl Cache {
         }
     }
 
-    fn print(&mut self) {
-        // print head
-        for i in 0..self.head_segment.size() / super::head::HEAD_SIZE {
-            unsafe {
-                let head: super::head::Head =
-                    (self.start_ptr.offset((i * super::head::HEAD_SIZE) as isize)).into();
-                print!("{:?}{:?}\n", head.is_readed(), head.get());
-            }
-        }
-        print!("{:?}", self.data_segment.data().as_mut_slice());
-        // print data
-    }
-
-    fn get_shm_path(&self) -> &str {
+    pub fn get_shm_path(&self) -> &str {
         &self.shmpath
     }
 }
@@ -178,7 +167,6 @@ mod test {
             let idx = write(&mut cache, *size, *ref_cnt, 7);
             idx_list.push(idx);
         }
-        cache.print();
         for ((size, _), off) in size_list.iter().zip(idx_list.iter()) {
             let data = read(*off, cache.start_ptr(), 7);
             assert_eq!(data.len(), *size);
@@ -191,7 +179,6 @@ mod test {
             let idx = write(&mut cache, *size, size % 2, 3);
             idx_list.push(idx);
         }
-        cache.print();
         for (size, off) in size_list.iter().zip(idx_list.iter()) {
             let data = read(*off, cache.start_ptr(), 3);
             assert_eq!(data.len(), *size);
@@ -204,7 +191,6 @@ mod test {
             let idx = write(&mut cache, *size, size % 3, 5);
             idx_list.push(idx);
         }
-        cache.print();
         for (size, off) in size_list.iter().zip(idx_list.iter()) {
             let data = read(*off, cache.start_ptr(), 5);
             assert_eq!(data.len(), *size);

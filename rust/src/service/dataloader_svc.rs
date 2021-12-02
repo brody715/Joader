@@ -9,11 +9,21 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::{async_trait, Request, Response, Status};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct DataLoaderSvcImpl {
     joader_table: Arc<Mutex<JoaderTable>>,
     loader_table: Arc<Mutex<HashMap<u64, Rloader>>>,
     id: Arc<Mutex<u64>>,
+}
+
+impl DataLoaderSvcImpl {
+    pub fn new(joader_table: Arc<Mutex<JoaderTable>>) -> Self {
+        Self {
+            joader_table,
+            loader_table: Default::default(),
+            id: Default::default(),
+        }
+    }
 }
 
 #[async_trait]
@@ -51,7 +61,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
 
         let address = {
             let mut loader_table = self.loader_table.lock().await;
-            loader_table.get_mut(&loader_id).unwrap().next().await;
+            loader_table.get_mut(&loader_id).unwrap().next().await
         };
         Ok(Response::new(NextResponse { address }))
     }

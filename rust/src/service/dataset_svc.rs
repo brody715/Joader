@@ -7,10 +7,19 @@ use tokio::sync::Mutex;
 use tonic::{async_trait, Request, Response, Status};
 
 use super::to_status;
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct DatasetSvcImpl {
     joader_table: Arc<Mutex<JoaderTable>>,
 }
+
+impl DatasetSvcImpl {
+    pub fn new(joader_table: Arc<Mutex<JoaderTable>>) -> DatasetSvcImpl {
+        DatasetSvcImpl {
+            joader_table,
+        }
+    }
+}
+
 
 #[async_trait]
 impl DatasetSvc for DatasetSvcImpl {

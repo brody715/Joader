@@ -2,6 +2,8 @@ use crate::cache::freelist::FreeList;
 
 use super::data_block::Data;
 
+
+#[derive(Debug)]
 pub struct DataSegment {
     data: Data,
     free_list: FreeList,
@@ -35,10 +37,6 @@ impl DataSegment {
     pub fn free(&mut self, off: u64, len: u64) {
         log::info!("Free data [{:}, {:})", off, off + len);
         self.free_list.insert(off, len)
-    }
-
-    pub fn data(&mut self) -> Data {
-        self.data
     }
 }
 

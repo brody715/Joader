@@ -23,7 +23,7 @@ impl Joader {
     pub fn next(&mut self, cache: &mut Cache) {
         let data_table = self.sampler.sample();
         for (data, loader_ids) in &data_table {
-            let addr = self.dataset.read(cache);
+            let addr = self.dataset.read(cache, *data);
             for id in loader_ids {
                 self.loader_table[id].send(addr);
             }
@@ -44,5 +44,9 @@ impl Joader {
 
     pub fn get_name(&self) -> &str {
         self.dataset.get_name()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.sampler.is_empty()
     }
 }

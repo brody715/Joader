@@ -7,7 +7,7 @@ use crate::{
 
 use super::joader::Joader;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct JoaderTable {
     // Joader is hash by the name of dataset
     joader_table: HashMap<String, Joader>,
@@ -44,14 +44,30 @@ impl JoaderTable {
     }
 
     pub fn add_loader(&mut self, loader: Sloader) -> Result<(), String> {
-        self.get(loader.get_name())?.add(loader);
+        self.get(loader.get_name())?.add(loader)?;
         Ok(())
     }
+
     pub fn del_loader(&mut self, loader: Rloader) -> Result<(), String> {
         self.get(loader.get_name())?.del(loader);
         Ok(())
     }
+
     pub fn get_shm_path(&self) -> String {
-        self.cache.get_shm_path().to_owned()
+        self.cache.get_shm_path().to_string()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        let mut empty = true;
+        for (_, joader) in self.joader_table.iter() {
+            empty &= joader.is_empty();
+        }
+        empty
+    }
+
+    pub async fn next(&mut self) {
+        for (_, joader) in self.joader_table.iter_mut() {
+            joader.next(&mut self.cache);
+        }
     }
 }

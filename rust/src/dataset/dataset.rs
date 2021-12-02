@@ -18,7 +18,7 @@ pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
 pub trait Dataset: Sync + Send + Debug {
     fn get_name(&self) -> &str;
     fn get_indices(&self) -> Vec<u64>;
-    fn read(&self, cache: &mut Cache) -> u64;
+    fn read(&self, cache: &mut Cache, idx: u32) -> u64;
 }
 
 #[derive(Clone, Default, Debug)]
@@ -39,7 +39,7 @@ impl Dataset for FileDataset {
         (start..end).collect::<Vec<_>>()
     }
 
-    fn read(&self, cache: &mut Cache, idx: u32) -> u64 {
+    fn read(&self, _cache: &mut Cache, idx: u32) -> u64 {
         idx as u64
     }
 }

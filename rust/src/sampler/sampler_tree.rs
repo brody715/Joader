@@ -75,6 +75,16 @@ impl SamplerTree {
         log::info!("Sampler get {:?}", res);
         res
     }
+
+    pub fn is_empty(&self) -> bool {
+        let mut loaders = Vec::new();
+        for loader in &self.loader_set {
+            if loader.1 != 0 {
+                loaders.push(loader.clone())
+            }
+        }
+        loaders.is_empty()
+    }
 }
 
 #[cfg(test)]
