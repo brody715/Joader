@@ -109,7 +109,7 @@ impl Cache {
         }
     }
 
-    pub fn contains_data(&self, data: String) -> Option<usize> {
+    pub fn contains_data(&self, data: &str) -> Option<usize> {
         self.cached_data.contains(data)
     }
 

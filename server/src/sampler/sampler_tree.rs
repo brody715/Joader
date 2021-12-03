@@ -85,6 +85,10 @@ impl SamplerTree {
         }
         loaders.is_empty()
     }
+
+    pub fn get_loader_values(&self, loader_id: u64) -> Vec<u32> {
+        self.root.as_ref().unwrap().get_loader_values(loader_id)
+    }
 }
 
 #[cfg(test)]

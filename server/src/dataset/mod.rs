@@ -8,7 +8,7 @@ use std::{fmt::Debug, sync::Arc};
 pub trait Dataset: Sync + Send + Debug {
     fn get_name(&self) -> &str;
     fn get_indices(&self) -> Vec<u32>;
-    fn read(&self, cache: &mut Cache, idx: u32) -> u64;
+    fn read(&self, cache: &mut Cache, idx: u32, ref_cnt: usize) -> u64;
 }
 pub type DatasetRef = Arc<dyn Dataset>;
 

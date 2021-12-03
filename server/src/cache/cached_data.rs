@@ -26,8 +26,8 @@ impl CachedData {
         log::debug!("Free data {:?} in {:?}", head, data);
     }
 
-    pub fn contains(&self, data: String) -> Option<usize> {
+    pub fn contains(&self, data: &str) -> Option<usize> {
         log::debug!("Hit data {:?}", data);
-        self.data2head.get(&data).map(|x| *x)
+        self.data2head.get(data).map(|x| *x)
     }
 }

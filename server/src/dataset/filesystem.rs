@@ -39,7 +39,7 @@ impl Dataset for FileDataset {
         (start..end).collect::<Vec<_>>()
     }
 
-    fn read(&self, _cache: &mut Cache, idx: u32) -> u64 {
+    fn read(&self, _cache: &mut Cache, idx: u32, ref_cnt: usize) -> u64 {
         idx as u64
     }
 }
