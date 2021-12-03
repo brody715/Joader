@@ -1,10 +1,10 @@
+use super::Dataset;
+use super::DatasetRef;
 use crate::{
     cache::cache::Cache,
     proto::dataset::{CreateDatasetRequest, DataItem},
 };
 use std::{fmt::Debug, sync::Arc};
-use super::Dataset;
-use super::DatasetRef;
 
 #[derive(Clone, Default, Debug)]
 pub struct FileDataset {
@@ -12,8 +12,6 @@ pub struct FileDataset {
     root: String,
     name: String,
 }
-
-
 
 pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
     let name = request.name;
@@ -24,9 +22,6 @@ pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
         name,
     })
 }
-
-
-
 
 impl Dataset for FileDataset {
     fn get_name(&self) -> &str {
@@ -39,7 +34,7 @@ impl Dataset for FileDataset {
         (start..end).collect::<Vec<_>>()
     }
 
-    fn read(&self, _cache: &mut Cache, idx: u32, ref_cnt: usize) -> u64 {
+    fn read(&self, _cache: &mut Cache, idx: u32, _ref_cnt: usize) -> u64 {
         idx as u64
     }
 }
