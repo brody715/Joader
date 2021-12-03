@@ -46,3 +46,13 @@ loggers:
     appenders:
       - joader
     additive: false
+  joader::loader:
+    level: info
+    appenders:
+      - joader
+    additive: false
+  joader::dataset:
+    level: info
+    appenders:
+      - joader
+    additive: false

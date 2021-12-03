@@ -36,11 +36,11 @@ impl Joader {
 
     pub fn add(&mut self, s: Sloader) -> Result<u64, String> {
         let id = s.get_id();
+        if self.loader_table.contains_key(&id) {
+            return Err(format!("Loader {:?} has existed", id));
+        }
         self.loader_table.insert(id, s);
         self.sampler.insert(self.dataset.get_indices(), id);
-        if self.loader_table.contains_key(&id) {
-            return Err("Loader has existed".into());
-        }
         Ok(id)
     }
 

@@ -1,7 +1,8 @@
 *.log
 parse_tools/
 __pycache__/
+client/__pycache__
 test/
 .vscode/
-rust/target/
-rust/log/
+server/target/
+server/log/

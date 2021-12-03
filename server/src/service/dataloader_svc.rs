@@ -56,7 +56,6 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         }))
     }
     async fn next(&self, request: Request<NextRequest>) -> Result<Response<NextResponse>, Status> {
-        log::info!("call next {:?}", request);
         let loader_id = request.into_inner().loader_id;
 
         let address = {

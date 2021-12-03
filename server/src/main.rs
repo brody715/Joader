@@ -34,7 +34,6 @@ async fn start(joader_table: Arc<Mutex<JoaderTable>>) {
             sleep(Duration::from_millis(500)).await;
             continue;
         }
-        log::info!("next ....");
         joader_table.next().await
     }
 }

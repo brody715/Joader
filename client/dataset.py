@@ -4,7 +4,7 @@ sys.path.append("./proto")
 import proto.dataset_pb2 as dataset_pb2
 import proto.dataset_pb2_grpc as dataset_pb2_grpc
 
-len = 100
+len = 10000
 
 
 def gen_dataset(len: int):
