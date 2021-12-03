@@ -5,5 +5,8 @@ client/__pycache__
 test/
 .vscode/
 ./client/vscode/
+client/dataset/__pycache__
+client/loader/__pycache__
+
 server/target/
 server/log/

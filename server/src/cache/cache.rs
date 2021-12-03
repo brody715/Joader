@@ -28,6 +28,8 @@ impl Cache {
             let fd = shm_open(shmpath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
             let _res = ftruncate(fd, capacity as off_t);
             let addr = mmap(ptr::null_mut(), capacity, PROT_WRITE, MAP_SHARED, fd, 0);
+            // Todo(xj): It's just avoid empty file, we should add a magic code in the front of the file
+            *(addr as *mut u8).offset(3) = 5u8;
             (fd, addr as *mut u8)
         };
         let head_segment = HeadSegment::new(addr, head_num);

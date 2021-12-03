@@ -1,19 +1,20 @@
+from dataset.dataset import Dataset, DatasetType
+from loader.loader import Loader
 import grpc
-from loader import *
-from dataset import *
+
+
 channel = grpc.insecure_channel('127.0.0.1:4321')
 name = "ImageNet"
-
+len = 100
 if __name__ == "__main__":
-    create_dataset(channel, name)
-    loader_id1 = create_loader(channel, name)
-    loader_id2 = create_loader(channel, name)
-    data1 = load_data(channel, loader_id1, len)
-    data2 = load_data(channel, loader_id2, len)
-    data1.sort()
-    data2.sort()
-    assert(data1 == list(range(len)))
-    assert(data2 == list(range(len)))
-    delete_loader(channel, loader_id1)
-    delete_loader(channel, loader_id2)
-    delete_dataset(channel, name)
+    ds = Dataset(name=name, ty=DatasetType.DUMMY)
+    for i in range(0, len):
+        ds.add_item([str(i)])
+    ds.create(channel)
+
+    loader = Loader(dataset_name=name, len=len, channel=channel)
+    for i in range(len):
+        print(loader.next())
+
+    loader.delete()
+    ds.delete(channel)
