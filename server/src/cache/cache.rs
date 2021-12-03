@@ -93,6 +93,7 @@ impl Cache {
                 return data;
             }
             thread::sleep(time::Duration::from_secs_f32(0.01));
+            log::info!("Loop in allocate data");
         }
     }
 
@@ -108,6 +109,7 @@ impl Cache {
                 return (head, idx);
             }
             thread::sleep(time::Duration::from_secs_f32(0.01));
+            log::info!("Loop in allocate head");
         }
     }
 

@@ -1,9 +1,8 @@
 import sys
-sys.path.append("./proto")
-
-from enum import Enum
-import proto.dataset_pb2_grpc as dataset_pb2_grpc
+sys.path.append("./proto/")
 import proto.dataset_pb2 as dataset_pb2
+import proto.dataset_pb2_grpc as dataset_pb2_grpc
+from enum import Enum
 
 
 
@@ -20,6 +19,14 @@ class Dataset(object):
 
     def __init__(self, name: str, ty: DatasetType):
         self.name = name
+        if ty == DatasetType.FILESYSTEM:
+            self.ty = dataset_pb2.CreateDatasetRequest.FILESYSTEM
+        elif ty == DatasetType.DUMMY:
+            self.ty = dataset_pb2.CreateDatasetRequest.DUMMY
+        elif ty == DatasetType.LMDB:
+            self.ty = dataset_pb2.CreateDatasetRequest.LMDB
+        else:
+            assert False, "Dataset unsupported type!"
         self.type = ty
         self.items = []
 
@@ -30,7 +37,7 @@ class Dataset(object):
         client = dataset_pb2_grpc.DatasetSvcStub(channel)
         request = dataset_pb2.CreateDatasetRequest(
             name=self.name,
-            type=dataset_pb2.CreateDatasetRequest.FILESYSTEM,
+            type=self.ty,
             items=self.items,
             weights=[])
         return client.CreateDataset(request)
