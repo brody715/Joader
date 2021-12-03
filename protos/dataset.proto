@@ -7,13 +7,14 @@ message DataItem {
 }
 
 message CreateDatasetRequest {
-    enum FileType {
+    enum Type {
         FILESYSTEM = 0;
         LMDB=1;
+        DUMMY=2;  // It's for tests
     }
 
     string name = 1;
-    FileType type = 2;
+    Type type = 2;
     repeated DataItem items = 3;
     repeated uint32 weights = 4;
 }

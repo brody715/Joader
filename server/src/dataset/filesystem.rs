@@ -3,8 +3,17 @@ use crate::{
     proto::dataset::{CreateDatasetRequest, DataItem},
 };
 use std::{fmt::Debug, sync::Arc};
+use super::Dataset;
+use super::DatasetRef;
 
-pub type DatasetRef = Arc<dyn Dataset>;
+#[derive(Clone, Default, Debug)]
+pub struct FileDataset {
+    items: Vec<DataItem>,
+    root: String,
+    name: String,
+}
+
+
 
 pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
     let name = request.name;
@@ -15,18 +24,9 @@ pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
         name,
     })
 }
-pub trait Dataset: Sync + Send + Debug {
-    fn get_name(&self) -> &str;
-    fn get_indices(&self) -> Vec<u32>;
-    fn read(&self, cache: &mut Cache, idx: u32) -> u64;
-}
 
-#[derive(Clone, Default, Debug)]
-pub struct FileDataset {
-    items: Vec<DataItem>,
-    root: String,
-    name: String,
-}
+
+
 
 impl Dataset for FileDataset {
     fn get_name(&self) -> &str {

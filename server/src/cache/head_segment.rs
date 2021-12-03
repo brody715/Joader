@@ -46,7 +46,7 @@ impl HeadSegment {
 
     // only free the unvalid head
     // travel from the lowest level, if all table is valid. return None
-    pub fn free(&mut self) -> Option<Vec<Head>> {
+    pub fn free(&mut self) -> Option<Vec<(Head, usize)>> {
         let mut ret = Vec::new();
         for heads in self.ref_table.iter_mut() {
             if heads.len() == 0 {
@@ -59,7 +59,7 @@ impl HeadSegment {
                 if head.is_readed() {
                     log::info!("Free head {:?} {:?}{:?}", idx, head.is_readed(), head.get());
                     head.set_free();
-                    ret.push(head.clone());
+                    ret.push((head.clone(), *idx));
                 } else {
                     heads.push(*idx);
                 };

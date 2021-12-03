@@ -30,7 +30,7 @@ impl DatasetSvc for DatasetSvcImpl {
     ) -> Result<Response<CreateDatasetResponse>, Status> {
         log::info!("call create dataset {:?}", request);
         // insert dataset to dataset table
-        let joader = Joader::new(dataset::from_proto(request.into_inner()));
+        let joader = Joader::new(dataset::build_dataset(request.into_inner()));
         let ret = self.joader_table.lock().await.add_joader(joader);
         Ok(Response::new(CreateDatasetResponse {
             status: Some(to_status(&ret)),

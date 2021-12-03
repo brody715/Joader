@@ -7,7 +7,7 @@ pub struct DataItem {
 pub struct CreateDatasetRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    #[prost(enumeration = "create_dataset_request::FileType", tag = "2")]
+    #[prost(enumeration = "create_dataset_request::Type", tag = "2")]
     pub r#type: i32,
     #[prost(message, repeated, tag = "3")]
     pub items: ::prost::alloc::vec::Vec<DataItem>,
@@ -18,9 +18,11 @@ pub struct CreateDatasetRequest {
 pub mod create_dataset_request {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
-    pub enum FileType {
+    pub enum Type {
         Filesystem = 0,
         Lmdb = 1,
+        /// It's for tests
+        Dummy = 2,
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]

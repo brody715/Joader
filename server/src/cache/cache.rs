@@ -1,3 +1,4 @@
+use crate::cache::cached_data::CachedData;
 use crate::cache::data_segment::DataSegment;
 use crate::cache::head_segment::HeadSegment;
 use core::time;
@@ -15,6 +16,7 @@ pub struct Cache {
     capacity: usize,
     head_segment: HeadSegment,
     data_segment: DataSegment,
+    cached_data: CachedData,
     start_ptr: *mut u8,
 }
 unsafe impl Send for Cache {}
@@ -43,12 +45,14 @@ impl Cache {
             head_segment,
             data_segment,
             start_ptr: addr,
+            cached_data: CachedData::new(),
         }
     }
 
     fn free(&mut self) {
         if let Some(mut unvalid_heads) = self.head_segment.free() {
-            for head in unvalid_heads.iter_mut() {
+            for (head, idx) in unvalid_heads.iter_mut() {
+                self.cached_data.remove(*idx);
                 let (mut end, mut len, mut off) = head.get();
                 loop {
                     self.data_segment.free(off, len as u64);
@@ -105,7 +109,16 @@ impl Cache {
         }
     }
 
-    pub fn next_block(&mut self, block: Option<DataBlock>, ref_cnt: usize) -> (DataBlock, usize) {
+    pub fn contains_data(&self, data: String) -> Option<usize> {
+        self.cached_data.contains(data)
+    }
+
+    pub fn next_block(
+        &mut self,
+        block: Option<DataBlock>,
+        ref_cnt: usize,
+        data_name: &str,
+    ) -> (DataBlock, usize) {
         let data = self.allocate_data();
         // next block
         if let Some(mut block) = block {
@@ -121,6 +134,7 @@ impl Cache {
         }
         // first block
         let (head, idx) = self.allocate_head(ref_cnt);
+        self.cached_data.add(idx, data_name);
         return (
             DataBlock {
                 head,
@@ -163,8 +177,8 @@ mod test {
 
         let size_list = &[(20, 0), (27, 1), (60, 2), (20, 3)];
         let mut idx_list = vec![];
-        for (size, ref_cnt) in size_list {
-            let idx = write(&mut cache, *size, *ref_cnt, 7);
+        for (idx, (size, ref_cnt)) in size_list.iter().enumerate() {
+            let idx = write(&mut cache, *size, *ref_cnt, 7, &idx.to_string());
             idx_list.push(idx);
         }
         for ((size, _), off) in size_list.iter().zip(idx_list.iter()) {
@@ -175,8 +189,8 @@ mod test {
         // some data should be free
         let size_list = &[40, 38];
         let mut idx_list = vec![];
-        for size in size_list {
-            let idx = write(&mut cache, *size, size % 2, 3);
+        for (idx, size) in size_list.iter().enumerate() {
+            let idx = write(&mut cache, *size, size % 2, 3, &idx.to_string());
             idx_list.push(idx);
         }
         for (size, off) in size_list.iter().zip(idx_list.iter()) {
@@ -187,8 +201,8 @@ mod test {
         // some data should be free
         let size_list = &[127];
         let mut idx_list = vec![];
-        for size in size_list {
-            let idx = write(&mut cache, *size, size % 3, 5);
+        for (idx, size) in size_list.iter().enumerate() {
+            let idx = write(&mut cache, *size, size % 3, 5, &idx.to_string());
             idx_list.push(idx);
         }
         for (size, off) in size_list.iter().zip(idx_list.iter()) {
@@ -229,7 +243,13 @@ mod test {
     fn writer_func(mut cache: Cache, turn: usize, wc: Sender<usize>) {
         let mut start = SystemTime::now();
         for i in 1..turn {
-            let idx = write(&mut cache, i * HEAD_SIZE as usize, (i % 3) as usize, 7);
+            let idx = write(
+                &mut cache,
+                i * HEAD_SIZE as usize,
+                (i % 3) as usize,
+                7,
+                &i.to_string(),
+            );
             wc.send(idx).unwrap();
             if i % 1000 == 0 {
                 println!(
@@ -260,8 +280,14 @@ mod test {
         drop(rc);
     }
 
-    fn write(cache: &mut Cache, mut len: usize, ref_cnt: usize, value: u8) -> usize {
-        let (mut block, idx) = cache.next_block(None, ref_cnt);
+    fn write(
+        cache: &mut Cache,
+        mut len: usize,
+        ref_cnt: usize,
+        value: u8,
+        data_name: &str,
+    ) -> usize {
+        let (mut block, idx) = cache.next_block(None, ref_cnt, data_name);
         let mut block_slice = block.as_mut_slice();
         let mut write_size = min(len, block_slice.len());
         (0..write_size).fold((), |_, i| block_slice[i] = value);
@@ -277,7 +303,7 @@ mod test {
             if let Some(_b) = remain_block {
                 block = _b;
             } else {
-                block = cache.next_block(Some(last_block), 0).0;
+                block = cache.next_block(Some(last_block), 0, data_name).0;
             }
             block_slice = block.as_mut_slice();
             write_size = min(len, block_slice.len());
