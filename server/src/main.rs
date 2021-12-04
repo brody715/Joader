@@ -21,9 +21,10 @@ struct Opts {
     host: String,
     #[clap(long, default_value = "DLCache")]
     shm_path: String,
-    #[clap(long, default_value = "128")]
+    #[clap(long, default_value = "2048")]
     head_num: u64,
-    #[clap(long, default_value = "1048576")]
+    // 1GB
+    #[clap(long, default_value = "1151022592")]
     cache_capacity: usize,
 }
 

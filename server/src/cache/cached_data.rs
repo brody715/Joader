@@ -23,7 +23,7 @@ impl CachedData {
     pub fn remove(&mut self, head: usize) {
         let data = self.head2data.remove(&head).unwrap();
         self.data2head.remove(&data).unwrap();
-        log::debug!("Free data {:?} in {:?}", head, data);
+        log::debug!("Delete data head: {:?} name:{:?} in cache", head, data);
     }
 
     pub fn contains(&self, data: &str) -> Option<usize> {

@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-
 #[derive(Debug)]
 struct Zone {
     start: u64,
@@ -25,7 +24,6 @@ impl Zone {
         self.end - self.start
     }
 }
-
 
 #[derive(Debug)]
 pub struct FreeList {
@@ -62,6 +60,12 @@ impl FreeList {
             .insert(start, self.free_list.back_mut().unwrap().clone());
         self.end_hash
             .insert(end, self.free_list.back_mut().unwrap().clone());
+        log::debug!(
+            "Free_List: {:?} start_hash: {:?} end_hash: {:?}",
+            self.start_hash.values(),
+            self.start_hash.keys(),
+            self.end_hash.keys()
+        );
     }
 
     pub fn get(&mut self) -> Option<(u64, u64)> {
