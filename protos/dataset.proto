@@ -12,11 +12,12 @@ message CreateDatasetRequest {
         LMDB=1;
         DUMMY=2;  // It's for tests
     }
-
+    // It will identify the dataset
     string name = 1;
-    Type type = 2;
-    repeated DataItem items = 3;
-    repeated uint32 weights = 4;
+    string location = 2;
+    Type type = 3;
+    repeated DataItem items = 4;
+    repeated uint32 weights = 5;
 }
 
 message CreateDatasetResponse {

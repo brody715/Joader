@@ -5,13 +5,16 @@ pub struct DataItem {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDatasetRequest {
+    /// It will identify the dataset
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    #[prost(enumeration = "create_dataset_request::Type", tag = "2")]
+    #[prost(string, tag = "2")]
+    pub location: ::prost::alloc::string::String,
+    #[prost(enumeration = "create_dataset_request::Type", tag = "3")]
     pub r#type: i32,
-    #[prost(message, repeated, tag = "3")]
+    #[prost(message, repeated, tag = "4")]
     pub items: ::prost::alloc::vec::Vec<DataItem>,
-    #[prost(uint32, repeated, tag = "4")]
+    #[prost(uint32, repeated, tag = "5")]
     pub weights: ::prost::alloc::vec::Vec<u32>,
 }
 /// Nested message and enum types in `CreateDatasetRequest`.

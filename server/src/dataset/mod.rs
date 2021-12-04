@@ -1,4 +1,6 @@
 mod filesystem;
+mod lmdb;
+pub use lmdb::*;
 pub use filesystem::*;
 mod dummy;
 use crate::cache::cache::Cache;
@@ -17,6 +19,6 @@ pub fn build_dataset(request: CreateDatasetRequest) -> DatasetRef {
     match t {
         Type::Dummy => dummy::from_proto(request),
         Type::Filesystem => filesystem::from_proto(request),
-        Type::Lmdb => todo!(),
+        Type::Lmdb => lmdb::from_proto(request),
     }
 }

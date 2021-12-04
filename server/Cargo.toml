@@ -21,6 +21,7 @@ protobuf = "2"
 tonic = "0.5"
 clap = "3.0.0-beta.3"
 ctrlc = "3.2.1"
+lmdb-zero = "0.4.4"
 
 [build-dependencies]
 tonic-build = "0.5"
