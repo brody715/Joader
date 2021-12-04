@@ -17,8 +17,9 @@ class Dataset(object):
     name: str
     items: list
 
-    def __init__(self, name: str, ty: DatasetType):
+    def __init__(self, name: str, location: str, ty: DatasetType):
         self.name = name
+        self.location = location
         if ty == DatasetType.FILESYSTEM:
             self.ty = dataset_pb2.CreateDatasetRequest.FILESYSTEM
         elif ty == DatasetType.DUMMY:
@@ -27,7 +28,6 @@ class Dataset(object):
             self.ty = dataset_pb2.CreateDatasetRequest.LMDB
         else:
             assert False, "Dataset unsupported type!"
-        self.type = ty
         self.items = []
 
     def add_item(self, item: list):
@@ -37,6 +37,7 @@ class Dataset(object):
         client = dataset_pb2_grpc.DatasetSvcStub(channel)
         request = dataset_pb2.CreateDatasetRequest(
             name=self.name,
+            location=self.location,
             type=self.ty,
             items=self.items,
             weights=[])

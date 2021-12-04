@@ -1,9 +1,11 @@
+import sys
+sys.path.append("./proto")
+
 import proto.dataloader_pb2 as dataloader_pb2
 import proto.dataloader_pb2_grpc as dataloader_pb2_grpc
 
 from loader.shm import SharedMemory
-import sys
-sys.path.append("./proto")
+
 
 
 class Loader(object):
@@ -17,7 +19,6 @@ class Loader(object):
         self.shm_path = resp.shm_path
         self.shm = SharedMemory(self.shm_path)
         self.buf = self.shm.buf
-
         self.HEAD_SIZE = 16
         self.END = 0
         self.READ = 1
@@ -29,13 +30,13 @@ class Loader(object):
 
     def read_header(self, address):
         end = self.buf[address+self.END] == 1
-        self.buf[address+self.READ] = 0
         len = int.from_bytes(
             self.buf[address+self.LEN:address+self.OFF], 'big')
         v = []
         v.extend(self.buf[address+self.OFF:self.HEAD_SIZE])
-        off = int.from_bytes(self.buf[address+self.OFF:address+self.HEAD_SIZE], 'big')
-        # print(end, off, len)
+        off = int.from_bytes(
+            self.buf[address+self.OFF:address+self.HEAD_SIZE], 'big')
+        print(end, off, len)
         return end, off, len
 
     def read_data(self, address):
@@ -48,10 +49,13 @@ class Loader(object):
             else:
                 data.extend(self.buf[off:off+len-self.HEAD_SIZE])
                 end, off, len = self.read_header(
-                    address+off+len-self.HEAD_SIZE)
+                    off+len-self.HEAD_SIZE)
+        # read finish
+        self.buf[address+self.READ] = 0
         return data
 
     def read(self, address):
+        # print(address)
         return self.read_data(address*self.HEAD_SIZE)
 
     def next(self):

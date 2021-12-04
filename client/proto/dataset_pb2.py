@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\rdataset.proto\x12\x07\x64\x61taset\x1a\x0c\x63ommon.proto\"\x18\n\x08\x44\x61taItem\x12\x0c\n\x04keys\x18\x01 \x03(\t\"\xb6\x01\n\x14\x43reateDatasetRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x30\n\x04type\x18\x02 \x01(\x0e\x32\".dataset.CreateDatasetRequest.Type\x12 \n\x05items\x18\x03 \x03(\x0b\x32\x11.dataset.DataItem\x12\x0f\n\x07weights\x18\x04 \x03(\r\"+\n\x04Type\x12\x0e\n\nFILESYSTEM\x10\x00\x12\x08\n\x04LMDB\x10\x01\x12\t\n\x05\x44UMMY\x10\x02\"7\n\x15\x43reateDatasetResponse\x12\x1e\n\x06status\x18\x02 \x01(\x0b\x32\x0e.common.Status\"$\n\x14\x44\x65leteDatasetRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"7\n\x15\x44\x65leteDatasetResponse\x12\x1e\n\x06status\x18\x02 \x01(\x0b\x32\x0e.common.Status2\xac\x01\n\nDatasetSvc\x12N\n\rCreateDataset\x12\x1d.dataset.CreateDatasetRequest\x1a\x1e.dataset.CreateDatasetResponse\x12N\n\rDeleteDataset\x12\x1d.dataset.DeleteDatasetRequest\x1a\x1e.dataset.DeleteDatasetResponseb\x06proto3'
+  serialized_pb=b'\n\rdataset.proto\x12\x07\x64\x61taset\x1a\x0c\x63ommon.proto\"\x18\n\x08\x44\x61taItem\x12\x0c\n\x04keys\x18\x01 \x03(\t\"\xc8\x01\n\x14\x43reateDatasetRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08location\x18\x02 \x01(\t\x12\x30\n\x04type\x18\x03 \x01(\x0e\x32\".dataset.CreateDatasetRequest.Type\x12 \n\x05items\x18\x04 \x03(\x0b\x32\x11.dataset.DataItem\x12\x0f\n\x07weights\x18\x05 \x03(\r\"+\n\x04Type\x12\x0e\n\nFILESYSTEM\x10\x00\x12\x08\n\x04LMDB\x10\x01\x12\t\n\x05\x44UMMY\x10\x02\"7\n\x15\x43reateDatasetResponse\x12\x1e\n\x06status\x18\x02 \x01(\x0b\x32\x0e.common.Status\"$\n\x14\x44\x65leteDatasetRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"7\n\x15\x44\x65leteDatasetResponse\x12\x1e\n\x06status\x18\x02 \x01(\x0b\x32\x0e.common.Status2\xac\x01\n\nDatasetSvc\x12N\n\rCreateDataset\x12\x1d.dataset.CreateDatasetRequest\x1a\x1e.dataset.CreateDatasetResponse\x12N\n\rDeleteDataset\x12\x1d.dataset.DeleteDatasetRequest\x1a\x1e.dataset.DeleteDatasetResponseb\x06proto3'
   ,
   dependencies=[common__pb2.DESCRIPTOR,])
 
@@ -51,8 +51,8 @@ _CREATEDATASETREQUEST_TYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=206,
-  serialized_end=249,
+  serialized_start=224,
+  serialized_end=267,
 )
 _sym_db.RegisterEnumDescriptor(_CREATEDATASETREQUEST_TYPE)
 
@@ -105,22 +105,29 @@ _CREATEDATASETREQUEST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='type', full_name='dataset.CreateDatasetRequest.type', index=1,
-      number=2, type=14, cpp_type=8, label=1,
+      name='location', full_name='dataset.CreateDatasetRequest.location', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='type', full_name='dataset.CreateDatasetRequest.type', index=2,
+      number=3, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='items', full_name='dataset.CreateDatasetRequest.items', index=2,
-      number=3, type=11, cpp_type=10, label=3,
+      name='items', full_name='dataset.CreateDatasetRequest.items', index=3,
+      number=4, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='weights', full_name='dataset.CreateDatasetRequest.weights', index=3,
-      number=4, type=13, cpp_type=3, label=3,
+      name='weights', full_name='dataset.CreateDatasetRequest.weights', index=4,
+      number=5, type=13, cpp_type=3, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -139,7 +146,7 @@ _CREATEDATASETREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=67,
-  serialized_end=249,
+  serialized_end=267,
 )
 
 
@@ -170,8 +177,8 @@ _CREATEDATASETRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=251,
-  serialized_end=306,
+  serialized_start=269,
+  serialized_end=324,
 )
 
 
@@ -202,8 +209,8 @@ _DELETEDATASETREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=308,
-  serialized_end=344,
+  serialized_start=326,
+  serialized_end=362,
 )
 
 
@@ -234,8 +241,8 @@ _DELETEDATASETRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=346,
-  serialized_end=401,
+  serialized_start=364,
+  serialized_end=419,
 )
 
 _CREATEDATASETREQUEST.fields_by_name['type'].enum_type = _CREATEDATASETREQUEST_TYPE
@@ -294,8 +301,8 @@ _DATASETSVC = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=404,
-  serialized_end=576,
+  serialized_start=422,
+  serialized_end=594,
   methods=[
   _descriptor.MethodDescriptor(
     name='CreateDataset',
