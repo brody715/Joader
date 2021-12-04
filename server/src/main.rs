@@ -29,7 +29,7 @@ struct Opts {
 }
 
 async fn start(joader_table: Arc<Mutex<JoaderTable>>) {
-    log::info!("start joader loop ....");
+    println!("start joader loop ....");
     loop {
         let mut joader_table = joader_table.lock().await;
         if joader_table.is_empty() {
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let shmpath = shm_path.as_ptr() as *const i8;
             shm_unlink(shmpath);
         };
-        log::info!("Close {:?} sucess", shm_path);
+        println!("Close {:?} sucess", shm_path);
         process::exit(1);
     })
     .expect("Error setting Ctrl-C handler");
@@ -67,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // start joader
     tokio::spawn(async move { start(joader_table).await });
 
-    log::info!("start joader at {:?}......\n", addr);
+    println!("start joader at {:?}......\n", addr);
     Server::builder()
         .add_service(DatasetSvcServer::new(dataset_svc))
         .add_service(DataLoaderSvcServer::new(data_loader_svc))

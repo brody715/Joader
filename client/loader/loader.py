@@ -1,9 +1,10 @@
+import ctypes
 import sys
 sys.path.append("./proto")
 
 import proto.dataloader_pb2 as dataloader_pb2
 import proto.dataloader_pb2_grpc as dataloader_pb2_grpc
-
+import itertools
 from loader.shm import SharedMemory
 
 
@@ -38,6 +39,8 @@ class Loader(object):
             self.buf[address+self.OFF:address+self.HEAD_SIZE], 'big')
         
         return end, off, len
+    def deep_append(self, l, r):
+        ctypes.memmove(ctypes.addressof())
 
     def read_data(self, address):
         data = []
@@ -46,7 +49,7 @@ class Loader(object):
         while True:
             # print("end={} [{}, {})".format(end, off, off+len), end = " | ")
             if end:
-                data.extend(self.buf[off:off+len])
+                data.append(self.buf[off:off+len])
                 break
             else:
                 data.extend(self.buf[off:off+len-self.HEAD_SIZE])
@@ -55,12 +58,15 @@ class Loader(object):
         # print("")
         # read finish
         self.buf[address+self.READ] = 0
-        return data
+        return itertools.chain()
+
+    def dummy_read(self, address):
+        self.buf[address+self.READ] = 0
+        return address
 
     def read(self, address):
-        # print(address)
-        return address
-        # return self.read_data(address*self.HEAD_SIZE)
+        # return self.dummy_read(address*self.HEAD_SIZE)
+        return self.read_data(address*self.HEAD_SIZE)
 
     def next(self):
         assert self.len > 0

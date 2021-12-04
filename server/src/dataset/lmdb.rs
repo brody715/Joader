@@ -8,7 +8,7 @@ use lmdb::open::{NOSUBDIR, RDONLY};
 use lmdb::Database;
 use lmdb::ReadTransaction;
 use lmdb_zero as lmdb;
-use std::{cmp::min, fmt::Debug, sync::Arc};
+use std::{fmt::Debug, sync::Arc};
 
 #[derive(Debug)]
 struct LmdbDataset {
@@ -49,48 +49,17 @@ impl LmdbDataset {
         ref_cnt: usize,
     ) -> u64 {
         let acc = txn.access();
-        let mut data: &[u8] = acc.get(db, key).unwrap();
-        let mut len = data.len();
+        let data: &[u8] = acc.get(db, key).unwrap();
+        let len = data.len();
 
         let data_name = self.name.clone() + key;
         if let Some(addr) = cache.contains_data(&data_name) {
             return addr as u64;
         }
 
-        let (mut block, idx) = cache.next_block(None, ref_cnt, &data_name);
-        let mut block_slice = block.as_mut_slice();
-        let mut write_size = min(len, block_slice.len());
-
-        block_slice[..write_size].copy_from_slice(&data[..write_size]);
-        data = &data[write_size..];
-
-        let mut remain_block = block.occupy(write_size as usize);
-        len -= write_size;
-        loop {
-            let mut last_block = block;
-            // write flow:
-            // allocate block -> write -> occupy(size)
-            // if size < block, then some space remain
-            // if size = block, then return None
-            // if size == 0, then finish writing and free current block
-            if let Some(_b) = remain_block {
-                block = _b;
-            } else {
-                block = cache.next_block(Some(last_block), 0, &data_name).0;
-            }
-            block_slice = block.as_mut_slice();
-            write_size = min(len, block_slice.len());
-
-            block_slice[..write_size].copy_from_slice(&data[..write_size]);
-            data = &data[write_size..];
-            remain_block = block.occupy(write_size as usize);
-            len -= write_size;
-            if write_size == 0 {
-                cache.free_block(block);
-                last_block.finish();
-                break;
-            }
-        }
+        let (block_slice, idx) = cache.allocate(len, ref_cnt, &data_name);
+        assert_eq!(block_slice.len(), len);
+        block_slice.copy_from_slice(data);
         idx as u64
     }
 }

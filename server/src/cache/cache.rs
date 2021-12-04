@@ -5,6 +5,7 @@ use core::time;
 use libc::{ftruncate, mmap, shm_open};
 use libc::{off_t, shm_unlink};
 use libc::{MAP_SHARED, O_CREAT, O_RDWR, PROT_WRITE, S_IRUSR, S_IWUSR};
+use std::slice::from_raw_parts_mut;
 use std::{ptr, thread, usize};
 
 use super::data_block::{Data, DataBlock};
@@ -79,18 +80,41 @@ impl Cache {
             .free(block.data().off(), block.data().len());
     }
 
-    fn allocate_data(&mut self) -> Data {
+    pub fn allocate(&mut self, len: usize, ref_cnt: usize, data_name: &str) -> (&mut [u8], usize) {
+        let (head, idx) = self.allocate_head(ref_cnt);
+        self.cached_data.add(idx, data_name);
+        let data = self.allocate_data(len as u64);
+        let mut block = DataBlock {
+            head,
+            data,
+            transfer: false,
+        };
+        if let Some(block) = block.occupy(len) {
+            self.free_block(block);
+        }
+        block.finish();
+        let ptr = block.data().as_mut_ptr();
+        return (unsafe { from_raw_parts_mut(ptr, len) }, idx);
+    }
+
+    fn allocate_data(&mut self, request_len: u64) -> Data {
         // This function return a data or loop
         // Todo(xj): better free method
         let mut data = self.data_segment.allocate();
         if let Some(data) = data {
-            return data;
+            if data.len() >= request_len {
+                return data;
+            }
+            self.data_segment.free(data.off(), data.len());
         }
         loop {
             self.free();
             data = self.data_segment.allocate();
             if let Some(data) = data {
-                return data;
+                if data.len() >= request_len {
+                    return data;
+                }
+                self.data_segment.free(data.off(), data.len());
             }
             thread::sleep(time::Duration::from_secs_f32(0.01));
             log::info!("Loop in allocate data");
@@ -123,7 +147,7 @@ impl Cache {
         ref_cnt: usize,
         data_name: &str,
     ) -> (DataBlock, usize) {
-        let data = self.allocate_data();
+        let data = self.allocate_data(0);
         // next block
         if let Some(mut block) = block {
             // the last space is the new head
@@ -220,13 +244,13 @@ mod test {
     fn two_thread_test() {
         log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
         const TURN: usize = 10000;
-        let head_num = 128;
-        let len = (HEAD_SIZE as usize) * (TURN * 12 + 2 * head_num as usize);
+        let head_num: usize = 128;
+        let len = (HEAD_SIZE as usize) * ((head_num * 2 + TURN) * HEAD_SIZE as usize);
         let name = "DLCache".to_string();
         let (wc, rc) = unbounded::<usize>();
         let (addr_wc, addr_rc) = unbounded();
         let writer = thread::spawn(move || {
-            let cache = Cache::new(len, name.clone(), head_num);
+            let cache = Cache::new(len, name.clone(), head_num as u64);
             log::info!("writer start {:?}", cache.start_ptr());
             addr_wc.send(AtomicPtr::new(cache.start_ptr())).unwrap();
             writer_func(cache, TURN, wc);
@@ -247,13 +271,12 @@ mod test {
     fn writer_func(mut cache: Cache, turn: usize, wc: Sender<usize>) {
         let mut start = SystemTime::now();
         for i in 1..turn {
-            let idx = write(
-                &mut cache,
-                i * HEAD_SIZE as usize,
-                (i % 3) as usize,
-                7,
-                &i.to_string(),
-            );
+            let len = i * HEAD_SIZE as usize;
+            let idx = {
+                let (block_slice, idx) = cache.allocate(len, i % 3, i.to_string().as_str());
+                block_slice.copy_from_slice(vec![7u8; len].as_slice());
+                idx
+            };
             wc.send(idx).unwrap();
             if i % 1000 == 0 {
                 println!(
@@ -279,7 +302,14 @@ mod test {
                 start = SystemTime::now();
             }
             let idx = rc.recv().unwrap();
-            read(idx, start_ptr, 7);
+            let addr = unsafe { start_ptr.offset((idx as isize) * (Head::size() as isize)) };
+            let mut head = Head::from(addr);
+            let (end, len, off) = head.get();
+            assert!(end == true);
+            let data = unsafe { from_raw_parts(start_ptr.offset(off as isize), len as usize) };
+            assert_eq!(data.len(), i * (HEAD_SIZE as usize));
+            data.iter().fold((), |_, x| assert_eq!(*x, 7));
+            head.readed();
         }
         drop(rc);
     }
