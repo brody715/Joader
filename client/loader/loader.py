@@ -36,13 +36,15 @@ class Loader(object):
         v.extend(self.buf[address+self.OFF:self.HEAD_SIZE])
         off = int.from_bytes(
             self.buf[address+self.OFF:address+self.HEAD_SIZE], 'big')
-        print(end, off, len)
+        
         return end, off, len
 
     def read_data(self, address):
         data = []
         end, off, len = self.read_header(address)
+        # print(address/self.HEAD_SIZE, end=": ")
         while True:
+            # print("end={} [{}, {})".format(end, off, off+len), end = " | ")
             if end:
                 data.extend(self.buf[off:off+len])
                 break
@@ -50,13 +52,15 @@ class Loader(object):
                 data.extend(self.buf[off:off+len-self.HEAD_SIZE])
                 end, off, len = self.read_header(
                     off+len-self.HEAD_SIZE)
+        # print("")
         # read finish
         self.buf[address+self.READ] = 0
         return data
 
     def read(self, address):
         # print(address)
-        return self.read_data(address*self.HEAD_SIZE)
+        return address
+        # return self.read_data(address*self.HEAD_SIZE)
 
     def next(self):
         assert self.len > 0

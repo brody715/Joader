@@ -18,6 +18,7 @@ impl From<*mut u8> for Head {
 
 impl Head {
     pub fn set(&mut self, end: bool, len: u32, off: u64) {
+        log::debug!("Write head end: {:?}, off: {:} len:{:})", end, off, len);
         self.set_end(end);
         self.set_len(len);
         self.set_off(off);
