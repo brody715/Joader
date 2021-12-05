@@ -5,15 +5,14 @@ sys.path.append("/home/xiej/ATC/DLCache/client/proto")
 
 import proto.dataloader_pb2 as dataloader_pb2
 import proto.dataloader_pb2_grpc as dataloader_pb2_grpc
-import itertools
 from loader.shm import SharedMemory
 
 
 
 class Loader(object):
-    def __init__(self, ip, length: int, loader_id: int, shm_path: str, client):
+    def __init__(self, ip, length: int, loader_id: int, shm_path: str):
         self.length = length
-        self.client = client
+        self.client = None
         self.loader_id = loader_id
         self.shm_path = shm_path
         self.shm = SharedMemory(self.shm_path)
@@ -25,21 +24,20 @@ class Loader(object):
         self.READ = 1
         self.LEN = 4
         self.OFF = 8
-        self.ip=ip
+        self.ip = ip
+        self.ready = False
 
     @staticmethod
     def new(dataset_name:str, ip, channel=None):
         if channel is None:
-            channel = grpc.insecure_channel('127.0.0.1:4321')
+            channel = grpc.insecure_channel(ip)
         client = dataloader_pb2_grpc.DataLoaderSvcStub(channel)
         request = dataloader_pb2.CreateDataloaderRequest(name=dataset_name)
         resp = client.CreateDataloader(request)
-        return Loader(ip, resp.length, resp.loader_id, resp.shm_path, client)
+        # close to enable multi process grpc
+        channel.close()
+        return Loader(ip, resp.length, resp.loader_id, resp.shm_path)
 
-    def clone(self):
-        channel = grpc.insecure_channel('127.0.0.1:4321')
-        client = dataloader_pb2_grpc.DataLoaderSvcStub(channel)
-        return Loader(self.ip, self.length, self.loader_id, self.shm_path, client)
 
     def read_header(self, address):
         end = self.buf[address+self.END] == 1
@@ -53,7 +51,6 @@ class Loader(object):
 
     def read_data(self, address):
         end, off, len = self.read_header(address)
-        print(end, off, len)
         assert end == True
         self.buf[address+self.READ] = 0
         return self.buf[off: off+len]
@@ -69,6 +66,9 @@ class Loader(object):
 
     def next(self):
         assert self.length > 0
+        if not self.ready:
+            self.channel = grpc.insecure_channel('127.0.0.1:4321')
+            self.client = dataloader_pb2_grpc.DataLoaderSvcStub(self.channel)
         self.length -= 1
         while len(self.cached_addr) == 0:
             request = dataloader_pb2.NextRequest(loader_id=self.loader_id)

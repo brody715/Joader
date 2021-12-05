@@ -58,7 +58,9 @@ impl Joader {
             return Err(format!("Loader {:?} has existed", id));
         }
         self.loader_table.insert(id, s);
+        
         self.sampler.insert(self.dataset.get_indices(), id);
+        log::debug!("Joader Insert {:?}: {:?} to {:?}", id, self.dataset.get_name(), self.sampler);
         for (_, cnt) in self.ref_table.iter_mut() {
             *cnt += 1;
         }

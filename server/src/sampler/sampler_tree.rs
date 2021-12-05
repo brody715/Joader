@@ -17,6 +17,7 @@ impl SamplerTree {
     }
 
     pub fn insert(&mut self, indices: Vec<u32>, id: u64) {
+        log::debug!("Sampler insert {:?} {:?}", indices, id);
         let mut loader_set = HashSet::new();
         loader_set.insert(id);
         let node = Node::new(indices, loader_set);

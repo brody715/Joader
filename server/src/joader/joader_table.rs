@@ -23,7 +23,7 @@ impl JoaderTable {
     }
 
     pub fn add_joader(&mut self, joader: Joader) -> Result<(), String> {
-        log::debug!("Add Joader {:?}", joader);
+        log::debug!("Add Joader {:?}", joader.get_name());
         let name = joader.get_name();
         if self.joader_table.contains_key(name) {
             return Err("Dataset has existed".into());
@@ -72,7 +72,10 @@ impl JoaderTable {
 
     pub async fn next(&mut self) {
         for (_, joader) in self.joader_table.iter_mut() {
-            joader.next(&mut self.cache).await;
+            if !joader.is_empty() {
+                joader.next(&mut self.cache).await;
+            }
+            
         }
     }
 }

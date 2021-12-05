@@ -42,12 +42,9 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let mut loader_table = self.loader_table.lock().await;
         loader_table.insert(loader_id, r);
 
-        let shm_path;
-        let ret = {
-            let mut joader_table = self.joader_table.lock().await;
-            shm_path = joader_table.get_shm_path();
-            joader_table.add_loader(s)
-        };
+        let mut joader_table = self.joader_table.lock().await;
+        let shm_path = joader_table.get_shm_path();
+        let ret = joader_table.add_loader(s);
         let length = match &ret {
             Ok(l) => *l,
             _ => 0,
