@@ -11,6 +11,7 @@ message CreateDataloaderRequest {
 }
 
 message CreateDataloaderResponse {
+    uint64 length = 1;
     string shm_path = 2;
     uint64 loader_id = 3;
     common.Status status = 4;

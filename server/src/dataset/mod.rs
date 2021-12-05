@@ -1,7 +1,7 @@
 mod filesystem;
 mod lmdb;
-pub use lmdb::*;
 pub use filesystem::*;
+pub use lmdb::*;
 mod dummy;
 use crate::cache::cache::Cache;
 use crate::proto::dataset::{create_dataset_request::Type, CreateDatasetRequest};
@@ -11,6 +11,7 @@ pub trait Dataset: Sync + Send + Debug {
     fn get_name(&self) -> &str;
     fn get_indices(&self) -> Vec<u32>;
     fn read(&self, cache: &mut Cache, idx: u32, ref_cnt: usize) -> u64;
+    fn len(&self) -> u64;
 }
 pub type DatasetRef = Arc<dyn Dataset>;
 

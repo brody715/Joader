@@ -37,4 +37,8 @@ impl Dataset for FileDataset {
     fn read(&self, _cache: &mut Cache, idx: u32, _ref_cnt: usize) -> u64 {
         idx as u64
     }
+
+    fn len(&self) -> u64 {
+        self.items.len() as u64
+    }
 }

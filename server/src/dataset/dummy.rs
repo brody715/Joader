@@ -76,4 +76,8 @@ impl Dataset for DummyDataset {
         }
         idx as u64
     }
+
+    fn len(&self) -> u64 {
+        self.items.len() as u64
+    }
 }

@@ -45,10 +45,11 @@ impl JoaderTable {
             .ok_or("Joader has not existed".into())
     }
 
-    pub fn add_loader(&mut self, loader: Sloader) -> Result<(), String> {
+    pub fn add_loader(&mut self, loader: Sloader) -> Result<u64, String> {
         log::info!("Add Loader {:?}", loader);
-        self.get(loader.get_name())?.add(loader)?;
-        Ok(())
+        let joader = self.get(loader.get_name())?;
+        joader.add(loader)?;
+        Ok(joader.len())
     }
 
     pub fn del_loader(&mut self, loader: Rloader) -> Result<(), String> {

@@ -1,6 +1,5 @@
-import ctypes
 import sys
-sys.path.append("./proto")
+sys.path.append("/home/xiej/ATC/DLCache/client/proto")
 
 import proto.dataloader_pb2 as dataloader_pb2
 import proto.dataloader_pb2_grpc as dataloader_pb2_grpc
@@ -10,11 +9,15 @@ from loader.shm import SharedMemory
 
 
 class Loader(object):
-    def __init__(self, dataset_name: str, len: int, channel):
+    def __init__(self, dataset_name: str, channel):
         client = dataloader_pb2_grpc.DataLoaderSvcStub(channel)
         request = dataloader_pb2.CreateDataloaderRequest(name=dataset_name)
         resp = client.CreateDataloader(request)
-        self.len = len
+        print(resp)
+        if resp.status.msg != "Success":
+            print(resp)
+            exit(0)
+        self.len = resp.length
         self.client = client
         self.loader_id = resp.loader_id
         self.shm_path = resp.shm_path
@@ -69,6 +72,7 @@ class Loader(object):
     def delete(self):
         request = dataloader_pb2.DeleteDataloaderRequest(
             loader_id=self.loader_id)
-        self.shm.close()
+        # Todo(xj):bug
+        # self.shm.close()
         resp = self.client.DeleteDataloader(request)
         return resp

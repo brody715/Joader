@@ -48,8 +48,12 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
             shm_path = joader_table.get_shm_path();
             joader_table.add_loader(s)
         };
-
+        let length = match &ret {
+            Ok(l) => *l,
+            _ => 0,
+        };
         Ok(Response::new(CreateDataloaderResponse {
+            length,
             shm_path,
             loader_id,
             status: Some(to_status(&ret)),

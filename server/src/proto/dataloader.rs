@@ -5,6 +5,8 @@ pub struct CreateDataloaderRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDataloaderResponse {
+    #[prost(uint64, tag = "1")]
+    pub length: u64,
     #[prost(string, tag = "2")]
     pub shm_path: ::prost::alloc::string::String,
     #[prost(uint64, tag = "3")]

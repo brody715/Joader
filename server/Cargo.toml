@@ -26,8 +26,8 @@ coz = "0.1"
 [build-dependencies]
 tonic-build = "0.5"
 
-[profile.release]
-debug = 1
+# [profile.release]
+# debug = 1
 
 [rust]
 debuginfo-level = 1

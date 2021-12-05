@@ -8,7 +8,7 @@ pub fn to_status<T>(result: &Result<T, String>) -> RspStatus {
         },
         Ok(_) => RspStatus {
             code: RspCode::Ok as i32,
-            msg: "succ".into(),
+            msg: "Success".into(),
         },
     }
 }

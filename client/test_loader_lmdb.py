@@ -9,12 +9,12 @@ import random
 location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb"
 env = lmdb.open(location,subdir=False,max_readers=100,readonly=True,lock=False,readahead=False,meminit=False)
 txn = env.begin(write=False)
-len = txn.stat()['entries']
+lmdb_len = txn.stat()['entries']
 channel = grpc.insecure_channel('127.0.0.1:4321')
 name = "ImageNet"
 LOSE_KEY = 1281167
 keys = []
-for i in range(len):
+for i in range(lmdb_len):
     if i != LOSE_KEY:
         keys.append(str(i))
 
@@ -29,13 +29,13 @@ def test_local_lmdb():
 
 def test_global_lmdb():
     ds = Dataset(name=name, location=location, ty=DatasetType.LMDB)
-    for i in range(0, len):
-        ds.add_item([str(i)])
+    for k in keys:
+        ds.add_item([k])
     ds.create(channel)
 
-    loader = Loader(dataset_name=name, len=len, channel=channel)
+    loader = Loader(dataset_name=name, channel=channel)
     now = time.time()
-    for i in range(len):
+    for i in range(len(keys)):
         if i!= 0 and i % 1000 == 0:
             print("readed {} data in {} avg: {}".format(i, time.time() - now, (time.time() - now)/i))
         data = loader.next()
@@ -45,6 +45,6 @@ def test_global_lmdb():
     ds.delete(channel)
 
 if __name__ == "__main__":
-    test_local_lmdb()
-    # test_global_lmdb()
+    # test_local_lmdb()
+    test_global_lmdb()
 

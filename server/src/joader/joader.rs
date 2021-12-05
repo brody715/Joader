@@ -72,4 +72,8 @@ impl Joader {
     pub fn is_empty(&self) -> bool {
         self.sampler.is_empty()
     }
+
+    pub fn len(&self) -> u64 {
+        self.dataset.len()
+    }
 }

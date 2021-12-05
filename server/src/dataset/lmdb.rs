@@ -79,6 +79,10 @@ impl Dataset for LmdbDataset {
         let key = &self.items[idx as usize].keys[0];
         self.read_one(cache, &db, &txn, key, ref_cnt)
     }
+
+    fn len(&self) -> u64 {
+        self.items.len() as u64
+    }
 }
 
 #[cfg(test)]

@@ -10,14 +10,15 @@ if __name__ == "__main__":
     ds = Dataset(name=name, location="", ty=DatasetType.DUMMY)
     now = time.time()
     for i in range(0, len):
-        if i!= 0 and i % 1000 == 0:
-            print("readed {} data in {} avg: {}".format(i, time.time() - now, (time.time() - now)/i))
         ds.add_item([str(i)])
     ds.create(channel)
 
-    loader = Loader(dataset_name=name, len=len, channel=channel)
+    loader = Loader(dataset_name=name, channel=channel)
     now = time.time()
     for i in range(len):
+        if i != 0 and i % 1000 == 0:
+            print("readed {} data in {} avg: {}".format(
+                i, time.time() - now, (time.time() - now)/i))
         loader.next()
     print(time.time() - now)
     loader.delete()
