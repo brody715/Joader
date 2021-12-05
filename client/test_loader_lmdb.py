@@ -35,7 +35,8 @@ def test_global_lmdb():
     for i in range(len):
         if i!= 0 and i % 1000 == 0:
             print("readed {} data in {} avg: {}".format(i, time.time() - now, (time.time() - now)/i))
-        loader.next()
+        data = loader.next()
+        msgpack.loads(data, raw=False)
     print(time.time() - now)
     loader.delete()
     ds.delete(channel)

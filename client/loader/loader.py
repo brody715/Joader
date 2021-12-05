@@ -39,26 +39,12 @@ class Loader(object):
             self.buf[address+self.OFF:address+self.HEAD_SIZE], 'big')
         
         return end, off, len
-    def deep_append(self, l, r):
-        ctypes.memmove(ctypes.addressof())
 
     def read_data(self, address):
-        data = []
         end, off, len = self.read_header(address)
-        # print(address/self.HEAD_SIZE, end=": ")
-        while True:
-            # print("end={} [{}, {})".format(end, off, off+len), end = " | ")
-            if end:
-                data.append(self.buf[off:off+len])
-                break
-            else:
-                data.extend(self.buf[off:off+len-self.HEAD_SIZE])
-                end, off, len = self.read_header(
-                    off+len-self.HEAD_SIZE)
-        # print("")
-        # read finish
+        assert end == True
         self.buf[address+self.READ] = 0
-        return itertools.chain()
+        return self.buf[off: off+len]
 
     def dummy_read(self, address):
         self.buf[address+self.READ] = 0
