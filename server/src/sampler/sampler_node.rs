@@ -205,7 +205,7 @@ impl Node {
             //The first task choose diff
             let mut loader_set = HashSet::new();
             loader_set.insert(loaders[0].0);
-            log::info!(
+            log::debug!(
                 "Dicide: {:?} decide node [{:?}]",
                 loader_set,
                 self.left.as_ref().unwrap().get_loader_id()
@@ -240,7 +240,7 @@ impl Node {
             return;
         }
         let intersection = node_set[random_weight(&weights)].clone();
-        log::info!(
+        log::debug!(
             "Dicide: {:?} decide node [{:?}]",
             loader_set,
             intersection.get_loader_id()
@@ -254,7 +254,7 @@ impl Node {
         let choice_idx = (random_probility() * (len as f32)) as usize;
         let choice_item = self.values[choice_idx];
 
-        log::info!(
+        log::debug!(
             "Choose: {:?} choose {:} from node [{:?}:{:?}]",
             loader_ids,
             choice_item,
@@ -276,7 +276,7 @@ impl Node {
             // We should complent in next turn to avoild sample it in this turn
             self.values.push(item as u32);
             self.values_set.insert(item as u32);
-            log::info!(
+            log::debug!(
                 "Complent: {:?} in node [{:?}:{:?}] with compset {:?}",
                 item,
                 self.loader_id,

@@ -46,7 +46,7 @@ impl SamplerTree {
                 loaders.push(loader.clone())
             }
         }
-        log::info!("Sampler sample {:?}", loaders);
+        log::debug!("Sampler sample {:?}", loaders);
         let mut decisions = Vec::new();
         let mut res = HashMap::<u32, HashSet<u64>>::new();
         self.root

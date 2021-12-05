@@ -1,4 +1,6 @@
 import sys
+
+import grpc
 sys.path.append("/home/xiej/ATC/DLCache/client/proto")
 
 import proto.dataloader_pb2 as dataloader_pb2
@@ -9,30 +11,35 @@ from loader.shm import SharedMemory
 
 
 class Loader(object):
-    def __init__(self, dataset_name: str, channel):
-        client = dataloader_pb2_grpc.DataLoaderSvcStub(channel)
-        request = dataloader_pb2.CreateDataloaderRequest(name=dataset_name)
-        resp = client.CreateDataloader(request)
-        print(resp)
-        if resp.status.msg != "Success":
-            print(resp)
-            exit(0)
-        self.len = resp.length
+    def __init__(self, ip, length: int, loader_id: int, shm_path: str, client):
+        self.length = length
         self.client = client
-        self.loader_id = resp.loader_id
-        self.shm_path = resp.shm_path
+        self.loader_id = loader_id
+        self.shm_path = shm_path
         self.shm = SharedMemory(self.shm_path)
         self.buf = self.shm.buf
         self.cached_addr = []
-        
+
         self.HEAD_SIZE = 16
         self.END = 0
         self.READ = 1
         self.LEN = 4
         self.OFF = 8
+        self.ip=ip
 
-    def len(self):
-        return self.len
+    @staticmethod
+    def new(dataset_name:str, ip, channel=None):
+        if channel is None:
+            channel = grpc.insecure_channel('127.0.0.1:4321')
+        client = dataloader_pb2_grpc.DataLoaderSvcStub(channel)
+        request = dataloader_pb2.CreateDataloaderRequest(name=dataset_name)
+        resp = client.CreateDataloader(request)
+        return Loader(ip, resp.length, resp.loader_id, resp.shm_path, client)
+
+    def clone(self):
+        channel = grpc.insecure_channel('127.0.0.1:4321')
+        client = dataloader_pb2_grpc.DataLoaderSvcStub(channel)
+        return Loader(self.ip, self.length, self.loader_id, self.shm_path, client)
 
     def read_header(self, address):
         end = self.buf[address+self.END] == 1
@@ -42,11 +49,11 @@ class Loader(object):
         v.extend(self.buf[address+self.OFF:self.HEAD_SIZE])
         off = int.from_bytes(
             self.buf[address+self.OFF:address+self.HEAD_SIZE], 'big')
-        
         return end, off, len
 
     def read_data(self, address):
         end, off, len = self.read_header(address)
+        print(end, off, len)
         assert end == True
         self.buf[address+self.READ] = 0
         return self.buf[off: off+len]
@@ -61,8 +68,8 @@ class Loader(object):
         return self.read_data(address)
 
     def next(self):
-        assert self.len > 0
-        self.len -= 1
+        assert self.length > 0
+        self.length -= 1
         while len(self.cached_addr) == 0:
             request = dataloader_pb2.NextRequest(loader_id=self.loader_id)
             resp = self.client.Next(request)

@@ -120,7 +120,7 @@ impl Cache {
                 self.data_segment.free(data.off(), data.len());
             }
             thread::sleep(self.sleep_iterver);
-            log::info!("Loop in allocate data");
+            log::debug!("Loop in allocate data");
         }
     }
 
@@ -136,7 +136,7 @@ impl Cache {
                 return (head, idx);
             }
             thread::sleep(self.sleep_iterver);
-            log::info!("Loop in allocate head");
+            log::debug!("Loop in allocate head");
         }
     }
 
@@ -254,16 +254,16 @@ mod test {
         let (addr_wc, addr_rc) = unbounded();
         let writer = thread::spawn(move || {
             let cache = Cache::new(len, name.clone(), head_num as u64);
-            log::info!("writer start {:?}", cache.start_ptr());
+            log::debug!("writer start {:?}", cache.start_ptr());
             addr_wc.send(AtomicPtr::new(cache.start_ptr())).unwrap();
             writer_func(cache, TURN, wc);
-            log::info!("write finish.......");
+            log::debug!("write finish.......");
             thread::sleep(time::Duration::from_secs(5));
             Cache::close(name);
         });
         let reader = thread::spawn(move || {
             let mut start_ptr = addr_rc.recv().unwrap();
-            log::info!("reader start {:?}", *start_ptr.get_mut());
+            log::debug!("reader start {:?}", *start_ptr.get_mut());
             reader_func(*start_ptr.get_mut(), TURN, rc);
             println!("read finish.......");
         });
@@ -366,7 +366,7 @@ mod test {
             let data;
             if end {
                 data = unsafe { from_raw_parts(start_ptr.offset(off as isize), len as usize) };
-                log::info!("read [{:?}, {:?})", off, off + len as u64);
+                log::debug!("read [{:?}, {:?})", off, off + len as u64);
                 data.iter().fold((), |_, x| {
                     assert!(*x == value);
                     res.push(*x)
@@ -374,7 +374,7 @@ mod test {
                 break;
             } else {
                 data = unsafe {
-                    log::info!("read [{:?}, {:?})", off, off + len as u64 - HEAD_SIZE);
+                    log::debug!("read [{:?}, {:?})", off, off + len as u64 - HEAD_SIZE);
                     from_raw_parts(
                         start_ptr.offset(off as isize),
                         len as usize - HEAD_SIZE as usize,

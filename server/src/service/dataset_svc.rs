@@ -28,7 +28,7 @@ impl DatasetSvc for DatasetSvcImpl {
         &self,
         request: Request<CreateDatasetRequest>,
     ) -> Result<Response<CreateDatasetResponse>, Status> {
-        log::info!("call create dataset {:?}", request);
+        log::debug!("call create dataset {:?}", request);
         // insert dataset to dataset table
         let joader = Joader::new(dataset::build_dataset(request.into_inner()));
         let ret = self.joader_table.lock().await.add_joader(joader);
@@ -41,7 +41,7 @@ impl DatasetSvc for DatasetSvcImpl {
         &self,
         request: Request<DeleteDatasetRequest>,
     ) -> Result<Response<DeleteDatasetResponse>, Status> {
-        log::info!("call delete dataset {:?}", request);
+        log::debug!("call delete dataset {:?}", request);
 
         let ret = {
             let mut table = self.joader_table.lock().await;

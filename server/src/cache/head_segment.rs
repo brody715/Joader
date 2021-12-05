@@ -31,7 +31,7 @@ impl HeadSegment {
         for (idx, head) in self.head_segment.iter_mut().enumerate() {
             if head.is_free() {
                 self.ref_table[ref_cnt].push(idx);
-                log::info!(
+                log::debug!(
                     "Allocate head {:?}: {:?}{:?}",
                     idx,
                     head.is_readed(),
@@ -57,7 +57,7 @@ impl HeadSegment {
             for idx in heads_clone.iter_mut() {
                 let head = &mut self.head_segment[*idx];
                 if head.is_readed() {
-                    log::info!("Free head {:?} {:?}{:?}", idx, head.is_readed(), head.get());
+                    log::debug!("Free head {:?} {:?}{:?}", idx, head.is_readed(), head.get());
                     head.set_free();
                     ret.push((head.clone(), *idx));
                 } else {

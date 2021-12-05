@@ -123,7 +123,7 @@ impl DataBlock {
             size += HEAD_SIZE;
         }
         self.head.set(false, size as u32, self.data.off());
-        log::info!(
+        log::debug!(
             "Occupy {:?} : [{:},{:})",
             self.ptr(),
             self.data.off(),

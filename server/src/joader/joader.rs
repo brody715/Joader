@@ -37,7 +37,7 @@ impl Joader {
             let ref_cnt = self.get_ref_cnt(*data, loader_ids.len());
             let addr = self.dataset.read(cache, *data, ref_cnt);
             for id in loader_ids {
-                log::info!("Joader send {:} to {:?}", addr, self.loader_table[id]);
+                log::debug!("Joader send {:} to {:?}", addr, self.loader_table[id]);
                 self.loader_table[id].send(addr).await;
             }
         }

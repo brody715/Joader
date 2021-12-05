@@ -23,7 +23,7 @@ impl DataSegment {
         let ret = self.free_list.get();
         if let Some((off, len)) = ret {
             let data = self.data.allocate(off, len);
-            log::info!(
+            log::debug!(
                 "Allocate data {:?}: [{:?}, {})",
                 data.as_ptr(),
                 data.off(),
@@ -35,7 +35,7 @@ impl DataSegment {
     }
 
     pub fn free(&mut self, off: u64, len: u64) {
-        log::info!("Free data [{:}, {:})", off, off + len);
+        log::debug!("Free data [{:}, {:})", off, off + len);
         self.free_list.insert(off, len)
     }
 }
