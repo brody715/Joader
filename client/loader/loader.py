@@ -20,6 +20,8 @@ class Loader(object):
         self.shm_path = resp.shm_path
         self.shm = SharedMemory(self.shm_path)
         self.buf = self.shm.buf
+        self.cached_addr = []
+        
         self.HEAD_SIZE = 16
         self.END = 0
         self.READ = 1
@@ -50,16 +52,19 @@ class Loader(object):
         self.buf[address+self.READ] = 0
         return address
 
-    def read(self, address):
+    def read(self):
+        address = self.cached_addr.pop()*self.HEAD_SIZE
         # return self.dummy_read(address*self.HEAD_SIZE)
-        return self.read_data(address*self.HEAD_SIZE)
+        return self.read_data(address)
 
     def next(self):
         assert self.len > 0
         self.len -= 1
-        request = dataloader_pb2.NextRequest(loader_id=self.loader_id)
-        resp = self.client.Next(request)
-        return self.read(resp.address)
+        while len(self.cached_addr) == 0:
+            request = dataloader_pb2.NextRequest(loader_id=self.loader_id)
+            resp = self.client.Next(request)
+            self.cached_addr = resp.address
+        return self.read()
 
     def delete(self):
         request = dataloader_pb2.DeleteDataloaderRequest(

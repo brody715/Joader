@@ -5,10 +5,13 @@ import time
 
 channel = grpc.insecure_channel('127.0.0.1:4321')
 name = "ImageNet"
-len = 10000
+len = 100000
 if __name__ == "__main__":
     ds = Dataset(name=name, location="", ty=DatasetType.DUMMY)
+    now = time.time()
     for i in range(0, len):
+        if i!= 0 and i % 1000 == 0:
+            print("readed {} data in {} avg: {}".format(i, time.time() - now, (time.time() - now)/i))
         ds.add_item([str(i)])
     ds.create(channel)
 

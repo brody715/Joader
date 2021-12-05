@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x10\x64\x61taloader.proto\x12\ndataloader\x1a\x0c\x63ommon.proto\"\'\n\x17\x43reateDataloaderRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"_\n\x18\x43reateDataloaderResponse\x12\x10\n\x08shm_path\x18\x02 \x01(\t\x12\x11\n\tloader_id\x18\x03 \x01(\x04\x12\x1e\n\x06status\x18\x04 \x01(\x0b\x32\x0e.common.Status\" \n\x0bNextRequest\x12\x11\n\tloader_id\x18\x01 \x01(\x04\"\x1f\n\x0cNextResponse\x12\x0f\n\x07\x61\x64\x64ress\x18\x02 \x01(\x04\",\n\x17\x44\x65leteDataloaderRequest\x12\x11\n\tloader_id\x18\x03 \x01(\x04\":\n\x18\x44\x65leteDataloaderResponse\x12\x1e\n\x06status\x18\x03 \x01(\x0b\x32\x0e.common.Status2\x88\x02\n\rDataLoaderSvc\x12]\n\x10\x43reateDataloader\x12#.dataloader.CreateDataloaderRequest\x1a$.dataloader.CreateDataloaderResponse\x12\x39\n\x04Next\x12\x17.dataloader.NextRequest\x1a\x18.dataloader.NextResponse\x12]\n\x10\x44\x65leteDataloader\x12#.dataloader.DeleteDataloaderRequest\x1a$.dataloader.DeleteDataloaderResponseb\x06proto3'
+  serialized_pb=b'\n\x10\x64\x61taloader.proto\x12\ndataloader\x1a\x0c\x63ommon.proto\"\'\n\x17\x43reateDataloaderRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"_\n\x18\x43reateDataloaderResponse\x12\x10\n\x08shm_path\x18\x02 \x01(\t\x12\x11\n\tloader_id\x18\x03 \x01(\x04\x12\x1e\n\x06status\x18\x04 \x01(\x0b\x32\x0e.common.Status\" \n\x0bNextRequest\x12\x11\n\tloader_id\x18\x01 \x01(\x04\"\x1f\n\x0cNextResponse\x12\x0f\n\x07\x61\x64\x64ress\x18\x02 \x03(\x04\",\n\x17\x44\x65leteDataloaderRequest\x12\x11\n\tloader_id\x18\x03 \x01(\x04\":\n\x18\x44\x65leteDataloaderResponse\x12\x1e\n\x06status\x18\x03 \x01(\x0b\x32\x0e.common.Status2\x88\x02\n\rDataLoaderSvc\x12]\n\x10\x43reateDataloader\x12#.dataloader.CreateDataloaderRequest\x1a$.dataloader.CreateDataloaderResponse\x12\x39\n\x04Next\x12\x17.dataloader.NextRequest\x1a\x18.dataloader.NextResponse\x12]\n\x10\x44\x65leteDataloader\x12#.dataloader.DeleteDataloaderRequest\x1a$.dataloader.DeleteDataloaderResponseb\x06proto3'
   ,
   dependencies=[common__pb2.DESCRIPTOR,])
 
@@ -147,8 +147,8 @@ _NEXTRESPONSE = _descriptor.Descriptor(
   fields=[
     _descriptor.FieldDescriptor(
       name='address', full_name='dataloader.NextResponse.address', index=0,
-      number=2, type=4, cpp_type=4, label=1,
-      has_default_value=False, default_value=0,
+      number=2, type=4, cpp_type=4, label=3,
+      has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),

@@ -12,15 +12,18 @@ txn = env.begin(write=False)
 len = txn.stat()['entries']
 channel = grpc.insecure_channel('127.0.0.1:4321')
 name = "ImageNet"
+LOSE_KEY = 1281167
+keys = []
+for i in range(len):
+    if i != LOSE_KEY:
+        keys.append(str(i))
 
 def test_local_lmdb():
     now = time.time()
-    indices = list(range(len))
-    random.shuffle(indices)
-    for i in range(len):
-        data = txn.get(str(indices[i]).encode())
+    for i, k in enumerate(keys):
+        data = txn.get(k.encode())
         if i!= 0 and i % 1000 == 0:
-            _now_data = msgpack.loads(data, raw=False)
+            msgpack.loads(data, raw=False)
             print("readed {} data in {} avg: {}".format(i, time.time() - now, (time.time() - now)/i))
         
 
@@ -42,6 +45,6 @@ def test_global_lmdb():
     ds.delete(channel)
 
 if __name__ == "__main__":
-    # test_local_lmdb()
-    test_global_lmdb()
+    test_local_lmdb()
+    # test_global_lmdb()
 
