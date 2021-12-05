@@ -34,10 +34,10 @@ async fn start(joader_table: Arc<Mutex<JoaderTable>>) {
         let mut joader_table = joader_table.lock().await;
         if joader_table.is_empty() {
             log::info!("sleep ....");
-            sleep(Duration::from_millis(500)).await;
+            sleep(Duration::from_millis(1000)).await;
             continue;
         }
-        joader_table.next().await
+        joader_table.next().await;
     }
 }
 

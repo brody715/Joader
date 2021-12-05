@@ -6,6 +6,7 @@ use libc::{ftruncate, mmap, shm_open};
 use libc::{off_t, shm_unlink};
 use libc::{MAP_SHARED, O_CREAT, O_RDWR, PROT_WRITE, S_IRUSR, S_IWUSR};
 use std::slice::from_raw_parts_mut;
+use std::time::Duration;
 use std::{ptr, thread, usize};
 
 use super::data_block::{Data, DataBlock};
@@ -19,6 +20,7 @@ pub struct Cache {
     data_segment: DataSegment,
     cached_data: CachedData,
     start_ptr: *mut u8,
+    sleep_iterver: Duration,
 }
 unsafe impl Send for Cache {}
 
@@ -49,6 +51,7 @@ impl Cache {
             data_segment,
             start_ptr: addr,
             cached_data: CachedData::new(),
+            sleep_iterver: time::Duration::from_secs_f32(0.001),
         }
     }
 
@@ -116,7 +119,7 @@ impl Cache {
                 }
                 self.data_segment.free(data.off(), data.len());
             }
-            thread::sleep(time::Duration::from_secs_f32(0.01));
+            thread::sleep(self.sleep_iterver);
             log::info!("Loop in allocate data");
         }
     }
@@ -132,7 +135,7 @@ impl Cache {
             if let Some((head, idx)) = ret {
                 return (head, idx);
             }
-            thread::sleep(time::Duration::from_secs_f32(0.01));
+            thread::sleep(self.sleep_iterver);
             log::info!("Loop in allocate head");
         }
     }

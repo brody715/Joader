@@ -71,7 +71,7 @@ impl JoaderTable {
 
     pub async fn next(&mut self) {
         for (_, joader) in self.joader_table.iter_mut() {
-            joader.next(&mut self.cache);
+            joader.next(&mut self.cache).await;
         }
     }
 }

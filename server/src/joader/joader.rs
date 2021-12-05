@@ -31,14 +31,14 @@ impl Joader {
         }
     }
 
-    pub fn next(&mut self, cache: &mut Cache) {
+    pub async fn next(&mut self, cache: &mut Cache) {
         let data_table = self.sampler.sample();
         for (data, loader_ids) in &data_table {
             let ref_cnt = self.get_ref_cnt(*data, loader_ids.len());
             let addr = self.dataset.read(cache, *data, ref_cnt);
             for id in loader_ids {
                 log::info!("Joader send {:} to {:?}", addr, self.loader_table[id]);
-                self.loader_table[id].send(addr);
+                self.loader_table[id].send(addr).await;
             }
         }
     }

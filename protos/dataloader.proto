@@ -22,7 +22,7 @@ message NextRequest {
 }
 
 message NextResponse {
-    uint64 address = 2;
+    repeated uint64 address = 2;
 }
 
 message DeleteDataloaderRequest {

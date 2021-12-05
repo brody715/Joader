@@ -99,7 +99,7 @@ mod tests {
     #[test]
     fn test_sampler() {
         // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
-        sample(4);
+        sample(1);
     }
 
     fn sample(tasks: u64) {
@@ -110,7 +110,7 @@ mod tests {
 
         // let sizes = [1, 2, 4, 8, 16];
         for id in 0..tasks {
-            let size = rng.gen_range(1..200);
+            let size = rng.gen_range(1000000..1000001);
             // let size = sizes[id as usize];
             let keys = (0..size).into_iter().collect::<Vec<u32>>();
             vec_keys.push(HashSet::from_iter(keys.iter().cloned()));

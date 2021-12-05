@@ -12,7 +12,6 @@ use std::{fmt::Debug, sync::Arc};
 
 #[derive(Debug)]
 struct LmdbDataset {
-    magic: u8,
     items: Vec<DataItem>,
     location: String,
     name: String,
@@ -32,7 +31,6 @@ pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
     // Open the default database.
     Arc::new(LmdbDataset {
         items,
-        magic: 7u8,
         name,
         location,
         env,
@@ -85,9 +83,13 @@ impl Dataset for LmdbDataset {
 
 #[cfg(test)]
 mod tests {
-    use std::time::SystemTime;
+    use tokio::join;
 
     use super::*;
+    use crate::joader::joader::Joader;
+    use crate::loader;
+    use crate::proto::dataloader::CreateDataloaderRequest;
+    use std::time::SystemTime;
     #[test]
     fn test_lmdb() {
         let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb";
@@ -105,9 +107,70 @@ mod tests {
             let txn = lmdb::ReadTransaction::new(&env).unwrap();
             let acc = txn.access();
             let data: &[u8] = acc.get(&db, i.to_string().as_bytes()).unwrap();
+            // cloned
+            let _cloned_dat = data.to_vec();
+            if len != 0 && len % 1000 == 0 {
+                let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
+                print!(
+                    "read {} data need {}, avg: {}\n",
+                    len,
+                    time,
+                    time / len as f32
+                );
+            }
             println!("{}", data.len());
         }
-        let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-        print!("{}, avg: {}", time, time / len as f32);
+    }
+
+    #[tokio::test]
+    async fn test_cache_lmdb() {
+        let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
+        let len = 1001;
+        let mut cache = Cache::new(1024 * 1024 * 1024, "DLCache".to_string(), 1024);
+        let mut items = Vec::new();
+        for i in 0..len {
+            items.push(DataItem {
+                keys: vec![i.to_string()],
+            })
+        }
+        let dataset = Arc::new(LmdbDataset {
+            items,
+            location: location.clone(),
+            name: "Lmdb".to_string(),
+            env: unsafe {
+                lmdb::EnvBuilder::new()
+                    .unwrap()
+                    .open(&location, RDONLY | NOSUBDIR, 0o600)
+                    .unwrap()
+            },
+        });
+        let mut joader = Joader::new(dataset);
+        let request = CreateDataloaderRequest {
+            name: "".to_string(),
+        };
+        let (s, mut r) = loader::from_proto(request, 0);
+        joader.add(s).unwrap();
+        let reader = tokio::spawn(async move {
+            let now = SystemTime::now();
+            for i in 0..len {
+                let _idx = r.next().await;
+                if i != 0 && i % 1000 == 0 {
+                    let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
+                    print!("read {} data need {}, avg: {}\n", i, time, time / i as f32);
+                }
+            }
+            println!("exist reading.....");
+        });
+        let writer = tokio::spawn(async move {
+            let now = SystemTime::now();
+            for i in 0..len {
+                joader.next(&mut cache).await;
+                let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
+                if i != 0 && i % 1000 == 0 {
+                    print!("read {} data need {}, avg: {}\n", i, time, time / i as f32);
+                }
+            }
+        });
+        join!(reader, writer);
     }
 }

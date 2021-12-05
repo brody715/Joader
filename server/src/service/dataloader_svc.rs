@@ -57,11 +57,12 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
     }
     async fn next(&self, request: Request<NextRequest>) -> Result<Response<NextResponse>, Status> {
         let loader_id = request.into_inner().loader_id;
-
-        let address = {
-            let mut loader_table = self.loader_table.lock().await;
-            loader_table.get_mut(&loader_id).unwrap().next().await
-        };
+        let mut loader_table = self.loader_table.lock().await;
+        let mut address = Vec::new();
+        let r = loader_table.get_mut(&loader_id).unwrap();
+        while let Ok(addr) = r.try_next().await {
+            address.push(addr);
+        }
         Ok(Response::new(NextResponse { address }))
     }
     async fn delete_dataloader(

@@ -10,7 +10,7 @@ build = "build.rs"
 [dependencies]
 log = "0.4"
 log4rs = "0.10.0"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.14", features = ["full"] }
 rand = "0.8.4"
 crossbeam = "0.8.1"
 libc = "0.2"
@@ -22,9 +22,15 @@ tonic = "0.5"
 clap = "3.0.0-beta.3"
 ctrlc = "3.2.1"
 lmdb-zero = "0.4.4"
-
+coz = "0.1"
 [build-dependencies]
 tonic-build = "0.5"
+
+[profile.release]
+debug = 1
+
+[rust]
+debuginfo-level = 1
 
 [lib]
 name = "joader"

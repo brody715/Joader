@@ -10,3 +10,5 @@ client/loader/__pycache__
 
 server/target/
 server/log/
+benchmark/target
+benchmark/log/
