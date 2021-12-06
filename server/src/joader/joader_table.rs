@@ -75,7 +75,6 @@ impl JoaderTable {
             if !joader.is_empty() {
                 joader.next(&mut self.cache).await;
             }
-            
         }
     }
 }
