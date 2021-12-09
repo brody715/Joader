@@ -9,7 +9,7 @@ use std::{fmt::Debug, sync::Arc};
 #[derive(Clone, Default, Debug)]
 pub struct FileDataset {
     items: Vec<DataItem>,
-    root: String,
+    _root: String,
     name: String,
 }
 
@@ -18,7 +18,7 @@ pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
     let items = request.items;
     Arc::new(FileDataset {
         items,
-        root: "".into(),
+        _root: "".into(),
         name,
     })
 }

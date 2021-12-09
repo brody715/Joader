@@ -27,26 +27,12 @@ async fn start(joader_table: Arc<Mutex<JoaderTable>>) {
             continue;
         }
         coz::progress!();
-        joader_table.next()
+        todo!()
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //start joader_table
-    let cache = Cache::new(CACHE_CAPACITY, SHM_PATH.to_string(), HEAD_NUM);
-    let joader_table = Arc::new(Mutex::new(JoaderTable::new(cache)));
-
-    ctrlc::set_handler(move || {
-        unsafe {
-            let shmpath = SHM_PATH.as_ptr() as *const i8;
-            shm_unlink(shmpath);
-        };
-        println!("Close {:?} sucess", SHM_PATH);
-        process::exit(1);
-    })
-    .expect("Error setting Ctrl-C handler");
-    // start joader
-    tokio::spawn(async move { start(joader_table).await });
-    Ok(())
+    todo!()
 }

@@ -2,6 +2,8 @@
 pub struct CreateDataloaderRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub dataset_name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDataloaderResponse {
@@ -26,14 +28,13 @@ pub struct NextResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteDataloaderRequest {
-    #[prost(uint64, tag = "3")]
-    pub loader_id: u64,
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub dataset_name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DeleteDataloaderResponse {
-    #[prost(message, optional, tag = "3")]
-    pub status: ::core::option::Option<super::common::Status>,
-}
+pub struct DeleteDataloaderResponse {}
 #[doc = r" Generated client implementations."]
 pub mod data_loader_svc_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]

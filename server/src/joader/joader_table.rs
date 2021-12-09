@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{
-    cache::cache::Cache,
-    loader::{Rloader, Sloader},
-};
+use crate::cache::cache::Cache;
 
 use super::joader::Joader;
 
@@ -31,6 +28,7 @@ impl JoaderTable {
         self.joader_table.insert(name.to_owned(), joader);
         Ok(())
     }
+
     pub fn del_joader(&mut self, name: &str) -> Result<(), String> {
         log::debug!("Del joader {:?}", name);
         if let None = self.joader_table.remove(name) {
@@ -39,23 +37,10 @@ impl JoaderTable {
         Ok(())
     }
 
-    pub fn get(&mut self, name: &str) -> Result<&mut Joader, String> {
+    pub fn get_mut(&mut self, name: &str) -> Result<&mut Joader, String> {
         self.joader_table
             .get_mut(name)
             .ok_or("Joader has not existed".into())
-    }
-
-    pub fn add_loader(&mut self, loader: Sloader) -> Result<u64, String> {
-        log::debug!("Add Loader {:?}", loader);
-        let joader = self.get(loader.get_name())?;
-        joader.add(loader)?;
-        Ok(joader.len())
-    }
-
-    pub fn del_loader(&mut self, loader: Rloader) -> Result<(), String> {
-        log::debug!("Del Loader {:?}", loader);
-        self.get(loader.get_name())?.del(loader);
-        Ok(())
     }
 
     pub fn get_shm_path(&self) -> String {
@@ -75,6 +60,12 @@ impl JoaderTable {
             if !joader.is_empty() {
                 joader.next(&mut self.cache).await;
             }
+        }
+    }
+
+    pub fn set_hash_key(&mut self, num: u32) {
+        for (_, v) in self.joader_table.iter_mut() {
+            v.set_hash_key(num);
         }
     }
 }

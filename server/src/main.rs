@@ -1,32 +1,17 @@
 use ::joader::cache::cache::Cache;
 use ::joader::joader::joader_table::JoaderTable;
-use clap::Parser;
+use clap::{load_yaml, App};
 use joader::proto::dataloader::data_loader_svc_server::DataLoaderSvcServer;
 use joader::proto::dataset::dataset_svc_server::DatasetSvcServer;
-use joader::service::{DataLoaderSvcImpl, DatasetSvcImpl};
+use joader::service::{DataLoaderSvcImpl, DatasetSvcImpl, GlobalID};
 use libc::shm_unlink;
+use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::process;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
 use tonic::transport::Server;
-
-#[derive(Parser)]
-struct Opts {
-    // The custom log4rs config file.
-    #[clap(long, default_value = "log4rs.yaml")]
-    log4rs_config: String,
-    #[clap(long, default_value = "127.0.0.1:4321")]
-    host: String,
-    #[clap(long, default_value = "DLCache")]
-    shm_path: String,
-    #[clap(long, default_value = "2048")]
-    head_num: u64,
-    // 1GB
-    #[clap(long, default_value = "1151022592")]
-    cache_capacity: usize,
-}
 
 async fn start(joader_table: Arc<Mutex<JoaderTable>>) {
     println!("start joader loop ....");
@@ -43,11 +28,16 @@ async fn start(joader_table: Arc<Mutex<JoaderTable>>) {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let opts: Opts = Opts::parse();
-    let shm_path = opts.shm_path.clone();
-    log4rs::init_file(opts.log4rs_config, Default::default()).unwrap();
+    let yaml = load_yaml!("cli.yaml");
+    let matches = App::from(yaml).get_matches();
+    let log4rs_config = matches.value_of("log4rs_config").unwrap();
+    let ip_port = matches.value_of("ip_port").unwrap();
+    let head_num: u64 = matches.value_of("head_num").unwrap().parse().unwrap();
+    let cache_capacity: usize = matches.value_of("cache_capacity").unwrap().parse().unwrap();
+    let shm_path = matches.value_of("shm_path").unwrap().to_string();
+    log4rs::init_file(log4rs_config, Default::default()).unwrap();
     //start joader_table
-    let cache = Cache::new(opts.cache_capacity, opts.shm_path, opts.head_num);
+    let cache = Cache::new(cache_capacity, &shm_path, head_num);
     let joader_table = Arc::new(Mutex::new(JoaderTable::new(cache)));
 
     ctrlc::set_handler(move || {
@@ -55,19 +45,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let shmpath = shm_path.as_ptr() as *const i8;
             shm_unlink(shmpath);
         };
-        println!("Close {:?} sucess", shm_path);
+        println!("Close {:?} successfully", shm_path);
         process::exit(1);
     })
     .expect("Error setting Ctrl-C handler");
     // start server
-    let addr: SocketAddr = opts.host.parse()?;
+    let addr: SocketAddr = ip_port.parse()?;
+    let loader_id = GlobalID::new();
+    let loader_id_table = Arc::new(Mutex::new(HashMap::new()));
     let dataset_svc = DatasetSvcImpl::new(joader_table.clone());
-    let data_loader_svc = DataLoaderSvcImpl::new(joader_table.clone());
+    let del_loaders = Arc::new(Mutex::new(HashSet::new()));
+    let data_loader_svc = DataLoaderSvcImpl::new(
+        joader_table.clone(),
+        del_loaders,
+        loader_id,
+        loader_id_table,
+    );
 
     // start joader
     tokio::spawn(async move { start(joader_table).await });
 
-    println!("start joader at {:?}......\n", addr);
+    println!("start joader at {:?}......", addr);
     Server::builder()
         .add_service(DatasetSvcServer::new(dataset_svc))
         .add_service(DataLoaderSvcServer::new(data_loader_svc))

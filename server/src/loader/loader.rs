@@ -1,65 +1,106 @@
-use crate::proto::dataloader::CreateDataloaderRequest;
-use tokio::sync::mpsc::{channel, error::TryRecvError, Receiver, Sender};
+use std::collections::HashMap;
+
+use super::channel::{self as loader_channel, LoaderReceiver, LoaderSender};
 // Loader store the information of schema, dataset and filter
-#[derive(Default, Debug, Clone)]
-struct Loader {
-    dataset_name: String,
-    id: u64,
+
+pub type IdxSender = LoaderSender<u32>;
+pub type IdxReceiver = LoaderReceiver<u32>;
+pub type DataSender = LoaderSender<u64>;
+pub type DataReceiver = LoaderReceiver<u64>;
+#[derive(Debug, Default)]
+struct Cursor {
+    v: Vec<u64>,
+    idx: usize,
+}
+
+impl Cursor {
+    fn push(&mut self, host_id: u64) {
+        self.v.push(host_id);
+    }
+
+    fn next(&mut self) -> Option<u64> {
+        self.idx = (self.idx + 1) % (self.v.len() + 1);
+        if self.idx == self.v.len() {
+            // to local host
+            return None;
+        }
+        Some(self.v[self.idx])
+    }
 }
 
 #[derive(Debug)]
-pub struct Sloader {
-    loader: Loader,
-    s: Sender<u64>,
-}
-#[derive(Debug)]
-pub struct Rloader {
-    loader: Loader,
-    r: Receiver<u64>,
-}
-pub fn from_proto(request: CreateDataloaderRequest, id: u64) -> (Sloader, Rloader) {
-    let loader = Loader {
-        dataset_name: request.name,
-        id,
-    };
-    let (s, r) = channel::<u64>(4096);
-    (
-        Sloader {
-            loader: loader.clone(),
-            s,
-        },
-        Rloader { loader, r },
-    )
+pub struct Loader {
+    loader_id: u64,
+    // store all hosts except the local ones
+    hosts: HashMap<u64, IdxSender>,
+    cursor: Cursor,
+    data_addr_s: Option<DataSender>,
 }
 
-impl Rloader {
-    pub async fn next(&mut self) -> u64 {
-        self.r.recv().await.unwrap()
-    }
+pub fn create_idx_channel(loader_id: u64) -> (LoaderSender<u32>, LoaderReceiver<u32>) {
+    loader_channel::new::<u32>(loader_id)
+}
 
-    pub async fn try_next(&mut self) -> Result<u64, TryRecvError> {
-        self.r.try_recv()
+pub fn create_data_channel(loader_id: u64) -> (LoaderSender<u64>, LoaderReceiver<u64>) {
+    loader_channel::new::<u64>(loader_id)
+}
+
+impl Loader {
+    pub fn new(loader_id: u64) -> Self {
+        Loader {
+            loader_id,
+            hosts: HashMap::new(),
+            cursor: Default::default(),
+            data_addr_s: None,
+        }
     }
 
     pub fn get_id(&self) -> u64 {
-        self.loader.id
+        self.loader_id
     }
 
-    pub fn get_name(&self) -> &str {
-        &self.loader.dataset_name
-    }
-}
-
-impl Sloader {
-    pub fn get_id(&self) -> u64 {
-        self.loader.id
+    pub async fn send_data(&self, addr: u64) {
+        self.data_addr_s.as_ref().unwrap().send(addr).await;
     }
 
-    pub async fn send(&self, addr: u64) {
-        self.s.send(addr).await.unwrap();
+    pub async fn send_idx(&mut self, idx: u32, host_id: u64) -> bool {
+        assert_eq!(self.data_addr_s.is_some(), true);
+        if self.hosts.contains_key(&host_id) {
+            self.hosts[&host_id].send(idx).await;
+            return true;
+        }
+        if let Some(host_id) = self.cursor.next() {
+            self.hosts[&host_id].send(idx).await;
+            return true;
+        }
+        false
     }
 
-    pub fn get_name(&self) -> &str {
-        &self.loader.dataset_name
+    pub fn add_idx_sender(&mut self, idx_sender: IdxSender, host_id: u64) {
+        self.hosts.insert(host_id, idx_sender);
+        self.cursor.push(host_id);
+    }
+    pub fn del_idx_sender(&mut self, host_id: u64) {
+        self.hosts.remove(&host_id);
+    }
+    pub fn add_data_sender(&mut self, data_sender: DataSender) {
+        log::debug!("Add data sender {:?}", data_sender);
+        self.data_addr_s = Some(data_sender);
+    }
+    pub fn del_data_sender(&mut self) {
+        self.data_addr_s = None;
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.data_addr_s.is_none() && self.hosts.is_empty()
+    }
+
+    pub async fn close(&mut self) {
+        for (_, c) in self.hosts.iter_mut() {
+            c.close().await;
+        }
+        if let Some(sender) = &self.data_addr_s {
+            sender.close().await;
+        }
     }
 }

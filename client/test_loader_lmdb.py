@@ -33,7 +33,8 @@ def test_global_lmdb():
         ds.add_item([k])
     ds.create(channel)
 
-    loader = Loader(dataset_name=name, channel=channel)
+    loader = Loader.new(dataset_name=name,
+                        name="lmdb_loader", ip='127.0.0.1:4321')
     now = time.time()
     for i in range(len(keys)):
         if i!= 0 and i % 1000 == 0:

@@ -2,7 +2,6 @@ use crate::cache::freelist::FreeList;
 
 use super::data_block::Data;
 
-
 #[derive(Debug)]
 pub struct DataSegment {
     data: Data,
@@ -55,7 +54,7 @@ mod tests {
         assert!(ds.allocate() == Some(Data::new(ptr, 0, LEN as u64)));
         assert!(ds.allocate() == None);
 
-        ds.free(1, 3);
-        unsafe { assert!(ds.allocate() == Some(Data::new(ptr.offset(1), 1, 3))) }
+        ds.free(1, 17);
+        unsafe { assert_eq!(ds.allocate(), Some(Data::new(ptr.offset(1), 1, 17))) }
     }
 }

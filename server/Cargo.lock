@@ -140,6 +140,7 @@ dependencies = [
  "termcolor",
  "textwrap",
  "unicase",
+ "yaml-rust",
 ]
 
 [[package]]
@@ -514,6 +515,7 @@ dependencies = [
  "lmdb-zero",
  "log",
  "log4rs",
+ "num-traits",
  "prost",
  "prost-types",
  "protobuf",

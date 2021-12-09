@@ -10,5 +10,7 @@ client/loader/__pycache__
 
 server/target/
 server/log/
+server/Cargo.lock
 benchmark/target
 benchmark/log/
+benchmark/Cargo.lock

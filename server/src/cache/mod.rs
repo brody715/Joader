@@ -1,5 +1,5 @@
 pub mod cache;
-mod head;
+pub mod head;
 mod head_segment;
 mod freelist;
 mod data_segment;

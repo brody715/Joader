@@ -1,9 +1,5 @@
 use super::decision::Decision;
-use rand::{
-    distributions::WeightedIndex,
-    prelude::Distribution,
-    thread_rng
-};
+use rand::{distributions::WeightedIndex, prelude::Distribution, thread_rng};
 use std::{collections::HashSet, iter::FromIterator, sync::Arc};
 #[derive(Clone, Debug)]
 pub struct Node {
@@ -160,6 +156,35 @@ impl Node {
             ));
             right.get_loader_set(loader_set, pre_len);
         }
+    }
+
+    pub fn delete(self: &mut NodeRef, id: u64) -> Option<NodeRef> {
+        let mut_ref = self.get_mut_unchecked();
+        mut_ref.loader_id.remove(&id);
+        if mut_ref.loader_id.is_empty() {
+            return None;
+        }
+
+        if let Some(left) = &mut mut_ref.left {
+            mut_ref.left = left.delete(id);
+        }
+
+        if let Some(mut right) = mut_ref.right.clone() {
+            if let None = mut_ref.left {
+                mut_ref.values.append(&mut right.values.clone());
+                mut_ref.values_set = mut_ref
+                    .values_set
+                    .union(&right.values_set)
+                    .into_iter()
+                    .cloned()
+                    .collect::<HashSet<u32>>();
+                mut_ref.right = right.right.clone();
+                mut_ref.left = right.left.clone();
+            } else {
+                mut_ref.right = right.delete(id);
+            }
+        }
+        return Some((*self).clone());
     }
 }
 

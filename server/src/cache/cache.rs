@@ -15,7 +15,6 @@ use super::head::{Head, HEAD_SIZE};
 #[derive(Debug)]
 pub struct Cache {
     shmpath: String,
-    capacity: usize,
     head_segment: HeadSegment,
     data_segment: DataSegment,
     cached_data: CachedData,
@@ -25,7 +24,7 @@ pub struct Cache {
 unsafe impl Send for Cache {}
 
 impl Cache {
-    pub fn new(capacity: usize, shmpath: String, head_num: u64) -> Cache {
+    pub fn new(capacity: usize, shmpath: &str, head_num: u64) -> Cache {
         let (_, addr) = unsafe {
             let shmpath = shmpath.as_ptr() as *const i8;
             let fd = shm_open(shmpath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
@@ -45,8 +44,7 @@ impl Cache {
         };
 
         Cache {
-            shmpath,
-            capacity,
+            shmpath: shmpath.to_string(),
             head_segment,
             data_segment,
             start_ptr: addr,
@@ -204,7 +202,7 @@ mod test {
         let len = 256;
         let name = "DLCache".to_string();
         let head_num = 8;
-        let mut cache = Cache::new(len, name.clone(), head_num);
+        let mut cache = Cache::new(len, &name, head_num);
 
         let size_list = &[(20, 0), (27, 1), (60, 2), (20, 3)];
         let mut idx_list = vec![];
@@ -253,7 +251,7 @@ mod test {
         let (wc, rc) = unbounded::<usize>();
         let (addr_wc, addr_rc) = unbounded();
         let writer = thread::spawn(move || {
-            let cache = Cache::new(len, name.clone(), head_num as u64);
+            let cache = Cache::new(len, &name, head_num as u64);
             log::debug!("writer start {:?}", cache.start_ptr());
             addr_wc.send(AtomicPtr::new(cache.start_ptr())).unwrap();
             writer_func(cache, TURN, wc);
