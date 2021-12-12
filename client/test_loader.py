@@ -4,8 +4,8 @@ import grpc
 import time
 
 channel = grpc.insecure_channel('127.0.0.1:4321')
-name = "ImageNet"
-len = 100000
+name = "DummyDataset"
+len = 1000
 if __name__ == "__main__":
     ds = Dataset(name=name, location="", ty=DatasetType.DUMMY)
     now = time.time()
