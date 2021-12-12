@@ -60,7 +60,7 @@ impl JoaderTable {
         }
     }
 
-    pub fn remote_read(&mut self, sample_res: &Vec<SampleResult>) {
+    pub fn remote_read(&mut self, _sample_res: &Vec<SampleResult>) {
         todo!()
     }
 }

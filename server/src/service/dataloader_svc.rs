@@ -2,9 +2,12 @@ use crate::joader::joader_table::JoaderTable;
 use crate::loader::{create_data_channel, DataReceiver};
 use crate::proto::dataloader::data_loader_svc_server::DataLoaderSvc;
 use crate::proto::dataloader::*;
+use crate::proto::distributed::distributed_svc_client::DistributedSvcClient;
+use crate::proto::distributed::{CreateSamplerRequest, DeleteSamplerRequest};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tonic::transport::Channel;
 use tonic::{async_trait, Request, Response, Status};
 
 use super::{GlobalID, IDTable};
@@ -17,6 +20,8 @@ pub struct DataLoaderSvcImpl {
     delete_loaders: Arc<Mutex<HashSet<u64>>>,
     recv_table: Arc<Mutex<HashMap<u64, DataReceiver>>>,
     dataset_table: Arc<Mutex<HashMap<String, u32>>>,
+    leader: Option<DistributedSvcClient<Channel>>,
+    ip: String,
 }
 
 impl DataLoaderSvcImpl {
@@ -26,6 +31,8 @@ impl DataLoaderSvcImpl {
         id: GlobalID,
         loader_id_table: IDTable,
         dataset_table: Arc<Mutex<HashMap<String, u32>>>,
+        leader: Option<DistributedSvcClient<Channel>>,
+        ip: String,
     ) -> Self {
         Self {
             joader_table,
@@ -34,6 +41,8 @@ impl DataLoaderSvcImpl {
             loader_id_table,
             id,
             dataset_table,
+            leader,
+            ip,
         }
     }
 }
@@ -71,6 +80,17 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         loader.add_data_sender(ds);
         rt.insert(loader_id, dr);
 
+        if let Some(mut leader) = self.leader.clone() {
+            leader
+                .create_sampler(CreateSamplerRequest {
+                    name: request.name,
+                    dataset_name: request.dataset_name,
+                    ip: self.ip.to_string(),
+                })
+                .await
+                .unwrap();
+        }
+
         Ok(Response::new(CreateDataloaderResponse {
             length: joader.len(),
             shm_path: jt.get_shm_path(),
@@ -95,6 +115,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         }
         Ok(Response::new(NextResponse { address }))
     }
+
     async fn delete_dataloader(
         &self,
         request: Request<DeleteDataloaderRequest>,
@@ -118,6 +139,17 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         // 3 if all subhost have removed in loader, then remove loader_id
         if loader.is_empty() {
             id_table.remove(&request.name);
+        }
+
+        if let Some(mut leader) = self.leader.clone() {
+            leader
+                .delete_sampler(DeleteSamplerRequest {
+                    name: request.name,
+                    dataset_name: request.dataset_name,
+                    ip: self.ip.to_string(),
+                })
+                .await
+                .unwrap();
         }
         Ok(Response::new(DeleteDataloaderResponse {}))
     }

@@ -14,7 +14,7 @@ use std::process;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
-use tonic::transport::Server;
+use tonic::transport::{Channel, Server};
 
 async fn start_leader(joader_table: Arc<Mutex<JoaderTable>>) {
     log::info!("start leader service ....");
@@ -31,11 +31,10 @@ async fn start_leader(joader_table: Arc<Mutex<JoaderTable>>) {
 
 async fn start_follower(
     joader_table: Arc<Mutex<JoaderTable>>,
-    leader_ip_port: String,
+    mut leader: DistributedSvcClient<Channel>,
     ip: String,
     port: String,
 ) {
-    let mut leader = DistributedSvcClient::connect(leader_ip_port).await.unwrap();
     let request = RegisterHostRequest {
         ip: ip.clone(),
         port: port.parse().unwrap(),
@@ -68,32 +67,45 @@ async fn start_server(
     let dataset_table = Arc::new(Mutex::new(HashMap::new()));
     let cache = Cache::new(cache_capacity, &shm_path, head_num);
     let joader_table = Arc::new(Mutex::new(JoaderTable::new(cache)));
-    let ip_port = ip.to_string() + port;
+    let ip_port = ip.to_string() + ":" + port;
     let addr: SocketAddr = ip_port.parse()?;
     let loader_id_table = Arc::new(Mutex::new(HashMap::new()));
     let dataset_svc = DatasetSvcImpl::new(joader_table.clone(), dataset_table.clone(), id.clone());
     let del_loaders = Arc::new(Mutex::new(HashSet::new()));
+
+    let mut leader = None;
+    if let Some(leader_ip_port) = leader_ip_port {
+        leader = Some(
+            DistributedSvcClient::connect(leader_ip_port.to_string())
+                .await
+                .unwrap(),
+        );
+    }
+
     let data_loader_svc = DataLoaderSvcImpl::new(
         joader_table.clone(),
         del_loaders,
         id.clone(),
         loader_id_table.clone(),
         dataset_table.clone(),
+        leader.clone(),
+        ip.to_string(),
     );
     let distributed_svc =
         DistributedSvcImpl::new(id, loader_id_table, dataset_table, joader_table.clone());
 
     // start joader
-    if let Some(leader_ip_port) = leader_ip_port {
-        let lip = leader_ip_port.to_string();
+    if let Some(_) = leader_ip_port {
         let ip = ip.to_string();
         let port = port.to_string();
-        tokio::spawn(async move { start_follower(joader_table, lip, ip, port).await });
+        let joader_table = joader_table.clone();
+        tokio::spawn(async move {
+            start_follower(joader_table, leader.clone().unwrap(), ip, port).await
+        });
     } else {
         tokio::spawn(async move { start_leader(joader_table).await });
     }
-
-    println!("start joader at {:?}......", addr);
+    log::info!("start joader at {:?}......", addr);
     let server = Server::builder()
         .add_service(DatasetSvcServer::new(dataset_svc))
         .add_service(DataLoaderSvcServer::new(data_loader_svc))
@@ -129,7 +141,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let shm_path = matches.value_of("shm_path").unwrap().to_string();
     let leader = matches.value_of("role").unwrap();
     let leader_ip_port;
-    if leader == "leader" {
+    if leader != "leader" {
         leader_ip_port = matches.value_of("leader_ip_port");
     } else {
         leader_ip_port = None;
