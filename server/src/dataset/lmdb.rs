@@ -19,7 +19,6 @@ struct LmdbDataset {
 }
 
 pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
-    let name = request.name;
     let location = request.location;
     let items = request.items;
     let env = unsafe {

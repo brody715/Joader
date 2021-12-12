@@ -25,5 +25,5 @@ pub fn build_dataset(request: CreateDatasetRequest, dataset_id: u32) -> DatasetR
 }
 
 pub fn data_id(dataset_id: u32, data_idx: u32) -> u64 {
-    (dataset_id as u64) << 32 + (data_idx as u64)
+    ((dataset_id as u64) << 32) + (data_idx as u64)
 }

@@ -29,8 +29,7 @@ impl Joader {
     }
 
     pub fn get_mut(&mut self, id: u64) -> &mut Loader {
-        self.loader_table
-            .get_mut(&id).unwrap()
+        self.loader_table.get_mut(&id).unwrap()
     }
 
     pub fn new(dataset: DatasetRef) -> Joader {
@@ -130,7 +129,11 @@ impl Joader {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.loader_table.is_empty()
+        let mut empty = true;
+        for (_, l) in &self.loader_table {
+            empty &= l.closed();
+        }
+        empty
     }
 
     pub fn len(&self) -> u64 {

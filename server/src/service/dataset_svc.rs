@@ -16,8 +16,16 @@ pub struct DatasetSvcImpl {
 }
 
 impl DatasetSvcImpl {
-    pub fn new(joader_table: Arc<Mutex<JoaderTable>>) -> DatasetSvcImpl {
-        todo!()
+    pub fn new(
+        joader_table: Arc<Mutex<JoaderTable>>,
+        dataset_table: Arc<Mutex<HashMap<String, u32>>>,
+        id: GlobalID,
+    ) -> DatasetSvcImpl {
+        Self {
+            joader_table,
+            dataset_table,
+            id,
+        }
     }
 }
 

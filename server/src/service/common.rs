@@ -1,7 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use tokio::sync::Mutex;
-use tonic::Status;
 
 use crate::proto::common::{status::Code as RspCode, Status as RspStatus};
 
@@ -26,7 +25,7 @@ pub fn succ() -> RspStatus {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GlobalID {
     dataset_id: Arc<Mutex<u32>>,
     loader_id: Arc<Mutex<u32>>,

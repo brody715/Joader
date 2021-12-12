@@ -62,6 +62,23 @@ pub struct DistributedSvcImpl {
     joader_table: Arc<Mutex<JoaderTable>>,
 }
 
+impl DistributedSvcImpl {
+    pub fn new(
+        id: GlobalID,
+        loader_id_table: Arc<Mutex<HashMap<String, u64>>>,
+        dataset_table: Arc<Mutex<HashMap<String, u32>>>,
+        joader_table: Arc<Mutex<JoaderTable>>,
+    ) -> DistributedSvcImpl {
+        Self {
+            id,
+            loader_id_table,
+            dataset_table,
+            host_table: Default::default(),
+            joader_table,
+        }
+    }
+}
+
 #[async_trait]
 impl DistributedSvc for DistributedSvcImpl {
     async fn register_host(
@@ -101,7 +118,7 @@ impl DistributedSvc for DistributedSvcImpl {
         let mut ht = self.host_table.lock().await;
         let mut loader_id_table = self.loader_id_table.lock().await;
         let mut jt = self.joader_table.lock().await;
-        let mut dt = self.dataset_table.lock().await;
+        let dt = self.dataset_table.lock().await;
 
         let host = ht
             .get_mut(&request.ip)

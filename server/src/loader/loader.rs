@@ -35,6 +35,7 @@ pub struct Loader {
     hosts: HashMap<u64, IdxSender>,
     cursor: Cursor,
     data_addr_s: Option<DataSender>,
+    closed: bool,
 }
 
 pub fn create_idx_channel(loader_id: u64) -> (LoaderSender<u32>, LoaderReceiver<u32>) {
@@ -52,6 +53,7 @@ impl Loader {
             hosts: HashMap::new(),
             cursor: Default::default(),
             data_addr_s: None,
+            closed: false,
         }
     }
 
@@ -102,5 +104,11 @@ impl Loader {
         if let Some(sender) = &self.data_addr_s {
             sender.close().await;
         }
+        self.closed = true
+    }
+
+    #[inline]
+    pub fn closed(&self) -> bool {
+        self.closed
     }
 }

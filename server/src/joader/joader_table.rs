@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::cache::cache::Cache;
+use crate::{cache::cache::Cache, proto::distributed::SampleResult};
 
 use super::joader::Joader;
 
@@ -58,5 +58,9 @@ impl JoaderTable {
         for (_, v) in self.joader_table.iter_mut() {
             v.set_hash_key(num);
         }
+    }
+
+    pub fn remote_read(&mut self, sample_res: &Vec<SampleResult>) {
+        todo!()
     }
 }

@@ -23,17 +23,18 @@ impl DataLoaderSvcImpl {
     pub fn new(
         joader_table: Arc<Mutex<JoaderTable>>,
         delete_loaders: Arc<Mutex<HashSet<u64>>>,
-        loader_id: GlobalID,
+        id: GlobalID,
         loader_id_table: IDTable,
+        dataset_table: Arc<Mutex<HashMap<String, u32>>>,
     ) -> Self {
-        todo!()
-        // Self {
-        //     joader_table,
-        //     recv_table: Default::default(),
-        //     delete_loaders,
-        //     loader_id_table,
-        //     loader_id,
-        // }
+        Self {
+            joader_table,
+            recv_table: Default::default(),
+            delete_loaders,
+            loader_id_table,
+            id,
+            dataset_table,
+        }
     }
 }
 
@@ -48,7 +49,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let mut loader_id_table = self.loader_id_table.lock().await;
         let mut jt = self.joader_table.lock().await;
         let mut rt = self.recv_table.lock().await;
-        let mut dt = self.dataset_table.lock().await;
+        let dt = self.dataset_table.lock().await;
         let dataset_id = dt
             .get(&request.dataset_name)
             .ok_or_else(|| Status::not_found(&request.dataset_name))?;

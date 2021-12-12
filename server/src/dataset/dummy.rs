@@ -13,7 +13,7 @@ struct DummyDataset {
     id: u32,
 }
 
-pub fn new_dummy(len: usize, name: String) -> DatasetRef {
+pub fn new_dummy(len: usize, _name: String) -> DatasetRef {
     let mut items = Vec::new();
     for i in 0..len {
         items.push(DataItem {
@@ -28,7 +28,6 @@ pub fn new_dummy(len: usize, name: String) -> DatasetRef {
 }
 
 pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
-    let name = request.name;
     let items = request.items;
     Arc::new(DummyDataset {
         items,

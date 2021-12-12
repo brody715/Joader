@@ -14,7 +14,6 @@ pub struct FileDataset {
 }
 
 pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
-    let name = request.name;
     let items = request.items;
     Arc::new(FileDataset {
         items,

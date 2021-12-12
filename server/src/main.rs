@@ -3,7 +3,10 @@ use ::joader::joader::joader_table::JoaderTable;
 use clap::{load_yaml, App};
 use joader::proto::dataloader::data_loader_svc_server::DataLoaderSvcServer;
 use joader::proto::dataset::dataset_svc_server::DatasetSvcServer;
-use joader::service::{DataLoaderSvcImpl, DatasetSvcImpl, GlobalID};
+use joader::proto::distributed::distributed_svc_client::DistributedSvcClient;
+use joader::proto::distributed::distributed_svc_server::DistributedSvcServer;
+use joader::proto::distributed::{RegisterHostRequest, SampleRequest};
+use joader::service::{DataLoaderSvcImpl, DatasetSvcImpl, DistributedSvcImpl, GlobalID};
 use libc::shm_unlink;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
@@ -13,8 +16,8 @@ use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
 use tonic::transport::Server;
 
-async fn start(joader_table: Arc<Mutex<JoaderTable>>) {
-    println!("start joader loop ....");
+async fn start_leader(joader_table: Arc<Mutex<JoaderTable>>) {
+    log::info!("start leader service ....");
     loop {
         let mut joader_table = joader_table.lock().await;
         if joader_table.is_empty() {
@@ -26,20 +29,83 @@ async fn start(joader_table: Arc<Mutex<JoaderTable>>) {
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let yaml = load_yaml!("cli.yaml");
-    let matches = App::from(yaml).get_matches();
-    let log4rs_config = matches.value_of("log4rs_config").unwrap();
-    let ip_port = matches.value_of("ip_port").unwrap();
-    let head_num: u64 = matches.value_of("head_num").unwrap().parse().unwrap();
-    let cache_capacity: usize = matches.value_of("cache_capacity").unwrap().parse().unwrap();
-    let shm_path = matches.value_of("shm_path").unwrap().to_string();
-    log4rs::init_file(log4rs_config, Default::default()).unwrap();
-    //start joader_table
+async fn start_follower(
+    joader_table: Arc<Mutex<JoaderTable>>,
+    leader_ip_port: String,
+    ip: String,
+    port: String,
+) {
+    let mut leader = DistributedSvcClient::connect(leader_ip_port).await.unwrap();
+    let request = RegisterHostRequest {
+        ip: ip.clone(),
+        port: port.parse().unwrap(),
+    };
+    leader.register_host(request).await.unwrap();
+    let sample_request = SampleRequest { ip };
+    loop {
+        let resp = leader.sample(sample_request.clone()).await.unwrap();
+        let sample_res = resp.into_inner().res;
+        if sample_res.is_empty() {
+            log::debug!("sleep ....");
+            sleep(Duration::from_millis(100)).await;
+            continue;
+        }
+        let mut joader_table = joader_table.lock().await;
+        joader_table.remote_read(&sample_res);
+    }
+}
+
+async fn start_server(
+    cache_capacity: usize,
+    shm_path: &str,
+    head_num: u64,
+    ip: &str,
+    port: &str,
+    leader_ip_port: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    log::info!("start server");
+    let id = GlobalID::new();
+    let dataset_table = Arc::new(Mutex::new(HashMap::new()));
     let cache = Cache::new(cache_capacity, &shm_path, head_num);
     let joader_table = Arc::new(Mutex::new(JoaderTable::new(cache)));
+    let ip_port = ip.to_string() + port;
+    let addr: SocketAddr = ip_port.parse()?;
+    let loader_id_table = Arc::new(Mutex::new(HashMap::new()));
+    let dataset_svc = DatasetSvcImpl::new(joader_table.clone(), dataset_table.clone(), id.clone());
+    let del_loaders = Arc::new(Mutex::new(HashSet::new()));
+    let data_loader_svc = DataLoaderSvcImpl::new(
+        joader_table.clone(),
+        del_loaders,
+        id.clone(),
+        loader_id_table.clone(),
+        dataset_table.clone(),
+    );
+    let distributed_svc =
+        DistributedSvcImpl::new(id, loader_id_table, dataset_table, joader_table.clone());
 
+    // start joader
+    if let Some(leader_ip_port) = leader_ip_port {
+        let lip = leader_ip_port.to_string();
+        let ip = ip.to_string();
+        let port = port.to_string();
+        tokio::spawn(async move { start_follower(joader_table, lip, ip, port).await });
+    } else {
+        tokio::spawn(async move { start_leader(joader_table).await });
+    }
+
+    println!("start joader at {:?}......", addr);
+    let server = Server::builder()
+        .add_service(DatasetSvcServer::new(dataset_svc))
+        .add_service(DataLoaderSvcServer::new(data_loader_svc))
+        .add_service(DistributedSvcServer::new(distributed_svc))
+        .serve(addr);
+    server.await?;
+    Ok(())
+}
+
+fn register_ctrlc(shm_path: &str) {
+    log::info!("register ctrlc handler");
+    let shm_path = shm_path.to_string();
     ctrlc::set_handler(move || {
         unsafe {
             let shmpath = shm_path.as_ptr() as *const i8;
@@ -49,27 +115,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         process::exit(1);
     })
     .expect("Error setting Ctrl-C handler");
-    // start server
-    let addr: SocketAddr = ip_port.parse()?;
-    let loader_id = GlobalID::new();
-    let loader_id_table = Arc::new(Mutex::new(HashMap::new()));
-    let dataset_svc = DatasetSvcImpl::new(joader_table.clone());
-    let del_loaders = Arc::new(Mutex::new(HashSet::new()));
-    let data_loader_svc = DataLoaderSvcImpl::new(
-        joader_table.clone(),
-        del_loaders,
-        loader_id,
-        loader_id_table,
-    );
+}
 
-    // start joader
-    tokio::spawn(async move { start(joader_table).await });
-
-    println!("start joader at {:?}......", addr);
-    Server::builder()
-        .add_service(DatasetSvcServer::new(dataset_svc))
-        .add_service(DataLoaderSvcServer::new(data_loader_svc))
-        .serve(addr)
-        .await?;
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = load_yaml!("cli.yaml");
+    let matches = App::from(yaml).get_matches();
+    let log4rs_config = matches.value_of("log4rs_config").unwrap();
+    let ip = matches.value_of("ip").unwrap();
+    let port = matches.value_of("port").unwrap();
+    let head_num: u64 = matches.value_of("head_num").unwrap().parse().unwrap();
+    let cache_capacity: usize = matches.value_of("cache_capacity").unwrap().parse().unwrap();
+    let shm_path = matches.value_of("shm_path").unwrap().to_string();
+    let leader = matches.value_of("role").unwrap();
+    let leader_ip_port;
+    if leader == "leader" {
+        leader_ip_port = matches.value_of("leader_ip_port");
+    } else {
+        leader_ip_port = None;
+    }
+    log4rs::init_file(log4rs_config, Default::default()).unwrap();
+    // start ctrlc
+    register_ctrlc(&shm_path);
+    //start server
+    start_server(
+        cache_capacity,
+        &shm_path,
+        head_num,
+        ip,
+        port,
+        leader_ip_port,
+    )
+    .await?;
     Ok(())
 }
