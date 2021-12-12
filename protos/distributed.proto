@@ -42,6 +42,7 @@ message CreateSamplerRequest {
 message CreateSamplerResponse {
     uint64 length = 1;
     uint64 loader_id = 2;
+    uint32 dataset_id = 3;
 }
 
 message DeleteSamplerRequest {
