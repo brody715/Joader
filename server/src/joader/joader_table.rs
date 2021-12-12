@@ -31,6 +31,7 @@ impl JoaderTable {
     }
 
     pub fn get_mut(&mut self, id: u32) -> &mut Joader {
+        log::debug!("Get joader {:?}", id);
         self.joader_table.get_mut(&id).unwrap()
     }
 

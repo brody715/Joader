@@ -43,7 +43,7 @@ impl GlobalID {
         let mut id = self.loader_id.lock().await;
         *id += 1;
         let loader_id = *id as u64;
-        (dataset_id as u64) << 32 + loader_id
+        ((dataset_id as u64) << 32) + loader_id
     }
 
     pub async fn get_host_id(&self) -> u32 {

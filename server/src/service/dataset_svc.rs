@@ -36,7 +36,7 @@ impl DatasetSvc for DatasetSvcImpl {
         request: Request<CreateDatasetRequest>,
     ) -> Result<Response<CreateDatasetResponse>, Status> {
         let request = request.into_inner();
-        let dt = self.dataset_table.lock().await;
+        let mut dt = self.dataset_table.lock().await;
         if dt.contains_key(&request.name) {
             return Err(Status::already_exists(format!(
                 "{:?} has already existed",
@@ -44,8 +44,9 @@ impl DatasetSvc for DatasetSvcImpl {
             )));
         }
 
-        log::debug!("call create dataset {:?}", request);
+        log::debug!("Create dataset {:?}", request);
         let id = self.id.get_dataset_id().await;
+        dt.insert(request.name.clone(), id);
         // insert dataset to dataset table
         let joader = Joader::new(dataset::build_dataset(request, id));
         self.joader_table.lock().await.add_joader(joader);
@@ -58,15 +59,16 @@ impl DatasetSvc for DatasetSvcImpl {
     ) -> Result<Response<DeleteDatasetResponse>, Status> {
         log::debug!("call delete dataset {:?}", request);
         let request = request.into_inner();
-        let dt = self.dataset_table.lock().await;
+        let mut dt = self.dataset_table.lock().await;
         let mut jt = self.joader_table.lock().await;
         match dt.get(&request.name) {
             Some(id) => {
                 jt.del_joader(*id);
+                dt.remove(&request.name);
                 Ok(Response::new(DeleteDatasetResponse { status: None }))
             }
             None => Err(Status::not_found(format!(
-                "{:?} has already not found",
+                "{:?} not found",
                 request
             ))),
         }
