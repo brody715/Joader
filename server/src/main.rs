@@ -35,6 +35,7 @@ async fn start_follower(
     ip: String,
     port: String,
 ) {
+    log::info!("start follower service ....");
     let request = RegisterHostRequest {
         ip: ip.clone(),
         port: port.parse().unwrap(),
