@@ -86,6 +86,7 @@ impl DistributedSvc for DistributedSvcImpl {
         request: Request<RegisterHostRequest>,
     ) -> Result<Response<RegisterHostResponse>, Status> {
         let request = request.into_inner();
+        log::info!("Create Host {:?}", request);
         let mut ht = self.host_table.lock().await;
         if ht.contains_key(&request.ip) {
             return Err(Status::already_exists(format!("{}", request.ip)));
@@ -114,6 +115,7 @@ impl DistributedSvc for DistributedSvcImpl {
         &self,
         request: Request<CreateSamplerRequest>,
     ) -> Result<Response<CreateSamplerResponse>, Status> {
+        log::info!("Create sampler {:?}", request);
         let request = request.into_inner();
         let mut ht = self.host_table.lock().await;
         let mut loader_id_table = self.loader_id_table.lock().await;
@@ -154,7 +156,7 @@ impl DistributedSvc for DistributedSvcImpl {
         request: Request<DeleteSamplerRequest>,
     ) -> Result<Response<DeleteSamplerResponse>, Status> {
         let request = request.into_inner();
-
+        log::info!("Delete sampler {:?}", request);
         let mut ht = self.host_table.lock().await;
         let mut loader_id_table = self.loader_id_table.lock().await;
         let mut jt = self.joader_table.lock().await;
