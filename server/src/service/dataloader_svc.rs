@@ -55,44 +55,56 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
     ) -> Result<Response<CreateDataloaderResponse>, Status> {
         log::info!("call create loader {:?}", request);
         let request = request.into_inner();
-        let mut loader_id_table = self.loader_id_table.lock().await;
         let mut jt = self.joader_table.lock().await;
         let mut rt = self.recv_table.lock().await;
-        let dt = self.dataset_table.lock().await;
-        let dataset_id = dt
-            .get(&request.dataset_name)
-            .ok_or_else(|| Status::not_found(&request.dataset_name))?;
-        let joader = jt.get_mut(*dataset_id);
 
-        // 1. Update loader id table
+        let dataset_id;
+        let length;
         let loader_id;
-        if loader_id_table.contains_key(&request.name) {
-            loader_id = loader_id_table[&request.name];
-        } else {
-            loader_id = self.id.get_loader_id(*dataset_id).await;
-            loader_id_table.insert(request.name.clone(), loader_id);
-            // 2. If not exited, add loader
-            joader.add_loader(loader_id);
-        }
-        // 3 update recv_table
-        let loader = joader.get_mut(loader_id);
-        let (ds, dr) = create_data_channel(loader_id);
-        loader.add_data_sender(ds);
-        rt.insert(loader_id, dr);
-
+        let joader;
         if let Some(mut leader) = self.leader.clone() {
-            leader
+            // follower behavior
+            let resp = leader
                 .create_sampler(CreateSamplerRequest {
                     name: request.name,
                     dataset_name: request.dataset_name,
                     ip: self.ip.to_string(),
                 })
                 .await
-                .unwrap();
+                .unwrap()
+                .into_inner();
+            dataset_id = resp.dataset_id;
+            length = resp.length;
+            loader_id = resp.loader_id;
+            joader = jt.get_mut(dataset_id);
+        } else {
+            // leader behavior
+            let dt = self.dataset_table.lock().await;
+            dataset_id = *dt
+                .get(&request.dataset_name)
+                .ok_or_else(|| Status::not_found(&request.dataset_name))?;
+            let mut loader_id_table = self.loader_id_table.lock().await;
+            joader = jt.get_mut(dataset_id);
+            // 1. Update loader id table
+            if loader_id_table.contains_key(&request.name) {
+                loader_id = loader_id_table[&request.name];
+            } else {
+                loader_id = self.id.get_loader_id(dataset_id).await;
+                loader_id_table.insert(request.name.clone(), loader_id);
+                // 2. If not exited, add loader
+                joader.add_loader(loader_id);
+            }
+            length = joader.len();
         }
 
+        // 3 update recv_table
+        let loader = joader.get_mut(loader_id);
+        let (ds, dr) = create_data_channel(loader_id);
+        loader.add_data_sender(ds);
+        rt.insert(loader_id, dr);
+
         Ok(Response::new(CreateDataloaderResponse {
-            length: joader.len(),
+            length,
             shm_path: jt.get_shm_path(),
             loader_id,
             status: None,

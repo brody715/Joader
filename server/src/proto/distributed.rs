@@ -54,6 +54,8 @@ pub struct CreateSamplerResponse {
     pub length: u64,
     #[prost(uint64, tag = "2")]
     pub loader_id: u64,
+    #[prost(uint32, tag = "3")]
+    pub dataset_id: u32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteSamplerRequest {

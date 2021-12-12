@@ -148,7 +148,11 @@ impl DistributedSvc for DistributedSvcImpl {
         host.add(ir);
 
         let length = joader.len();
-        Ok(Response::new(CreateSamplerResponse { length, loader_id }))
+        Ok(Response::new(CreateSamplerResponse {
+            length,
+            loader_id,
+            dataset_id: *dataset_id,
+        }))
     }
 
     async fn delete_sampler(
