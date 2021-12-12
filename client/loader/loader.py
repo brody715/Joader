@@ -1,6 +1,6 @@
 import grpc
 import sys
-sys.path.append("/home/xiej/ATC/DLCache/client/proto")
+sys.path.append("./proto")
 
 from loader.shm import SharedMemory
 import proto.dataloader_pb2_grpc as dataloader_pb2_grpc

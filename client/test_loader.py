@@ -3,7 +3,7 @@ from loader.loader import Loader
 import grpc
 import time
 
-channel = grpc.insecure_channel('127.0.0.1:4321')
+channel = grpc.insecure_channel('210.28.134.91:4321')
 name = "DummyDataset"
 len = 1000
 if __name__ == "__main__":
@@ -14,7 +14,7 @@ if __name__ == "__main__":
     ds.create(channel)
 
     loader = Loader.new(dataset_name=name,
-                        name="dummy_loader", ip='127.0.0.1:4321')
+                        name="dummy_loader", ip='210.28.134.91:4321')
     now = time.time()
     for i in range(len):
         if i != 0 and i % 1000 == 0:
