@@ -11,11 +11,12 @@ use super::{GlobalID, IDTable};
 
 #[derive(Debug)]
 pub struct DataLoaderSvcImpl {
+    id: GlobalID,
     joader_table: Arc<Mutex<JoaderTable>>,
     loader_id_table: IDTable,
     delete_loaders: Arc<Mutex<HashSet<u64>>>,
     recv_table: Arc<Mutex<HashMap<u64, DataReceiver>>>,
-    loader_id: GlobalID,
+    dataset_table: Arc<Mutex<HashMap<String, u32>>>,
 }
 
 impl DataLoaderSvcImpl {
@@ -25,13 +26,14 @@ impl DataLoaderSvcImpl {
         loader_id: GlobalID,
         loader_id_table: IDTable,
     ) -> Self {
-        Self {
-            joader_table,
-            recv_table: Default::default(),
-            delete_loaders,
-            loader_id_table,
-            loader_id,
-        }
+        todo!()
+        // Self {
+        //     joader_table,
+        //     recv_table: Default::default(),
+        //     delete_loaders,
+        //     loader_id_table,
+        //     loader_id,
+        // }
     }
 }
 
@@ -46,31 +48,26 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let mut loader_id_table = self.loader_id_table.lock().await;
         let mut jt = self.joader_table.lock().await;
         let mut rt = self.recv_table.lock().await;
-        let joader = jt
-            .get_mut(&request.dataset_name)
-            .map_err(|x| Status::not_found(x))?;
+        let mut dt = self.dataset_table.lock().await;
+        let dataset_id = dt
+            .get(&request.dataset_name)
+            .ok_or_else(|| Status::not_found(&request.dataset_name))?;
+        let joader = jt.get_mut(*dataset_id);
+
         // 1. Update loader id table
         let loader_id;
         if loader_id_table.contains_key(&request.name) {
             loader_id = loader_id_table[&request.name];
         } else {
-            loader_id = self.loader_id.get_id().await;
+            loader_id = self.id.get_loader_id(*dataset_id).await;
             loader_id_table.insert(request.name.clone(), loader_id);
             // 2. If not exited, add loader
             joader.add_loader(loader_id);
         }
         // 3 update recv_table
-        let loader = joader
-            .get_mut(loader_id)
-            .map_err(|x| Status::not_found(x))?;
+        let loader = joader.get_mut(loader_id);
         let (ds, dr) = create_data_channel(loader_id);
         loader.add_data_sender(ds);
-        if rt.contains_key(&loader_id) {
-            return Err(Status::already_exists(format!(
-                "Loader {} has exited",
-                loader_id
-            )));
-        }
         rt.insert(loader_id, dr);
 
         Ok(Response::new(CreateDataloaderResponse {
@@ -80,6 +77,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
             status: None,
         }))
     }
+
     async fn next(&self, request: Request<NextRequest>) -> Result<Response<NextResponse>, Status> {
         let loader_id = request.into_inner().loader_id;
         let mut delete_loaders = self.delete_loaders.lock().await;
@@ -110,14 +108,10 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         rt.remove(&loader_id);
 
         // 2 remove loader
+        let dataset_id = GlobalID::parse_dataset_id(loader_id);
         let mut jt = self.joader_table.lock().await;
-        let joader = jt
-            .get_mut(&request.dataset_name)
-            .map_err(|x| Status::not_found(x))?;
-        let loader = joader
-            .get_mut(loader_id)
-            .map_err(|x| Status::not_found(x))?;
-
+        let joader = jt.get_mut(dataset_id);
+        let loader = joader.get_mut(loader_id);
         loader.del_data_sender();
 
         // 3 if all subhost have removed in loader, then remove loader_id

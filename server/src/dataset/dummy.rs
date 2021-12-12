@@ -10,7 +10,7 @@ use std::{fmt::Debug, sync::Arc};
 struct DummyDataset {
     _magic: u8,
     items: Vec<DataItem>,
-    name: String,
+    id: u32,
 }
 
 pub fn new_dummy(len: usize, name: String) -> DatasetRef {
@@ -23,17 +23,17 @@ pub fn new_dummy(len: usize, name: String) -> DatasetRef {
     Arc::new(DummyDataset {
         _magic: 7u8,
         items,
-        name,
+        id: 0,
     })
 }
 
-pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
+pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
     let name = request.name;
     let items = request.items;
     Arc::new(DummyDataset {
         items,
         _magic: 7u8,
-        name,
+        id,
     })
 }
 
@@ -42,8 +42,8 @@ fn _len() -> usize {
 }
 
 impl Dataset for DummyDataset {
-    fn get_name(&self) -> &str {
-        &self.name
+    fn get_id(&self) -> u32 {
+        self.id
     }
 
     fn get_indices(&self) -> Vec<u32> {

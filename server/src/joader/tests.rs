@@ -50,7 +50,7 @@ async fn test_1_loader() {
     let mut joader = Joader::new(dataset);
     let (s, r) = create_data_channel(0);
     joader.add_loader(0);
-    joader.get_mut(0).unwrap().add_data_sender(s);
+    joader.get_mut(0).add_data_sender(s);
     let cache = Cache::new(256, &name, 1);
     tokio::spawn(async move { write(joader, cache).await });
     let mut res = tokio::spawn(async move { read_data(r).await })
@@ -71,7 +71,7 @@ async fn test_k_loader() {
     for id in 0..k {
         let (s, r) = create_data_channel(id as u64);
         joader.add_loader(id as u64);
-        joader.get_mut(id as u64).unwrap().add_data_sender(s);
+        joader.get_mut(id as u64).add_data_sender(s);
         reader_map.insert(id, tokio::spawn(async move { read_data(r).await }));
     }
     let cache = Cache::new(256, &name, 1);
@@ -95,12 +95,12 @@ async fn test_1_loader_k_sampler() {
     let mut data_reader_map = HashMap::new();
     joader.add_loader(0);
     let (s, r) = create_data_channel(0);
-    joader.get_mut(0).unwrap().add_data_sender(s);
+    joader.get_mut(0).add_data_sender(s);
     joader.set_hash_key(k);
     data_reader_map.insert(k, tokio::spawn(async move { read_data(r).await }));
     for host_id in 0..k {
         let (s, r) = create_idx_channel(0 as u64);
-        joader.get_mut(0).unwrap().add_idx_sender(s, host_id.into());
+        joader.get_mut(0).add_idx_sender(s, host_id.into());
         id_reader_map.insert(host_id, tokio::spawn(async move { read_indices(r).await }));
     }
     let cache = Cache::new(256, &name, 1);
@@ -138,14 +138,11 @@ async fn test_k_loader_m_sampler() {
     for loader_id in 0..k {
         joader.add_loader(loader_id);
         let (s, r) = create_data_channel(loader_id);
-        joader.get_mut(loader_id).unwrap().add_data_sender(s);
+        joader.get_mut(loader_id).add_data_sender(s);
         data_reader_map.insert(loader_id, tokio::spawn(async move { read_data(r).await }));
         for host_id in 0..m {
             let (s, r) = create_idx_channel(loader_id as u64);
-            joader
-                .get_mut(loader_id)
-                .unwrap()
-                .add_idx_sender(s, host_id.into());
+            joader.get_mut(loader_id).add_idx_sender(s, host_id.into());
             id_reader_map.insert(
                 (loader_id, host_id),
                 tokio::spawn(async move { read_indices(r).await }),

@@ -28,10 +28,9 @@ impl Joader {
         self.key = num + 1;
     }
 
-    pub fn get_mut(&mut self, id: u64) -> Result<&mut Loader, String> {
+    pub fn get_mut(&mut self, id: u64) -> &mut Loader {
         self.loader_table
-            .get_mut(&id)
-            .ok_or_else(|| format!("Loader {} does not existed!", id))
+            .get_mut(&id).unwrap()
     }
 
     pub fn new(dataset: DatasetRef) -> Joader {
@@ -126,8 +125,8 @@ impl Joader {
         self.loader_table.get_mut(&id).unwrap()
     }
 
-    pub fn get_name(&self) -> &str {
-        self.dataset.get_name()
+    pub fn get_id(&self) -> u32 {
+        self.dataset.get_id()
     }
 
     pub fn is_empty(&self) -> bool {

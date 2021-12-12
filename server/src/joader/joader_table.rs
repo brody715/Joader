@@ -7,7 +7,7 @@ use super::joader::Joader;
 #[derive(Debug)]
 pub struct JoaderTable {
     // Joader is hash by the name of dataset
-    joader_table: HashMap<String, Joader>,
+    joader_table: HashMap<u32, Joader>,
     cache: Cache,
 }
 
@@ -19,28 +19,19 @@ impl JoaderTable {
         }
     }
 
-    pub fn add_joader(&mut self, joader: Joader) -> Result<(), String> {
-        log::debug!("Add Joader {:?}", joader.get_name());
-        let name = joader.get_name();
-        if self.joader_table.contains_key(name) {
-            return Err("Dataset has existed".into());
-        }
-        self.joader_table.insert(name.to_owned(), joader);
-        Ok(())
+    pub fn add_joader(&mut self, joader: Joader) {
+        log::debug!("Add Joader {:?}", joader.get_id());
+        let id = joader.get_id();
+        self.joader_table.insert(id, joader);
     }
 
-    pub fn del_joader(&mut self, name: &str) -> Result<(), String> {
-        log::debug!("Del joader {:?}", name);
-        if let None = self.joader_table.remove(name) {
-            return Err("Dataset has not existed".into());
-        }
-        Ok(())
+    pub fn del_joader(&mut self, id: u32) {
+        log::debug!("Del joader {:?}", id);
+        self.joader_table.remove(&id);
     }
 
-    pub fn get_mut(&mut self, name: &str) -> Result<&mut Joader, String> {
-        self.joader_table
-            .get_mut(name)
-            .ok_or("Joader has not existed".into())
+    pub fn get_mut(&mut self, id: u32) -> &mut Joader {
+        self.joader_table.get_mut(&id).unwrap()
     }
 
     pub fn get_shm_path(&self) -> String {
