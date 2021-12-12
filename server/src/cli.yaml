@@ -24,7 +24,7 @@ args:
         value_name: port
         takes_value: true
     - leader_ip_port:
-        long: ip_port
+        long: leader ip_port
         default_value: http://210.28.134.91:4321
         value_name: ip_port
         takes_value: true
