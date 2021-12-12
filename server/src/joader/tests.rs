@@ -44,7 +44,7 @@ async fn write(mut joader: Joader, mut cache: Cache) {
 
 #[tokio::test]
 async fn test_1_loader() {
-    let len = 10000;
+    let len = 1;
     let name = "dummy".to_string();
     let dataset = new_dummy(len, name.clone());
     let mut joader = Joader::new(dataset);

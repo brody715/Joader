@@ -141,7 +141,7 @@ impl DistributedSvc for DistributedSvcImpl {
         let mut ht = self.host_table.lock().await;
         let mut loader_id_table = self.loader_id_table.lock().await;
         let mut jt = self.joader_table.lock().await;
-        let mut dt = self.dataset_table.lock().await;
+        let dt = self.dataset_table.lock().await;
 
         let host = ht
             .get_mut(&request.ip)
