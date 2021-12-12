@@ -9,7 +9,7 @@ args:
         default_value: log4rs.yaml
         takes_value: true
     - role:
-        long: leader
+        long: role
         value_name: is leader
         default_value: leader
         takes_value: true
@@ -24,9 +24,9 @@ args:
         value_name: port
         takes_value: true
     - leader_ip_port:
-        long: leader ip_port
+        long: leader
         default_value: http://210.28.134.91:4321
-        value_name: ip_port
+        value_name: leader ip port
         takes_value: true
     - shm_path:
         long: shm
