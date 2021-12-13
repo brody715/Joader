@@ -25,19 +25,19 @@ appenders:
       # log 信息模式
       pattern: "{d} - {m}{n}"
 root:
-  level: info
+  level: debug
   appenders:
     - stdout
 loggers:
   # Route log events sent to the "app" logger to the "file" appender,
   # and *not* the normal appenders installed at the root
   joader::cache:
-    level: info
+    level: debug
     appenders:
       - cache
     additive: false
   joader::sampler:
-    level: info
+    level: debug
     appenders:
       - sampler
     additive: false
@@ -52,7 +52,7 @@ loggers:
       - joader
     additive: false
   joader::dataset:
-    level: info
+    level: debug
     appenders:
       - joader
     additive: false
