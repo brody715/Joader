@@ -52,7 +52,7 @@ async fn start_follower(
             continue;
         }
         let mut joader_table = joader_table.lock().await;
-        joader_table.remote_read(&sample_res);
+        joader_table.remote_read(&sample_res).await;
     }
 }
 
@@ -111,9 +111,7 @@ async fn start_server(
         let ip = ip.to_string();
         let port = port.to_string();
         let joader_table = joader_table.clone();
-        tokio::spawn(async move {
-            start_follower(joader_table, leader.unwrap(), ip, port).await
-        });
+        tokio::spawn(async move { start_follower(joader_table, leader.unwrap(), ip, port).await });
     } else {
         tokio::spawn(async move { start_leader(joader_table).await });
     }

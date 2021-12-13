@@ -84,6 +84,21 @@ impl Joader {
         }
     }
 
+    pub async fn remote_read(
+        &mut self,
+        sampler_res: &HashMap<u32, HashSet<u64>>,
+        cache: &mut Cache,
+    ) {
+        for (data_idx, loader_ids) in sampler_res {
+            // Todo: Support remote ref_cnt
+            let addr = self.dataset.read(cache, *data_idx, 0);
+            for id in loader_ids.iter() {
+                log::debug!("Joader load data {:} at {:?} to {:?}", data_idx, addr, id);
+                self.loader_table[id].send_data(addr).await;
+            }
+        }
+    }
+
     pub async fn next(&mut self, cache: &mut Cache) {
         self.clear_empty_loader().await;
         let mut data_table = self.sampler_tree.sample();
@@ -142,7 +157,7 @@ impl Joader {
     pub fn is_loader_empty(&self, loader_id: u64) -> bool {
         self.loader_table[&loader_id].is_empty()
     }
-    
+
     pub fn add_loader(&mut self, loader_id: u64, nums: u32) {
         log::debug!("Add a loader {}", loader_id);
         self.loader_table

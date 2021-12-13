@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use crate::{cache::cache::Cache, proto::distributed::SampleResult};
+use crate::{cache::cache::Cache, proto::distributed::SampleResult, service::GlobalID};
 
 use super::joader::Joader;
 
@@ -61,8 +61,30 @@ impl JoaderTable {
         }
     }
 
-    pub fn remote_read(&mut self, _sample_res: &Vec<SampleResult>) {
-        todo!()
+    pub async fn remote_read(&mut self, sample_res: &Vec<SampleResult>) {
+        let mut res = HashMap::<u32, HashMap<u32, HashSet<u64>>>::new();
+        for s in sample_res {
+            let loader_id = s.loader_id;
+            let dataset_id = GlobalID::parse_dataset_id(loader_id);
+            if !res.contains_key(&dataset_id) {
+                res.insert(dataset_id, HashMap::new());
+            }
+            for idx in &s.indices {
+                let idx_map = res.get_mut(&dataset_id).unwrap();
+                if !idx_map.contains_key(idx) {
+                    idx_map.insert(*idx, HashSet::new());
+                }
+                idx_map.get_mut(idx).unwrap().insert(loader_id);
+            }
+        }
+
+        for (dataset_id, s) in res {
+            self.joader_table
+                .get_mut(&dataset_id)
+                .unwrap()
+                .remote_read(&s, &mut self.cache)
+                .await;
+        }
     }
 
     pub fn contains_dataset(&self, id: u32) -> bool {
