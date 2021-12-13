@@ -14,7 +14,7 @@ if __name__ == "__main__":
     ds.create(channel)
 
     loader = Loader.new(dataset_name=name,
-                        name="dummy_loader", ip='210.28.134.91:4321')
+                        name="dummy_loader", ip='210.28.134.33:4321')
     now = time.time()
     for i in range(len):
         if i != 0 and i % 1000 == 0:

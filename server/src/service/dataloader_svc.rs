@@ -73,14 +73,17 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
                 .unwrap()
                 .create_sampler(CreateSamplerRequest {
                     name: request.name,
-                    dataset_name: request.dataset_name,
+                    dataset_name: request.dataset_name.clone(),
                     ip: self.ip.to_string(),
                 })
                 .await?;
             let resp = resp.into_inner();
             dataset_id = resp.dataset_id;
             if jt.contains_dataset(dataset_id) {
-                return Err(Status::not_found(format!("Dataset")));
+                return Err(Status::not_found(format!(
+                    "Dataset {} {}",
+                    request.dataset_name, dataset_id
+                )));
             }
             length = resp.length;
             loader_id = resp.loader_id;
