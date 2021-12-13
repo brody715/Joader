@@ -1,3 +1,5 @@
+use crate::dataset;
+use crate::joader::joader::Joader;
 use crate::joader::joader_table::JoaderTable;
 use crate::loader::{create_idx_channel, IdxReceiver};
 use crate::proto::distributed::distributed_svc_server::DistributedSvc;
@@ -216,5 +218,29 @@ impl DistributedSvc for DistributedSvcImpl {
         Ok(Response::new(SampleResponse {
             res: host.recv_all().await,
         }))
+    }
+
+    async fn register_dataset(
+        &self,
+        request: Request<RegisterDatasetRequest>,
+    ) -> Result<Response<RegisterDatasetResponse>, Status> {
+        let r = request.into_inner();
+        log::debug!("regeister dataset {:?}", r);
+        let request = r.request.unwrap();
+        let id = r.dataset_id;
+        let mut dt = self.dataset_table.lock().await;
+        if dt.contains_key(&request.name) {
+            return Err(Status::already_exists(format!(
+                "{:?} has already existed",
+                request
+            )));
+        }
+        log::debug!("Create dataset {:?}", request);
+        dt.insert(request.name.clone(), id);
+        // insert dataset to dataset table
+        let joader = Joader::new(dataset::build_dataset(request, id));
+        self.joader_table.lock().await.add_joader(joader);
+
+        Ok(Response::new(RegisterDatasetResponse {}))
     }
 }

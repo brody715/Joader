@@ -1,10 +1,14 @@
 use crate::joader::joader_table::JoaderTable;
 use crate::proto::dataset::dataset_svc_server::DatasetSvc;
 use crate::proto::dataset::*;
+use crate::proto::distributed::distributed_svc_client::DistributedSvcClient;
+use crate::proto::distributed::RegisterDatasetRequest;
+use crate::Role;
 use crate::{dataset, joader::joader::Joader};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tonic::transport::Channel;
 use tonic::{async_trait, Request, Response, Status};
 
 use super::GlobalID;
@@ -13,6 +17,8 @@ pub struct DatasetSvcImpl {
     joader_table: Arc<Mutex<JoaderTable>>,
     dataset_table: Arc<Mutex<HashMap<String, u32>>>,
     id: GlobalID,
+    followers: Vec<DistributedSvcClient<Channel>>,
+    role: Role,
 }
 
 impl DatasetSvcImpl {
@@ -20,11 +26,15 @@ impl DatasetSvcImpl {
         joader_table: Arc<Mutex<JoaderTable>>,
         dataset_table: Arc<Mutex<HashMap<String, u32>>>,
         id: GlobalID,
+        followers: Vec<DistributedSvcClient<Channel>>,
+        role: Role,
     ) -> DatasetSvcImpl {
         Self {
             joader_table,
             dataset_table,
             id,
+            followers,
+            role,
         }
     }
 }
@@ -36,6 +46,7 @@ impl DatasetSvc for DatasetSvcImpl {
         request: Request<CreateDatasetRequest>,
     ) -> Result<Response<CreateDatasetResponse>, Status> {
         let request = request.into_inner();
+
         let mut dt = self.dataset_table.lock().await;
         if dt.contains_key(&request.name) {
             return Err(Status::already_exists(format!(
@@ -48,8 +59,19 @@ impl DatasetSvc for DatasetSvcImpl {
         let id = self.id.get_dataset_id().await;
         dt.insert(request.name.clone(), id);
         // insert dataset to dataset table
-        let joader = Joader::new(dataset::build_dataset(request, id));
+        let joader = Joader::new(dataset::build_dataset(request.clone(), id));
         self.joader_table.lock().await.add_joader(joader);
+
+        if self.role == Role::Leader {
+            for mut f in self.followers.iter().cloned() {
+                let r = RegisterDatasetRequest {
+                    request: Some(request.clone()),
+                    dataset_id: id,
+                };
+                f.register_dataset(r).await?;
+            }
+        }
+
         Ok(Response::new(CreateDatasetResponse { status: None }))
     }
 
@@ -67,10 +89,7 @@ impl DatasetSvc for DatasetSvcImpl {
                 dt.remove(&request.name);
                 Ok(Response::new(DeleteDatasetResponse { status: None }))
             }
-            None => Err(Status::not_found(format!(
-                "{:?} not found",
-                request
-            ))),
+            None => Err(Status::not_found(format!("{:?} not found", request))),
         }
     }
 }

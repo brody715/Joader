@@ -1,16 +1,16 @@
+use super::{GlobalID, IDTable};
 use crate::joader::joader_table::JoaderTable;
 use crate::loader::{create_data_channel, DataReceiver};
 use crate::proto::dataloader::data_loader_svc_server::DataLoaderSvc;
 use crate::proto::dataloader::*;
 use crate::proto::distributed::distributed_svc_client::DistributedSvcClient;
 use crate::proto::distributed::{CreateSamplerRequest, DeleteSamplerRequest};
+use crate::Role;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::transport::Channel;
 use tonic::{async_trait, Request, Response, Status};
-
-use super::{GlobalID, IDTable};
 
 #[derive(Debug)]
 pub struct DataLoaderSvcImpl {
@@ -22,6 +22,7 @@ pub struct DataLoaderSvcImpl {
     dataset_table: Arc<Mutex<HashMap<String, u32>>>,
     leader: Option<DistributedSvcClient<Channel>>,
     ip: String,
+    role: Role,
 }
 
 impl DataLoaderSvcImpl {
@@ -33,6 +34,7 @@ impl DataLoaderSvcImpl {
         dataset_table: Arc<Mutex<HashMap<String, u32>>>,
         leader: Option<DistributedSvcClient<Channel>>,
         ip: String,
+        role: Role,
     ) -> Self {
         Self {
             joader_table,
@@ -43,6 +45,7 @@ impl DataLoaderSvcImpl {
             dataset_table,
             leader,
             ip,
+            role,
         }
     }
 }
@@ -62,18 +65,23 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let length;
         let loader_id;
         let joader;
-        if let Some(mut leader) = self.leader.clone() {
+        if self.role == Role::Follower {
             // follower behavior
-            let resp = leader
+            let resp = self
+                .leader
+                .clone()
+                .unwrap()
                 .create_sampler(CreateSamplerRequest {
                     name: request.name,
                     dataset_name: request.dataset_name,
                     ip: self.ip.to_string(),
                 })
-                .await
-                .unwrap()
-                .into_inner();
+                .await?;
+            let resp = resp.into_inner();
             dataset_id = resp.dataset_id;
+            if jt.contains_dataset(dataset_id) {
+                return Err(Status::not_found(format!("Dataset")));
+            }
             length = resp.length;
             loader_id = resp.loader_id;
             joader = jt.get_mut(dataset_id);

@@ -7,6 +7,7 @@ use joader::proto::distributed::distributed_svc_client::DistributedSvcClient;
 use joader::proto::distributed::distributed_svc_server::DistributedSvcServer;
 use joader::proto::distributed::{RegisterHostRequest, SampleRequest};
 use joader::service::{DataLoaderSvcImpl, DatasetSvcImpl, DistributedSvcImpl, GlobalID};
+use joader::Role;
 use libc::shm_unlink;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
@@ -62,6 +63,8 @@ async fn start_server(
     ip: &str,
     port: &str,
     leader_ip_port: Option<&str>,
+    follower_ip_ports: Vec<&str>,
+    role: Role,
 ) -> Result<(), Box<dyn std::error::Error>> {
     log::info!("start server");
     let id = GlobalID::new();
@@ -71,17 +74,29 @@ async fn start_server(
     let ip_port = ip.to_string() + ":" + port;
     let addr: SocketAddr = ip_port.parse()?;
     let loader_id_table = Arc::new(Mutex::new(HashMap::new()));
-    let dataset_svc = DatasetSvcImpl::new(joader_table.clone(), dataset_table.clone(), id.clone());
-    let del_loaders = Arc::new(Mutex::new(HashSet::new()));
-
     let mut leader = None;
-    if let Some(leader_ip_port) = leader_ip_port {
+    let mut followers = Vec::new();
+    if role == Role::Follower {
         leader = Some(
-            DistributedSvcClient::connect(leader_ip_port.to_string())
+            DistributedSvcClient::connect(leader_ip_port.unwrap().to_string())
                 .await
                 .unwrap(),
         );
     }
+    if role == Role::Leader {
+        for ip_port in follower_ip_ports {
+            followers.push(DistributedSvcClient::connect(ip_port.to_string()).await.unwrap());
+        }
+    }
+
+    let dataset_svc = DatasetSvcImpl::new(
+        joader_table.clone(),
+        dataset_table.clone(),
+        id.clone(),
+        Vec::new(),
+        role,
+    );
+    let del_loaders = Arc::new(Mutex::new(HashSet::new()));
 
     let data_loader_svc = DataLoaderSvcImpl::new(
         joader_table.clone(),
@@ -91,6 +106,7 @@ async fn start_server(
         dataset_table.clone(),
         leader.clone(),
         ip.to_string(),
+        role,
     );
     let distributed_svc =
         DistributedSvcImpl::new(id, loader_id_table, dataset_table, joader_table.clone());
@@ -141,7 +157,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cache_capacity: usize = matches.value_of("cache_capacity").unwrap().parse().unwrap();
     let shm_path = matches.value_of("shm_path").unwrap().to_string();
     let leader = matches.value_of("role").unwrap();
+    let role_str = matches.value_of("role").unwrap();
+    let mut role = Role::Follower;
+    if role_str == "leader" || role_str == "l" {
+        role = Role::Leader;
+    }
     let leader_ip_port;
+    let follower_ip_ports: Vec<_> = matches.values_of("follower_ip_port").unwrap().collect();
     if leader != "leader" {
         leader_ip_port = matches.value_of("leader_ip_port");
     } else {
@@ -158,6 +180,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ip,
         port,
         leader_ip_port,
+        follower_ip_ports,
+        role,
     )
     .await?;
     Ok(())

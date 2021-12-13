@@ -64,4 +64,8 @@ impl JoaderTable {
     pub fn remote_read(&mut self, _sample_res: &Vec<SampleResult>) {
         todo!()
     }
+
+    pub fn contains_dataset(&self, id: u32) -> bool {
+        self.joader_table.contains_key(&id)
+    }
 }
