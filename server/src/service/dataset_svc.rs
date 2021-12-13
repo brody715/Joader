@@ -8,7 +8,6 @@ use crate::{dataset, joader::joader::Joader};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tonic::transport::Channel;
 use tonic::{async_trait, Request, Response, Status};
 
 use super::GlobalID;
@@ -17,7 +16,7 @@ pub struct DatasetSvcImpl {
     joader_table: Arc<Mutex<JoaderTable>>,
     dataset_table: Arc<Mutex<HashMap<String, u32>>>,
     id: GlobalID,
-    followers: Vec<DistributedSvcClient<Channel>>,
+    followers: Vec<String>,
     role: Role,
 }
 
@@ -26,7 +25,7 @@ impl DatasetSvcImpl {
         joader_table: Arc<Mutex<JoaderTable>>,
         dataset_table: Arc<Mutex<HashMap<String, u32>>>,
         id: GlobalID,
-        followers: Vec<DistributedSvcClient<Channel>>,
+        followers: Vec<String>,
         role: Role,
     ) -> DatasetSvcImpl {
         Self {
@@ -61,9 +60,11 @@ impl DatasetSvc for DatasetSvcImpl {
         // insert dataset to dataset table
         let joader = Joader::new(dataset::build_dataset(request.clone(), id));
         self.joader_table.lock().await.add_joader(joader);
-
         if self.role == Role::Leader {
-            for mut f in self.followers.iter().cloned() {
+            for ip_port in self.followers.iter().cloned() {
+                let mut f = DistributedSvcClient::connect(ip_port.to_string())
+                    .await
+                    .unwrap();
                 let r = RegisterDatasetRequest {
                     request: Some(request.clone()),
                     dataset_id: id,

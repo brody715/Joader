@@ -75,7 +75,6 @@ async fn start_server(
     let addr: SocketAddr = ip_port.parse()?;
     let loader_id_table = Arc::new(Mutex::new(HashMap::new()));
     let mut leader = None;
-    let mut followers = Vec::new();
     if role == Role::Follower {
         leader = Some(
             DistributedSvcClient::connect(leader_ip_port.unwrap().to_string())
@@ -83,17 +82,12 @@ async fn start_server(
                 .unwrap(),
         );
     }
-    if role == Role::Leader {
-        for ip_port in follower_ip_ports {
-            followers.push(DistributedSvcClient::connect(ip_port.to_string()).await.unwrap());
-        }
-    }
 
     let dataset_svc = DatasetSvcImpl::new(
         joader_table.clone(),
         dataset_table.clone(),
         id.clone(),
-        Vec::new(),
+        follower_ip_ports.iter().map(|x| x.to_string()).collect(),
         role,
     );
     let del_loaders = Arc::new(Mutex::new(HashSet::new()));
