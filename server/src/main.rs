@@ -76,6 +76,7 @@ async fn start_server(
     let loader_id_table = Arc::new(Mutex::new(HashMap::new()));
     let mut leader = None;
     if role == Role::Follower {
+        log::info!("Connect to leader {:?}", leader_ip_port);
         leader = Some(
             DistributedSvcClient::connect(leader_ip_port.unwrap().to_string())
                 .await
@@ -111,7 +112,7 @@ async fn start_server(
         let port = port.to_string();
         let joader_table = joader_table.clone();
         tokio::spawn(async move {
-            start_follower(joader_table, leader.clone().unwrap(), ip, port).await
+            start_follower(joader_table, leader.unwrap(), ip, port).await
         });
     } else {
         tokio::spawn(async move { start_leader(joader_table).await });
