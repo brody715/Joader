@@ -23,4 +23,4 @@ if __name__ == "__main__":
         loader.next()
     print(time.time() - now)
     loader.delete()
-    # ds.delete(channel)
+    ds.delete(channel)
