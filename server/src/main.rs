@@ -48,7 +48,7 @@ async fn start_follower(
         let sample_res = resp.into_inner().res;
         if sample_res.is_empty() {
             log::debug!("sleep ....");
-            sleep(Duration::from_millis(100)).await;
+            sleep(Duration::from_millis(1000)).await;
             continue;
         }
         let mut joader_table = joader_table.lock().await;
