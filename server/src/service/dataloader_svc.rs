@@ -79,7 +79,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
                 .await?;
             let resp = resp.into_inner();
             dataset_id = resp.dataset_id;
-            if jt.contains_dataset(dataset_id) {
+            if !jt.contains_dataset(dataset_id) {
                 return Err(Status::not_found(format!(
                     "Dataset {} {}",
                     request.dataset_name, dataset_id
