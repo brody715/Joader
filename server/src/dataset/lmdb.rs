@@ -144,8 +144,8 @@ mod tests {
         });
         let mut joader = Joader::new(dataset);
         let (s, mut r) = create_data_channel(0);
-        joader.add_loader(0);
-        joader.get_mut(0).add_data_sender(s);
+        joader.add_loader(0, 1);
+        joader.add_data_sender(0, s);
 
         let reader = tokio::spawn(async move {
             let now = SystemTime::now();

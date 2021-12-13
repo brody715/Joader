@@ -45,6 +45,7 @@ message CreateSamplerRequest {
     string name = 1;
     string dataset_name = 2;
     string ip = 3;
+    uint32 nums = 4;
 }
 
 message CreateSamplerResponse {

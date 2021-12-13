@@ -1,7 +1,7 @@
-use crate::cache::cache::Cache;
 use crate::dataset::DatasetRef;
-use crate::loader::Loader;
+use crate::loader::{DataSender, Loader};
 use crate::sampler::sampler_tree::SamplerTree;
+use crate::{cache::cache::Cache, loader::IdxSender};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug)]
@@ -28,9 +28,9 @@ impl Joader {
         self.key = num + 1;
     }
 
-    pub fn get_mut(&mut self, id: u64) -> &mut Loader {
-        self.loader_table.get_mut(&id).unwrap()
-    }
+    // pub fn get_mut(&mut self, id: u64) -> &mut Loader {
+    //     self.loader_table.get_mut(&id).unwrap()
+    // }
 
     pub fn new(dataset: DatasetRef) -> Joader {
         let mut ref_table = HashMap::new();
@@ -110,11 +110,42 @@ impl Joader {
         Ok(())
     }
 
-    pub fn add_loader(&mut self, loader_id: u64) {
+    pub fn add_idx_sender(&mut self, loader_id: u64, idx_sender: IdxSender, host_id: u64) {
+        let loader = self.loader_table.get_mut(&loader_id).unwrap();
+        loader.add_idx_sender(idx_sender, host_id);
+        if loader.ready() {
+            self.sampler_tree
+                .insert(self.dataset.get_indices(), loader_id);
+        }
+    }
+
+    pub fn add_data_sender(&mut self, loader_id: u64, data_sender: DataSender) {
+        let loader = self.loader_table.get_mut(&loader_id).unwrap();
+        loader.add_data_sender(data_sender);
+        if loader.ready() {
+            self.sampler_tree
+                .insert(self.dataset.get_indices(), loader_id);
+        }
+    }
+
+    pub fn del_idx_sender(&mut self, loader_id: u64, host_id: u64) {
+        let loader = self.loader_table.get_mut(&loader_id).unwrap();
+        loader.del_idx_sender(host_id);
+    }
+
+    pub fn del_data_sender(&mut self, loader_id: u64) {
+        let loader = self.loader_table.get_mut(&loader_id).unwrap();
+        loader.del_data_sender();
+    }
+
+    pub fn is_loader_empty(&self, loader_id: u64) -> bool {
+        self.loader_table[&loader_id].is_empty()
+    }
+    
+    pub fn add_loader(&mut self, loader_id: u64, nums: u32) {
         log::debug!("Add a loader {}", loader_id);
-        self.loader_table.insert(loader_id, Loader::new(loader_id));
-        self.sampler_tree
-            .insert(self.dataset.get_indices(), loader_id);
+        self.loader_table
+            .insert(loader_id, Loader::new(loader_id, nums));
         for (_, cnt) in self.ref_table.iter_mut() {
             *cnt += 1;
         }

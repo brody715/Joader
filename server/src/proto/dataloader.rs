@@ -4,6 +4,8 @@ pub struct CreateDataloaderRequest {
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
     pub dataset_name: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "3")]
+    pub nums: u32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDataloaderResponse {

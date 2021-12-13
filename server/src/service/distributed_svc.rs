@@ -138,14 +138,13 @@ impl DistributedSvc for DistributedSvcImpl {
             loader_id = loader_id_table[&request.name];
         } else {
             loader_id = self.id.get_loader_id(*dataset_id).await;
-            joader.add_loader(loader_id);
+            joader.add_loader(loader_id, request.nums);
             loader_id_table.insert(request.name.clone(), loader_id);
         }
 
         // 2. Add sample to loader
-        let loader = joader.get_mut(loader_id);
         let (is, ir) = create_idx_channel(loader_id);
-        loader.add_idx_sender(is, host.id.into());
+        joader.add_idx_sender(loader_id, is, host.id.into());
         // 3. Add recv to host
         host.add(ir);
 
@@ -177,16 +176,15 @@ impl DistributedSvc for DistributedSvcImpl {
 
         //1. loader remove host
         let joader = jt.get_mut(*dataset_id);
-        let loader_id = loader_id_table
+        let loader_id = *loader_id_table
             .get(&request.name)
             .ok_or_else(|| Status::not_found(format!("{} not exited", request.name)))?;
-        let loader = joader.get_mut(*loader_id);
-
-        loader.del_idx_sender(host.id.into());
+        
+        joader.del_idx_sender(loader_id, host.id.into());
         //2. host remove recv
-        host.del(*loader_id);
+        host.del(loader_id);
         //3. if empty, remove host_id
-        if loader.is_empty() {
+        if joader.is_loader_empty(loader_id) {
             loader_id_table.remove(&request.name);
         }
         Ok(Response::new(DeleteSamplerResponse {}))

@@ -56,6 +56,8 @@ pub struct CreateSamplerRequest {
     pub dataset_name: ::prost::alloc::string::String,
     #[prost(string, tag = "3")]
     pub ip: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "4")]
+    pub nums: u32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateSamplerResponse {

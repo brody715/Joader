@@ -75,6 +75,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
                     name: request.name,
                     dataset_name: request.dataset_name.clone(),
                     ip: self.ip.to_string(),
+                    nums: request.nums,
                 })
                 .await?;
             let resp = resp.into_inner();
@@ -88,7 +89,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
             length = resp.length;
             loader_id = resp.loader_id;
             joader = jt.get_mut(dataset_id);
-            joader.add_loader(loader_id);
+            joader.add_loader(loader_id, request.nums);
         } else {
             // leader behavior
             let dt = self.dataset_table.lock().await;
@@ -104,15 +105,14 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
                 loader_id = self.id.get_loader_id(dataset_id).await;
                 loader_id_table.insert(request.name.clone(), loader_id);
                 // 2. If not exited, add loader
-                joader.add_loader(loader_id);
+                joader.add_loader(loader_id, request.nums);
             }
             length = joader.len();
         }
 
         // 3 update recv_table
-        let loader = joader.get_mut(loader_id);
         let (ds, dr) = create_data_channel(loader_id);
-        loader.add_data_sender(ds);
+        joader.add_data_sender(loader_id, ds);
         rt.insert(loader_id, dr);
 
         Ok(Response::new(CreateDataloaderResponse {
@@ -157,11 +157,10 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let dataset_id = GlobalID::parse_dataset_id(loader_id);
         let mut jt = self.joader_table.lock().await;
         let joader = jt.get_mut(dataset_id);
-        let loader = joader.get_mut(loader_id);
-        loader.del_data_sender();
+        joader.del_data_sender(loader_id);
 
         // 3 if all subhost have removed in loader, then remove loader_id
-        if loader.is_empty() {
+        if joader.is_loader_empty(loader_id) {
             id_table.remove(&request.name);
         }
 
