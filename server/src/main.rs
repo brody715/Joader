@@ -107,7 +107,7 @@ async fn start_server(
         DistributedSvcImpl::new(id, loader_id_table, dataset_table, joader_table.clone());
 
     // start joader
-    if role == Role::Leader {
+    if role == Role::Follower {
         let ip = ip.to_string();
         let port = port.to_string();
         let joader_table = joader_table.clone();
