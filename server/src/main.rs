@@ -151,7 +151,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let head_num: u64 = matches.value_of("head_num").unwrap().parse().unwrap();
     let cache_capacity: usize = matches.value_of("cache_capacity").unwrap().parse().unwrap();
     let shm_path = matches.value_of("shm_path").unwrap().to_string();
-    let leader = matches.value_of("role").unwrap();
     let role_str = matches.value_of("role").unwrap();
     let mut role = Role::Follower;
     if role_str == "leader" || role_str == "l" {
