@@ -12,7 +12,7 @@ import socket
 
 
 class Loader(object):
-    def __init__(self, ip, length: int, loader_id: int, shm_path: str, name: str, dataset_name: str, server_ip: str):
+    def __init__(self, ip, length: int, loader_id: int, shm_path: str, name: str, dataset_name: str, server_ip: str, nums: int):
         self.length = length
         self.client = None
         self.loader_id = loader_id
@@ -32,17 +32,18 @@ class Loader(object):
         self.OFF = 8
         self.ip = ip
         self.ip = self.get_host_ip()
-
+        self.nums = nums
     @staticmethod
-    def new(dataset_name: str, name: str, ip: str):
+    def new(dataset_name: str, name: str, ip: str, nums: int = 1):
+        # nums indicate the number of distributed tasks
         channel = grpc.insecure_channel(ip)
         client = dataloader_pb2_grpc.DataLoaderSvcStub(channel)
         request = dataloader_pb2.CreateDataloaderRequest(
-            dataset_name=dataset_name, name=name)
+            dataset_name=dataset_name, name=name, nums=nums)
         resp = client.CreateDataloader(request)
         # close to enable multi process grpc
         channel.close()
-        return Loader(ip, resp.length, resp.loader_id, resp.shm_path, name, dataset_name, ip)
+        return Loader(ip, resp.length, resp.loader_id, resp.shm_path, name, dataset_name, ip, nums)
 
     def get_host_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

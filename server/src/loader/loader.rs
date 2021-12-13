@@ -86,10 +86,10 @@ impl Loader {
         self.cursor.push(host_id);
     }
     pub fn del_idx_sender(&mut self, host_id: u64) {
-        self.nums -= 1;
         self.hosts.remove(&host_id);
     }
     pub fn add_data_sender(&mut self, data_sender: DataSender) {
+        self.nums -= 1;
         log::debug!("Add data sender {:?}", data_sender);
         self.data_addr_s = Some(data_sender);
     }

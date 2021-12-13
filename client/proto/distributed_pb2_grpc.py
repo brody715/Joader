@@ -44,6 +44,11 @@ class DistributedSvcStub(object):
                 request_serializer=distributed__pb2.DeleteHostRequest.SerializeToString,
                 response_deserializer=distributed__pb2.DeleteHostResponse.FromString,
                 )
+        self.RegisterDataset = channel.unary_unary(
+                '/distributed.DistributedSvc/RegisterDataset',
+                request_serializer=distributed__pb2.RegisterDatasetRequest.SerializeToString,
+                response_deserializer=distributed__pb2.RegisterDatasetResponse.FromString,
+                )
 
 
 class DistributedSvcServicer(object):
@@ -85,6 +90,12 @@ class DistributedSvcServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RegisterDataset(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DistributedSvcServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -117,6 +128,11 @@ def add_DistributedSvcServicer_to_server(servicer, server):
                     servicer.DeleteHost,
                     request_deserializer=distributed__pb2.DeleteHostRequest.FromString,
                     response_serializer=distributed__pb2.DeleteHostResponse.SerializeToString,
+            ),
+            'RegisterDataset': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterDataset,
+                    request_deserializer=distributed__pb2.RegisterDatasetRequest.FromString,
+                    response_serializer=distributed__pb2.RegisterDatasetResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -227,5 +243,22 @@ class DistributedSvc(object):
         return grpc.experimental.unary_unary(request, target, '/distributed.DistributedSvc/DeleteHost',
             distributed__pb2.DeleteHostRequest.SerializeToString,
             distributed__pb2.DeleteHostResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def RegisterDataset(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/distributed.DistributedSvc/RegisterDataset',
+            distributed__pb2.RegisterDatasetRequest.SerializeToString,
+            distributed__pb2.RegisterDatasetResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

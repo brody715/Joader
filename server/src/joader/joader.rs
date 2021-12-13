@@ -123,6 +123,7 @@ impl Joader {
         let loader = self.loader_table.get_mut(&loader_id).unwrap();
         loader.add_data_sender(data_sender);
         if loader.ready() {
+            log::debug!("loader id {} ready", loader_id);
             self.sampler_tree
                 .insert(self.dataset.get_indices(), loader_id);
         }
