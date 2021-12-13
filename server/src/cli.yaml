@@ -36,7 +36,7 @@ args:
         long: follower
         short: f
         default_value: http://210.28.134.33:4321
-        value_name: leader ip port
+        value_name: followers ip port
         takes_value: true
         multiple_occurrences: true
     - shm_path:

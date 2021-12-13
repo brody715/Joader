@@ -36,7 +36,7 @@ async fn start_follower(
     ip: String,
     port: String,
 ) {
-    log::info!("start follower service ....");
+    log::info!("start follower service ... ");
     let request = RegisterHostRequest {
         ip: ip.clone(),
         port: port.parse().unwrap(),
@@ -76,6 +76,7 @@ async fn start_server(
     let loader_id_table = Arc::new(Mutex::new(HashMap::new()));
     let mut leader = None;
     if role == Role::Follower {
+        log::info!("leader ip is {:?}", leader_ip_port);
         leader = Some(
             DistributedSvcClient::connect(leader_ip_port.unwrap().to_string())
                 .await
@@ -106,7 +107,7 @@ async fn start_server(
         DistributedSvcImpl::new(id, loader_id_table, dataset_table, joader_table.clone());
 
     // start joader
-    if let Some(_) = leader_ip_port {
+    if role == Role::Leader {
         let ip = ip.to_string();
         let port = port.to_string();
         let joader_table = joader_table.clone();
@@ -156,13 +157,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if role_str == "leader" || role_str == "l" {
         role = Role::Leader;
     }
-    let leader_ip_port;
+    let leader_ip_port = matches.value_of("leader_ip_port");
     let follower_ip_ports: Vec<_> = matches.values_of("follower_ip_port").unwrap().collect();
-    if leader != "leader" {
-        leader_ip_port = matches.value_of("leader_ip_port");
-    } else {
-        leader_ip_port = None;
-    }
     log4rs::init_file(log4rs_config, Default::default()).unwrap();
     // start ctrlc
     register_ctrlc(&shm_path);
