@@ -17,7 +17,7 @@ args:
     - ip:
         long: ip
         short: i
-        default_value: "210.28.134.91"
+        default_value: "0.0.0.0"
         value_name: ip
         takes_value: true
     - port:
