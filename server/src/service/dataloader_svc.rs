@@ -88,6 +88,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
             length = resp.length;
             loader_id = resp.loader_id;
             joader = jt.get_mut(dataset_id);
+            joader.add_loader(loader_id);
         } else {
             // leader behavior
             let dt = self.dataset_table.lock().await;
