@@ -25,6 +25,7 @@ impl Joader {
     }
 
     pub fn set_hash_key(&mut self, num: u32) {
+        log::debug!("Hash key is {}", num + 1);
         self.key = num + 1;
     }
 
@@ -59,9 +60,14 @@ impl Joader {
         }
     }
 
+    #[inline]
+    fn choose_local_host(&self, host_id: u32) -> bool {
+        host_id == self.key - 1
+    }
+
     async fn distributed(&mut self, data_idx: u32, loader_ids: &mut HashSet<u64>) {
         let host_id = self.get_hash_host(data_idx);
-        if host_id != self.key - 1 {
+        if !self.choose_local_host(host_id) {
             let loader_id_cloned = loader_ids.clone();
             for loader_id in loader_id_cloned {
                 if self
