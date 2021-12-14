@@ -60,6 +60,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let request = request.into_inner();
         let mut jt = self.joader_table.lock().await;
         let mut rt = self.recv_table.lock().await;
+        let mut loader_id_table = self.loader_id_table.lock().await;
 
         let dataset_id;
         let length;
@@ -72,7 +73,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
                 .clone()
                 .unwrap()
                 .create_sampler(CreateSamplerRequest {
-                    name: request.name,
+                    name: request.name.clone(),
                     dataset_name: request.dataset_name.clone(),
                     ip: self.ip.to_string(),
                     nums: request.nums,
@@ -90,13 +91,14 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
             loader_id = resp.loader_id;
             joader = jt.get_mut(dataset_id);
             joader.add_loader(loader_id, request.nums);
+            loader_id_table.insert(request.name.clone(), loader_id);
         } else {
             // leader behavior
             let dt = self.dataset_table.lock().await;
             dataset_id = *dt
                 .get(&request.dataset_name)
                 .ok_or_else(|| Status::not_found(&request.dataset_name))?;
-            let mut loader_id_table = self.loader_id_table.lock().await;
+
             joader = jt.get_mut(dataset_id);
             // 1. Update loader id table
             if loader_id_table.contains_key(&request.name) {

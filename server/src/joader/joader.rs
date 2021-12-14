@@ -78,7 +78,7 @@ impl Joader {
                 {
                     // we need distributed the idx to other hosts
                     log::debug!(
-                        "Joader distribted data {:} to {:?} {:?}",
+                        "Joader distribted data {:} to loader {:?} in host {:?}",
                         data_idx,
                         loader_id,
                         host_id

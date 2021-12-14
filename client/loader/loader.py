@@ -74,7 +74,7 @@ class Loader(object):
 
     def read(self):
         address = self.cached_addr.pop()*self.HEAD_SIZE
-        return self.dummy_read(address*self.HEAD_SIZE)
+        return self.dummy_read(address)
         # return self.read_data(address)
 
     def next(self):
