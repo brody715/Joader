@@ -1,7 +1,7 @@
-use crate::cache::cache::Cache;
 use crate::dataset::DatasetRef;
-use crate::loader::Loader;
+use crate::loader::{DataSender, Loader};
 use crate::sampler::sampler_tree::SamplerTree;
+use crate::{cache::cache::Cache, loader::IdxSender};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug)]
@@ -24,15 +24,13 @@ impl Joader {
         self.loader_table.contains_key(&id)
     }
 
-    pub fn set_hash_key(&mut self, num: u32) {
-        self.key = num + 1;
+    pub fn set_hash_key(&mut self, key: u32) {
+        self.key = key;
     }
 
-    pub fn get_mut(&mut self, id: u64) -> Result<&mut Loader, String> {
-        self.loader_table
-            .get_mut(&id)
-            .ok_or_else(|| format!("Loader {} does not existed!", id))
-    }
+    // pub fn get_mut(&mut self, id: u64) -> &mut Loader {
+    //     self.loader_table.get_mut(&id).unwrap()
+    // }
 
     pub fn new(dataset: DatasetRef) -> Joader {
         let mut ref_table = HashMap::new();
@@ -61,9 +59,14 @@ impl Joader {
         }
     }
 
+    #[inline]
+    fn choose_local_host(&self, host_id: u32) -> bool {
+        host_id == self.key - 1
+    }
+
     async fn distributed(&mut self, data_idx: u32, loader_ids: &mut HashSet<u64>) {
         let host_id = self.get_hash_host(data_idx);
-        if host_id != self.key - 1 {
+        if !self.choose_local_host(host_id) {
             let loader_id_cloned = loader_ids.clone();
             for loader_id in loader_id_cloned {
                 if self
@@ -75,13 +78,28 @@ impl Joader {
                 {
                     // we need distributed the idx to other hosts
                     log::debug!(
-                        "Joader distribted data {:} to {:?} {:?}",
+                        "Joader distribted data {:} to loader {:?} in host {:?}",
                         data_idx,
                         loader_id,
                         host_id
                     );
                     loader_ids.remove(&loader_id);
                 }
+            }
+        }
+    }
+
+    pub async fn remote_read(
+        &mut self,
+        sampler_res: &HashMap<u32, HashSet<u64>>,
+        cache: &mut Cache,
+    ) {
+        for (data_idx, loader_ids) in sampler_res {
+            // Todo: Support remote ref_cnt
+            let addr = self.dataset.read(cache, *data_idx, 0);
+            for id in loader_ids.iter() {
+                log::debug!("Joader load data {:} at {:?} to {:?}", data_idx, addr, id);
+                self.loader_table[id].send_data(addr).await;
             }
         }
     }
@@ -112,11 +130,43 @@ impl Joader {
         Ok(())
     }
 
-    pub fn add_loader(&mut self, loader_id: u64) {
+    pub fn add_idx_sender(&mut self, loader_id: u64, idx_sender: IdxSender, host_id: u64) {
+        let loader = self.loader_table.get_mut(&loader_id).unwrap();
+        loader.add_idx_sender(idx_sender, host_id);
+        if loader.ready() {
+            self.sampler_tree
+                .insert(self.dataset.get_indices(), loader_id);
+        }
+    }
+
+    pub fn add_data_sender(&mut self, loader_id: u64, data_sender: DataSender) {
+        let loader = self.loader_table.get_mut(&loader_id).unwrap();
+        loader.add_data_sender(data_sender);
+        if loader.ready() {
+            log::debug!("loader id {} ready", loader_id);
+            self.sampler_tree
+                .insert(self.dataset.get_indices(), loader_id);
+        }
+    }
+
+    pub fn del_idx_sender(&mut self, loader_id: u64, host_id: u64) {
+        let loader = self.loader_table.get_mut(&loader_id).unwrap();
+        loader.del_idx_sender(host_id);
+    }
+
+    pub fn del_data_sender(&mut self, loader_id: u64) {
+        let loader = self.loader_table.get_mut(&loader_id).unwrap();
+        loader.del_data_sender();
+    }
+
+    pub fn is_loader_empty(&self, loader_id: u64) -> bool {
+        self.loader_table[&loader_id].is_empty()
+    }
+
+    pub fn add_loader(&mut self, loader_id: u64, nums: u32) {
         log::debug!("Add a loader {}", loader_id);
-        self.loader_table.insert(loader_id, Loader::new(loader_id));
-        self.sampler_tree
-            .insert(self.dataset.get_indices(), loader_id);
+        self.loader_table
+            .insert(loader_id, Loader::new(loader_id, nums));
         for (_, cnt) in self.ref_table.iter_mut() {
             *cnt += 1;
         }
@@ -126,12 +176,16 @@ impl Joader {
         self.loader_table.get_mut(&id).unwrap()
     }
 
-    pub fn get_name(&self) -> &str {
-        self.dataset.get_name()
+    pub fn get_id(&self) -> u32 {
+        self.dataset.get_id()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.loader_table.is_empty()
+        let mut empty = true;
+        for (_, l) in &self.loader_table {
+            empty &= l.closed();
+        }
+        empty
     }
 
     pub fn len(&self) -> u64 {

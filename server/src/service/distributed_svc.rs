@@ -1,3 +1,5 @@
+use crate::dataset;
+use crate::joader::joader::Joader;
 use crate::joader::joader_table::JoaderTable;
 use crate::loader::{create_idx_channel, IdxReceiver};
 use crate::proto::distributed::distributed_svc_server::DistributedSvc;
@@ -12,9 +14,19 @@ use super::GlobalID;
 #[derive(Debug, Default)]
 struct Host {
     recv: HashMap<u64, IdxReceiver>,
+    id: u32,
+    port: u64,
 }
 
 impl Host {
+    fn new(id: u32, port: u64) -> Host {
+        Host {
+            recv: HashMap::new(),
+            id,
+            port,
+        }
+    }
+
     fn add(&mut self, r: IdxReceiver) {
         self.recv.insert(r.get_loader_id(), r);
     }
@@ -45,13 +57,28 @@ impl Host {
 
 #[derive(Debug)]
 pub struct DistributedSvcImpl {
-    loader_id: GlobalID,
-    host_id: GlobalID,
+    id: GlobalID,
     loader_id_table: Arc<Mutex<HashMap<String, u64>>>,
-    host_id_table: Arc<Mutex<HashMap<String, u64>>>,
-    host_table: Arc<Mutex<HashMap<u64, Host>>>,
-    host_port_table: Arc<Mutex<HashMap<String, u64>>>,
+    dataset_table: Arc<Mutex<HashMap<String, u32>>>,
+    host_table: Arc<Mutex<HashMap<String, Host>>>,
     joader_table: Arc<Mutex<JoaderTable>>,
+}
+
+impl DistributedSvcImpl {
+    pub fn new(
+        id: GlobalID,
+        loader_id_table: Arc<Mutex<HashMap<String, u64>>>,
+        dataset_table: Arc<Mutex<HashMap<String, u32>>>,
+        joader_table: Arc<Mutex<JoaderTable>>,
+    ) -> DistributedSvcImpl {
+        Self {
+            id,
+            loader_id_table,
+            dataset_table,
+            host_table: Default::default(),
+            joader_table,
+        }
+    }
 }
 
 #[async_trait]
@@ -61,25 +88,20 @@ impl DistributedSvc for DistributedSvcImpl {
         request: Request<RegisterHostRequest>,
     ) -> Result<Response<RegisterHostResponse>, Status> {
         let request = request.into_inner();
-        let mut table = self.host_id_table.lock().await;
-        if table.contains_key(&request.ip) {
+        log::info!("Create Host {:?}", request);
+        let mut ht = self.host_table.lock().await;
+        if ht.contains_key(&request.ip) {
             return Err(Status::already_exists(format!("{}", request.ip)));
         }
-        let id = self.host_id.get_id().await;
-        // 1. host id table: ip -> id
-        table.insert(request.ip.clone(), id);
-        // 2. host port table: ip -> port
-        self.host_port_table
-            .lock()
-            .await
-            .insert(request.ip, request.port);
-        // 3. host table: id -> host
-        self.host_table.lock().await.insert(id, Host::default());
+        let id = self.id.get_host_id().await;
+        let port = request.port;
+        let host = Host::new(id, port);
+        ht.insert(request.ip.clone(), host);
 
-        // 4. update host number
+        // update host number
         let mut jt = self.joader_table.lock().await;
-        jt.set_hash_key(table.len() as u32);
-        Ok(Response::new(RegisterHostResponse { host_id: id }))
+        jt.set_hash_key(ht.len() as u32);
+        Ok(Response::new(RegisterHostResponse { host_id: id as u64 }))
     }
 
     async fn delete_host(
@@ -95,43 +117,43 @@ impl DistributedSvc for DistributedSvcImpl {
         &self,
         request: Request<CreateSamplerRequest>,
     ) -> Result<Response<CreateSamplerResponse>, Status> {
+        log::info!("Create sampler {:?}", request);
         let request = request.into_inner();
-        let host_id = *self
-            .host_id_table
-            .lock()
-            .await
-            .get(&request.ip)
-            .ok_or_else(|| Status::not_found(format!("{} not exited", request.ip)))?;
-
+        let mut ht = self.host_table.lock().await;
         let mut loader_id_table = self.loader_id_table.lock().await;
         let mut jt = self.joader_table.lock().await;
+        let dt = self.dataset_table.lock().await;
 
-        let joader = jt
-            .get_mut(&request.dataset_name)
-            .map_err(|x| Status::not_found(x))?;
+        let host = ht
+            .get_mut(&request.ip)
+            .ok_or_else(|| Status::not_found(format!("{} not exited", request.ip)))?;
+        let dataset_id = dt
+            .get(&request.dataset_name)
+            .ok_or_else(|| Status::not_found(&request.dataset_name))?;
+
+        let joader = jt.get_mut(*dataset_id);
         // 1. If loader not exited, add loader and update loader_id
         let loader_id;
         if loader_id_table.contains_key(&request.name) {
             loader_id = loader_id_table[&request.name];
         } else {
-            loader_id = self.loader_id.get_id().await;
-            joader.add_loader(loader_id);
+            loader_id = self.id.get_loader_id(*dataset_id).await;
+            joader.add_loader(loader_id, request.nums);
             loader_id_table.insert(request.name.clone(), loader_id);
         }
 
         // 2. Add sample to loader
-        let loader = joader
-            .get_mut(loader_id)
-            .map_err(|x| Status::not_found(x))?;
         let (is, ir) = create_idx_channel(loader_id);
-        loader.add_idx_sender(is, host_id);
-        // 2. Add recv to host
-        let mut ht = self.host_table.lock().await;
-        let host = ht.get_mut(&host_id).unwrap();
+        joader.add_idx_sender(loader_id, is, host.id.into());
+        // 3. Add recv to host
         host.add(ir);
 
         let length = joader.len();
-        Ok(Response::new(CreateSamplerResponse { length, loader_id }))
+        Ok(Response::new(CreateSamplerResponse {
+            length,
+            loader_id,
+            dataset_id: *dataset_id,
+        }))
     }
 
     async fn delete_sampler(
@@ -139,29 +161,30 @@ impl DistributedSvc for DistributedSvcImpl {
         request: Request<DeleteSamplerRequest>,
     ) -> Result<Response<DeleteSamplerResponse>, Status> {
         let request = request.into_inner();
-        let host_id = *self
-            .host_id_table
-            .lock()
-            .await
-            .get(&request.ip)
-            .ok_or_else(|| Status::not_found(format!("{} not exited", request.ip)))?;
+        log::info!("Delete sampler {:?}", request);
         let mut ht = self.host_table.lock().await;
-
         let mut loader_id_table = self.loader_id_table.lock().await;
         let mut jt = self.joader_table.lock().await;
+        let dt = self.dataset_table.lock().await;
+
+        let host = ht
+            .get_mut(&request.ip)
+            .ok_or_else(|| Status::not_found(format!("{} not exited", request.ip)))?;
+        let dataset_id = dt
+            .get(&request.dataset_name)
+            .ok_or_else(|| Status::not_found(&request.dataset_name))?;
+
         //1. loader remove host
-        let joader = jt
-            .get_mut(&request.dataset_name)
-            .map_err(|x| Status::not_found(x))?;
-        let loader_id = loader_id_table
+        let joader = jt.get_mut(*dataset_id);
+        let loader_id = *loader_id_table
             .get(&request.name)
             .ok_or_else(|| Status::not_found(format!("{} not exited", request.name)))?;
-        let loader = joader.get_mut(*loader_id).unwrap();
-        loader.del_idx_sender(host_id);
+        
+        joader.del_idx_sender(loader_id, host.id.into());
         //2. host remove recv
-        ht.get_mut(&host_id).unwrap().del(*loader_id);
+        host.del(loader_id);
         //3. if empty, remove host_id
-        if loader.is_empty() {
+        if joader.is_loader_empty(loader_id) {
             loader_id_table.remove(&request.name);
         }
         Ok(Response::new(DeleteSamplerResponse {}))
@@ -171,26 +194,51 @@ impl DistributedSvc for DistributedSvcImpl {
         &self,
         request: Request<QueryHostRequest>,
     ) -> Result<Response<QueryHostResponse>, Status> {
-        let req = request.into_inner();
-        let port = *self
-            .host_port_table
-            .lock()
-            .await
-            .get(&req.ip)
-            .ok_or_else(|| Status::not_found(format!("Host {} not exist", req.ip)))?;
-        Ok(Response::new(QueryHostResponse { port }))
+        let request = request.into_inner();
+        let mut ht = self.host_table.lock().await;
+        let host = ht
+            .get_mut(&request.ip)
+            .ok_or_else(|| Status::not_found(format!("{} not exited", request.ip)))?;
+        Ok(Response::new(QueryHostResponse {
+            port: host.port as u64,
+        }))
     }
 
     async fn sample(
         &self,
         request: Request<SampleRequest>,
     ) -> Result<Response<SampleResponse>, Status> {
-        let req = request.into_inner();
-        let host_id = self.host_id_table.lock().await[&req.ip];
+        let request = request.into_inner();
         let mut ht = self.host_table.lock().await;
-
+        let host = ht
+            .get_mut(&request.ip)
+            .ok_or_else(|| Status::not_found(format!("{} not exited", request.ip)))?;
         Ok(Response::new(SampleResponse {
-            res: ht.get_mut(&host_id).unwrap().recv_all().await,
+            res: host.recv_all().await,
         }))
+    }
+
+    async fn register_dataset(
+        &self,
+        request: Request<RegisterDatasetRequest>,
+    ) -> Result<Response<RegisterDatasetResponse>, Status> {
+        let r = request.into_inner();
+        log::debug!("regeister dataset {:?}", r);
+        let request = r.request.unwrap();
+        let id = r.dataset_id;
+        let mut dt = self.dataset_table.lock().await;
+        if dt.contains_key(&request.name) {
+            return Err(Status::already_exists(format!(
+                "{:?} has already existed",
+                request
+            )));
+        }
+        log::debug!("Create dataset {:?}", request);
+        dt.insert(request.name.clone(), id);
+        // insert dataset to dataset table
+        let joader = Joader::new(dataset::build_dataset(request, id));
+        self.joader_table.lock().await.add_joader(joader);
+
+        Ok(Response::new(RegisterDatasetResponse {}))
     }
 }

@@ -81,9 +81,9 @@ impl Cache {
             .free(block.data().off(), block.data().len());
     }
 
-    pub fn allocate(&mut self, len: usize, ref_cnt: usize, data_name: &str) -> (&mut [u8], usize) {
+    pub fn allocate(&mut self, len: usize, ref_cnt: usize, data_id: u64) -> (&mut [u8], usize) {
         let (head, idx) = self.allocate_head(ref_cnt);
-        self.cached_data.add(idx, data_name);
+        self.cached_data.add(idx, data_id);
         let data = self.allocate_data(len as u64);
         let mut block = DataBlock {
             head,
@@ -138,15 +138,15 @@ impl Cache {
         }
     }
 
-    pub fn contains_data(&self, data: &str) -> Option<usize> {
-        self.cached_data.contains(data)
+    pub fn contains_data(&self, data_id: u64) -> Option<usize> {
+        self.cached_data.contains(data_id)
     }
 
     pub fn next_block(
         &mut self,
         block: Option<DataBlock>,
         ref_cnt: usize,
-        data_name: &str,
+        data_id: u64,
     ) -> (DataBlock, usize) {
         let data = self.allocate_data(0);
         // next block
@@ -163,7 +163,7 @@ impl Cache {
         }
         // first block
         let (head, idx) = self.allocate_head(ref_cnt);
-        self.cached_data.add(idx, data_name);
+        self.cached_data.add(idx, data_id);
         return (
             DataBlock {
                 head,
@@ -207,7 +207,7 @@ mod test {
         let size_list = &[(20, 0), (27, 1), (60, 2), (20, 3)];
         let mut idx_list = vec![];
         for (idx, (size, ref_cnt)) in size_list.iter().enumerate() {
-            let idx = write(&mut cache, *size, *ref_cnt, 7, &idx.to_string());
+            let idx = write(&mut cache, *size, *ref_cnt, 7, idx as u64);
             idx_list.push(idx);
         }
         for ((size, _), off) in size_list.iter().zip(idx_list.iter()) {
@@ -219,7 +219,7 @@ mod test {
         let size_list = &[40, 38];
         let mut idx_list = vec![];
         for (idx, size) in size_list.iter().enumerate() {
-            let idx = write(&mut cache, *size, size % 2, 3, &idx.to_string());
+            let idx = write(&mut cache, *size, size % 2, 3, idx as u64);
             idx_list.push(idx);
         }
         for (size, off) in size_list.iter().zip(idx_list.iter()) {
@@ -231,7 +231,7 @@ mod test {
         let size_list = &[127];
         let mut idx_list = vec![];
         for (idx, size) in size_list.iter().enumerate() {
-            let idx = write(&mut cache, *size, size % 3, 5, &idx.to_string());
+            let idx = write(&mut cache, *size, size % 3, 5, idx as u64);
             idx_list.push(idx);
         }
         for (size, off) in size_list.iter().zip(idx_list.iter()) {
@@ -274,7 +274,7 @@ mod test {
         for i in 1..turn {
             let len = i * HEAD_SIZE as usize;
             let idx = {
-                let (block_slice, idx) = cache.allocate(len, i % 3, i.to_string().as_str());
+                let (block_slice, idx) = cache.allocate(len, i % 3, i as u64);
                 block_slice.copy_from_slice(vec![7u8; len].as_slice());
                 idx
             };
@@ -315,14 +315,8 @@ mod test {
         drop(rc);
     }
 
-    fn write(
-        cache: &mut Cache,
-        mut len: usize,
-        ref_cnt: usize,
-        value: u8,
-        data_name: &str,
-    ) -> usize {
-        let (mut block, idx) = cache.next_block(None, ref_cnt, data_name);
+    fn write(cache: &mut Cache, mut len: usize, ref_cnt: usize, value: u8, data_id: u64) -> usize {
+        let (mut block, idx) = cache.next_block(None, ref_cnt, data_id);
         let mut block_slice = block.as_mut_slice();
         let mut write_size = min(len, block_slice.len());
         (0..write_size).fold((), |_, i| block_slice[i] = value);
@@ -338,7 +332,7 @@ mod test {
             if let Some(_b) = remain_block {
                 block = _b;
             } else {
-                block = cache.next_block(Some(last_block), 0, data_name).0;
+                block = cache.next_block(Some(last_block), 0, data_id).0;
             }
             block_slice = block.as_mut_slice();
             write_size = min(len, block_slice.len());

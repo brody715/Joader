@@ -6,3 +6,9 @@ pub mod loader;
 pub mod proto;
 pub mod sampler;
 pub mod service;
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Role {
+    Leader,
+    Follower
+}

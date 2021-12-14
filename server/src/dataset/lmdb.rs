@@ -1,3 +1,4 @@
+use super::data_id;
 use super::Dataset;
 use super::DatasetRef;
 use crate::{
@@ -13,12 +14,11 @@ use std::{fmt::Debug, sync::Arc};
 #[derive(Debug)]
 struct LmdbDataset {
     items: Vec<DataItem>,
-    name: String,
+    id: u32,
     env: lmdb::Environment,
 }
 
-pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
-    let name = request.name;
+pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
     let location = request.location;
     let items = request.items;
     let env = unsafe {
@@ -28,7 +28,7 @@ pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
             .unwrap()
     };
     // Open the default database.
-    Arc::new(LmdbDataset { items, name, env })
+    Arc::new(LmdbDataset { items, id, env })
 }
 
 impl LmdbDataset {
@@ -37,19 +37,14 @@ impl LmdbDataset {
         cache: &mut Cache,
         db: &Database,
         txn: &ReadTransaction,
+        id: u64,
         key: &str,
         ref_cnt: usize,
     ) -> u64 {
         let acc = txn.access();
         let data: &[u8] = acc.get(db, key).unwrap();
         let len = data.len();
-
-        let data_name = self.name.clone() + key;
-        if let Some(addr) = cache.contains_data(&data_name) {
-            return addr as u64;
-        }
-
-        let (block_slice, idx) = cache.allocate(len, ref_cnt, &data_name);
+        let (block_slice, idx) = cache.allocate(len, ref_cnt, id);
         assert_eq!(block_slice.len(), len);
         block_slice.copy_from_slice(data);
         idx as u64
@@ -57,8 +52,8 @@ impl LmdbDataset {
 }
 
 impl Dataset for LmdbDataset {
-    fn get_name(&self) -> &str {
-        &self.name
+    fn get_id(&self) -> u32 {
+        self.id
     }
 
     fn get_indices(&self) -> Vec<u32> {
@@ -68,10 +63,15 @@ impl Dataset for LmdbDataset {
     }
 
     fn read(&self, cache: &mut Cache, idx: u32, ref_cnt: usize) -> u64 {
+        let data_id = data_id(self.id, idx);
+        if let Some(addr) = cache.contains_data(data_id) {
+            return addr as u64;
+        }
+
         let db = lmdb::Database::open(&self.env, None, &lmdb::DatabaseOptions::defaults()).unwrap();
         let txn = lmdb::ReadTransaction::new(&self.env).unwrap();
         let key = &self.items[idx as usize].keys[0];
-        self.read_one(cache, &db, &txn, key, ref_cnt)
+        self.read_one(cache, &db, &txn, data_id, key, ref_cnt)
     }
 
     fn len(&self) -> u64 {
@@ -134,7 +134,7 @@ mod tests {
         }
         let dataset = Arc::new(LmdbDataset {
             items,
-            name: "Lmdb".to_string(),
+            id: 0,
             env: unsafe {
                 lmdb::EnvBuilder::new()
                     .unwrap()
@@ -144,8 +144,8 @@ mod tests {
         });
         let mut joader = Joader::new(dataset);
         let (s, mut r) = create_data_channel(0);
-        joader.add_loader(0);
-        joader.get_mut(0).unwrap().add_data_sender(s);
+        joader.add_loader(0, 1);
+        joader.add_data_sender(0, s);
 
         let reader = tokio::spawn(async move {
             let now = SystemTime::now();

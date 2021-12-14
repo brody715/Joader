@@ -35,6 +35,8 @@ pub struct Loader {
     hosts: HashMap<u64, IdxSender>,
     cursor: Cursor,
     data_addr_s: Option<DataSender>,
+    closed: bool,
+    nums: u32,
 }
 
 pub fn create_idx_channel(loader_id: u64) -> (LoaderSender<u32>, LoaderReceiver<u32>) {
@@ -46,12 +48,14 @@ pub fn create_data_channel(loader_id: u64) -> (LoaderSender<u64>, LoaderReceiver
 }
 
 impl Loader {
-    pub fn new(loader_id: u64) -> Self {
+    pub fn new(loader_id: u64, nums: u32) -> Self {
         Loader {
             loader_id,
             hosts: HashMap::new(),
             cursor: Default::default(),
             data_addr_s: None,
+            closed: false,
+            nums,
         }
     }
 
@@ -77,6 +81,8 @@ impl Loader {
     }
 
     pub fn add_idx_sender(&mut self, idx_sender: IdxSender, host_id: u64) {
+        self.nums -= 1;
+        log::debug!("Add idx sender {:?}, host_id {:}", idx_sender, host_id);
         self.hosts.insert(host_id, idx_sender);
         self.cursor.push(host_id);
     }
@@ -84,6 +90,7 @@ impl Loader {
         self.hosts.remove(&host_id);
     }
     pub fn add_data_sender(&mut self, data_sender: DataSender) {
+        self.nums -= 1;
         log::debug!("Add data sender {:?}", data_sender);
         self.data_addr_s = Some(data_sender);
     }
@@ -102,5 +109,16 @@ impl Loader {
         if let Some(sender) = &self.data_addr_s {
             sender.close().await;
         }
+        self.closed = true
+    }
+
+    #[inline]
+    pub fn closed(&self) -> bool {
+        self.closed
+    }
+
+    #[inline]
+    pub fn ready(&self) -> bool {
+        self.nums == 0
     }
 }

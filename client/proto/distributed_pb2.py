@@ -12,6 +12,7 @@ _sym_db = _symbol_database.Default()
 
 
 import common_pb2 as common__pb2
+import dataset_pb2 as dataset__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -20,9 +21,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x11\x64istributed.proto\x12\x0b\x64istributed\x1a\x0c\x63ommon.proto\"/\n\x13RegisterHostRequest\x12\n\n\x02ip\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x04\"\'\n\x14RegisterHostResponse\x12\x0f\n\x07host_id\x18\x01 \x01(\x04\"-\n\x11\x44\x65leteHostRequest\x12\n\n\x02ip\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\t\"%\n\x12\x44\x65leteHostResponse\x12\x0f\n\x07host_id\x18\x01 \x01(\x04\"2\n\x0cSampleResult\x12\x11\n\tloader_id\x18\x01 \x01(\x04\x12\x0f\n\x07indices\x18\x02 \x03(\r\"\x1e\n\x10QueryHostRequest\x12\n\n\x02ip\x18\x01 \x01(\t\"!\n\x11QueryHostResponse\x12\x0c\n\x04port\x18\x01 \x01(\x04\"F\n\x14\x43reateSamplerRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\x12\n\n\x02ip\x18\x03 \x01(\t\":\n\x15\x43reateSamplerResponse\x12\x0e\n\x06length\x18\x01 \x01(\x04\x12\x11\n\tloader_id\x18\x02 \x01(\x04\"F\n\x14\x44\x65leteSamplerRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\x12\n\n\x02ip\x18\x03 \x01(\t\"\x17\n\x15\x44\x65leteSamplerResponse\"\x1b\n\rSampleRequest\x12\n\n\x02ip\x18\x03 \x01(\t\"8\n\x0eSampleResponse\x12&\n\x03res\x18\x01 \x03(\x0b\x32\x19.distributed.SampleResult2\xf3\x03\n\x0e\x44istributedSvc\x12V\n\rCreateSampler\x12!.distributed.CreateSamplerRequest\x1a\".distributed.CreateSamplerResponse\x12V\n\rDeleteSampler\x12!.distributed.DeleteSamplerRequest\x1a\".distributed.DeleteSamplerResponse\x12J\n\tQueryHost\x12\x1d.distributed.QueryHostRequest\x1a\x1e.distributed.QueryHostResponse\x12\x41\n\x06Sample\x12\x1a.distributed.SampleRequest\x1a\x1b.distributed.SampleResponse\x12S\n\x0cRegisterHost\x12 .distributed.RegisterHostRequest\x1a!.distributed.RegisterHostResponse\x12M\n\nDeleteHost\x12\x1e.distributed.DeleteHostRequest\x1a\x1f.distributed.DeleteHostResponseb\x06proto3'
+  serialized_pb=b'\n\x11\x64istributed.proto\x12\x0b\x64istributed\x1a\x0c\x63ommon.proto\x1a\rdataset.proto\"/\n\x13RegisterHostRequest\x12\n\n\x02ip\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x04\"\'\n\x14RegisterHostResponse\x12\x0f\n\x07host_id\x18\x01 \x01(\x04\"\\\n\x16RegisterDatasetRequest\x12.\n\x07request\x18\x01 \x01(\x0b\x32\x1d.dataset.CreateDatasetRequest\x12\x12\n\ndataset_id\x18\x02 \x01(\r\"\x19\n\x17RegisterDatasetResponse\"-\n\x11\x44\x65leteHostRequest\x12\n\n\x02ip\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\t\"%\n\x12\x44\x65leteHostResponse\x12\x0f\n\x07host_id\x18\x01 \x01(\x04\"2\n\x0cSampleResult\x12\x11\n\tloader_id\x18\x01 \x01(\x04\x12\x0f\n\x07indices\x18\x02 \x03(\r\"\x1e\n\x10QueryHostRequest\x12\n\n\x02ip\x18\x01 \x01(\t\"!\n\x11QueryHostResponse\x12\x0c\n\x04port\x18\x01 \x01(\x04\"T\n\x14\x43reateSamplerRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\x12\n\n\x02ip\x18\x03 \x01(\t\x12\x0c\n\x04nums\x18\x04 \x01(\r\"N\n\x15\x43reateSamplerResponse\x12\x0e\n\x06length\x18\x01 \x01(\x04\x12\x11\n\tloader_id\x18\x02 \x01(\x04\x12\x12\n\ndataset_id\x18\x03 \x01(\r\"F\n\x14\x44\x65leteSamplerRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\x12\n\n\x02ip\x18\x03 \x01(\t\"\x17\n\x15\x44\x65leteSamplerResponse\"\x1b\n\rSampleRequest\x12\n\n\x02ip\x18\x03 \x01(\t\"8\n\x0eSampleResponse\x12&\n\x03res\x18\x01 \x03(\x0b\x32\x19.distributed.SampleResult2\xd1\x04\n\x0e\x44istributedSvc\x12V\n\rCreateSampler\x12!.distributed.CreateSamplerRequest\x1a\".distributed.CreateSamplerResponse\x12V\n\rDeleteSampler\x12!.distributed.DeleteSamplerRequest\x1a\".distributed.DeleteSamplerResponse\x12J\n\tQueryHost\x12\x1d.distributed.QueryHostRequest\x1a\x1e.distributed.QueryHostResponse\x12\x41\n\x06Sample\x12\x1a.distributed.SampleRequest\x1a\x1b.distributed.SampleResponse\x12S\n\x0cRegisterHost\x12 .distributed.RegisterHostRequest\x1a!.distributed.RegisterHostResponse\x12M\n\nDeleteHost\x12\x1e.distributed.DeleteHostRequest\x1a\x1f.distributed.DeleteHostResponse\x12\\\n\x0fRegisterDataset\x12#.distributed.RegisterDatasetRequest\x1a$.distributed.RegisterDatasetResponseb\x06proto3'
   ,
-  dependencies=[common__pb2.DESCRIPTOR,])
+  dependencies=[common__pb2.DESCRIPTOR,dataset__pb2.DESCRIPTOR,])
 
 
 
@@ -61,8 +62,8 @@ _REGISTERHOSTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=48,
-  serialized_end=95,
+  serialized_start=63,
+  serialized_end=110,
 )
 
 
@@ -93,8 +94,72 @@ _REGISTERHOSTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=97,
-  serialized_end=136,
+  serialized_start=112,
+  serialized_end=151,
+)
+
+
+_REGISTERDATASETREQUEST = _descriptor.Descriptor(
+  name='RegisterDatasetRequest',
+  full_name='distributed.RegisterDatasetRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='request', full_name='distributed.RegisterDatasetRequest.request', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='dataset_id', full_name='distributed.RegisterDatasetRequest.dataset_id', index=1,
+      number=2, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=153,
+  serialized_end=245,
+)
+
+
+_REGISTERDATASETRESPONSE = _descriptor.Descriptor(
+  name='RegisterDatasetResponse',
+  full_name='distributed.RegisterDatasetResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=247,
+  serialized_end=272,
 )
 
 
@@ -132,8 +197,8 @@ _DELETEHOSTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=138,
-  serialized_end=183,
+  serialized_start=274,
+  serialized_end=319,
 )
 
 
@@ -164,8 +229,8 @@ _DELETEHOSTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=185,
-  serialized_end=222,
+  serialized_start=321,
+  serialized_end=358,
 )
 
 
@@ -203,8 +268,8 @@ _SAMPLERESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=224,
-  serialized_end=274,
+  serialized_start=360,
+  serialized_end=410,
 )
 
 
@@ -235,8 +300,8 @@ _QUERYHOSTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=276,
-  serialized_end=306,
+  serialized_start=412,
+  serialized_end=442,
 )
 
 
@@ -267,8 +332,8 @@ _QUERYHOSTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=308,
-  serialized_end=341,
+  serialized_start=444,
+  serialized_end=477,
 )
 
 
@@ -301,6 +366,13 @@ _CREATESAMPLERREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='nums', full_name='distributed.CreateSamplerRequest.nums', index=3,
+      number=4, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -313,8 +385,8 @@ _CREATESAMPLERREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=343,
-  serialized_end=413,
+  serialized_start=479,
+  serialized_end=563,
 )
 
 
@@ -340,6 +412,13 @@ _CREATESAMPLERRESPONSE = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='dataset_id', full_name='distributed.CreateSamplerResponse.dataset_id', index=2,
+      number=3, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -352,8 +431,8 @@ _CREATESAMPLERRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=415,
-  serialized_end=473,
+  serialized_start=565,
+  serialized_end=643,
 )
 
 
@@ -398,8 +477,8 @@ _DELETESAMPLERREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=475,
-  serialized_end=545,
+  serialized_start=645,
+  serialized_end=715,
 )
 
 
@@ -423,8 +502,8 @@ _DELETESAMPLERRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=547,
-  serialized_end=570,
+  serialized_start=717,
+  serialized_end=740,
 )
 
 
@@ -455,8 +534,8 @@ _SAMPLEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=572,
-  serialized_end=599,
+  serialized_start=742,
+  serialized_end=769,
 )
 
 
@@ -487,13 +566,16 @@ _SAMPLERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=601,
-  serialized_end=657,
+  serialized_start=771,
+  serialized_end=827,
 )
 
+_REGISTERDATASETREQUEST.fields_by_name['request'].message_type = dataset__pb2._CREATEDATASETREQUEST
 _SAMPLERESPONSE.fields_by_name['res'].message_type = _SAMPLERESULT
 DESCRIPTOR.message_types_by_name['RegisterHostRequest'] = _REGISTERHOSTREQUEST
 DESCRIPTOR.message_types_by_name['RegisterHostResponse'] = _REGISTERHOSTRESPONSE
+DESCRIPTOR.message_types_by_name['RegisterDatasetRequest'] = _REGISTERDATASETREQUEST
+DESCRIPTOR.message_types_by_name['RegisterDatasetResponse'] = _REGISTERDATASETRESPONSE
 DESCRIPTOR.message_types_by_name['DeleteHostRequest'] = _DELETEHOSTREQUEST
 DESCRIPTOR.message_types_by_name['DeleteHostResponse'] = _DELETEHOSTRESPONSE
 DESCRIPTOR.message_types_by_name['SampleResult'] = _SAMPLERESULT
@@ -520,6 +602,20 @@ RegisterHostResponse = _reflection.GeneratedProtocolMessageType('RegisterHostRes
   # @@protoc_insertion_point(class_scope:distributed.RegisterHostResponse)
   })
 _sym_db.RegisterMessage(RegisterHostResponse)
+
+RegisterDatasetRequest = _reflection.GeneratedProtocolMessageType('RegisterDatasetRequest', (_message.Message,), {
+  'DESCRIPTOR' : _REGISTERDATASETREQUEST,
+  '__module__' : 'distributed_pb2'
+  # @@protoc_insertion_point(class_scope:distributed.RegisterDatasetRequest)
+  })
+_sym_db.RegisterMessage(RegisterDatasetRequest)
+
+RegisterDatasetResponse = _reflection.GeneratedProtocolMessageType('RegisterDatasetResponse', (_message.Message,), {
+  'DESCRIPTOR' : _REGISTERDATASETRESPONSE,
+  '__module__' : 'distributed_pb2'
+  # @@protoc_insertion_point(class_scope:distributed.RegisterDatasetResponse)
+  })
+_sym_db.RegisterMessage(RegisterDatasetResponse)
 
 DeleteHostRequest = _reflection.GeneratedProtocolMessageType('DeleteHostRequest', (_message.Message,), {
   'DESCRIPTOR' : _DELETEHOSTREQUEST,
@@ -607,8 +703,8 @@ _DISTRIBUTEDSVC = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=660,
-  serialized_end=1159,
+  serialized_start=830,
+  serialized_end=1423,
   methods=[
   _descriptor.MethodDescriptor(
     name='CreateSampler',
@@ -667,6 +763,16 @@ _DISTRIBUTEDSVC = _descriptor.ServiceDescriptor(
     containing_service=None,
     input_type=_DELETEHOSTREQUEST,
     output_type=_DELETEHOSTRESPONSE,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+  _descriptor.MethodDescriptor(
+    name='RegisterDataset',
+    full_name='distributed.DistributedSvc.RegisterDataset',
+    index=6,
+    containing_service=None,
+    input_type=_REGISTERDATASETREQUEST,
+    output_type=_REGISTERDATASETRESPONSE,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),

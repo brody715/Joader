@@ -1,5 +1,6 @@
 syntax = "proto3";
 import "common.proto";
+import "dataset.proto";
 package distributed;
 
 message RegisterHostRequest {
@@ -10,6 +11,13 @@ message RegisterHostRequest {
 message RegisterHostResponse {
     uint64 host_id = 1;
 }
+
+message RegisterDatasetRequest {
+    dataset.CreateDatasetRequest request = 1;
+    uint32 dataset_id = 2;
+}
+
+message RegisterDatasetResponse {}
 
 message DeleteHostRequest {
     string ip = 1;
@@ -37,11 +45,13 @@ message CreateSamplerRequest {
     string name = 1;
     string dataset_name = 2;
     string ip = 3;
+    uint32 nums = 4;
 }
 
 message CreateSamplerResponse {
     uint64 length = 1;
     uint64 loader_id = 2;
+    uint32 dataset_id = 3;
 }
 
 message DeleteSamplerRequest {
@@ -68,4 +78,5 @@ service DistributedSvc {
     rpc Sample(SampleRequest) returns (SampleResponse);
     rpc RegisterHost(RegisterHostRequest) returns (RegisterHostResponse);
     rpc DeleteHost(DeleteHostRequest) returns (DeleteHostResponse);
+    rpc RegisterDataset(RegisterDatasetRequest) returns (RegisterDatasetResponse);
 }

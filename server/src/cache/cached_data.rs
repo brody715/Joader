@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct CachedData {
-    data2head: HashMap<String, usize>,
-    head2data: HashMap<usize, String>,
+    data2head: HashMap<u64, usize>,
+    head2data: HashMap<usize, u64>,
 }
 
 impl CachedData {
@@ -14,10 +14,10 @@ impl CachedData {
         }
     }
 
-    pub fn add(&mut self, head: usize, data: &str) {
-        log::debug!("Cache data {:?} in {:?}", head, data);
-        self.data2head.insert(data.to_string(), head);
-        self.head2data.insert(head, data.to_string());
+    pub fn add(&mut self, head: usize, data_id: u64) {
+        log::debug!("Cache data {:?} in {:?}", head, data_id);
+        self.data2head.insert(data_id, head);
+        self.head2data.insert(head, data_id);
     }
 
     pub fn remove(&mut self, head: usize) {
@@ -26,8 +26,8 @@ impl CachedData {
         log::debug!("Delete data head: {:?} name:{:?} in cache", head, data);
     }
 
-    pub fn contains(&self, data: &str) -> Option<usize> {
-        log::debug!("Hit data {:?}", data);
-        self.data2head.get(data).map(|x| *x)
+    pub fn contains(&self, data_id: u64) -> Option<usize> {
+        log::debug!("Hit data {:?}", data_id);
+        self.data2head.get(&data_id).map(|x| *x)
     }
 }

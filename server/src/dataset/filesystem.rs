@@ -10,22 +10,21 @@ use std::{fmt::Debug, sync::Arc};
 pub struct FileDataset {
     items: Vec<DataItem>,
     _root: String,
-    name: String,
+    id: u32,
 }
 
-pub fn from_proto(request: CreateDatasetRequest) -> DatasetRef {
-    let name = request.name;
+pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
     let items = request.items;
     Arc::new(FileDataset {
         items,
         _root: "".into(),
-        name,
+        id,
     })
 }
 
 impl Dataset for FileDataset {
-    fn get_name(&self) -> &str {
-        &self.name
+    fn get_id(&self) -> u32 {
+        self.id
     }
 
     fn get_indices(&self) -> Vec<u32> {

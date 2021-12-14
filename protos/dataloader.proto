@@ -9,6 +9,7 @@ package dataloader;
 message CreateDataloaderRequest {
     string name = 1;
     string dataset_name = 2;
+    uint32 nums = 3;
 }
 
 message CreateDataloaderResponse {

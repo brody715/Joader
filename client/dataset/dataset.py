@@ -1,5 +1,5 @@
 import sys
-sys.path.append("/home/xiej/ATC/DLCache/client/proto")
+sys.path.append("./proto")
 import proto.dataset_pb2 as dataset_pb2
 import proto.dataset_pb2_grpc as dataset_pb2_grpc
 from enum import Enum

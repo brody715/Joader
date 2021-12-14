@@ -25,21 +25,44 @@ pub fn succ() -> RspStatus {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GlobalID {
-    id: Arc<Mutex<u64>>,
+    dataset_id: Arc<Mutex<u32>>,
+    loader_id: Arc<Mutex<u32>>,
+    host_id: Arc<Mutex<u32>>,
 }
 
 impl GlobalID {
-    pub async fn get_id(&self) -> u64 {
-        let mut id = self.id.lock().await;
+    pub async fn get_dataset_id(&self) -> u32 {
+        let mut id = self.dataset_id.lock().await;
+        let dataset_id = *id;
         *id += 1;
-        *id
+        dataset_id
+    }
+
+    pub async fn get_loader_id(&self, dataset_id: u32) -> u64 {
+        let mut id = self.loader_id.lock().await;
+        let loader_id = *id as u64;
+        *id += 1;
+        ((dataset_id as u64) << 32) + loader_id
+    }
+
+    pub async fn get_host_id(&self) -> u32 {
+        let mut id = self.host_id.lock().await;
+        let host_id = *id;
+        *id += 1;
+        host_id
     }
 
     pub fn new() -> GlobalID {
         GlobalID {
-            id: Arc::new(Mutex::new(0)),
+            dataset_id: Arc::new(Mutex::new(0)),
+            loader_id: Arc::new(Mutex::new(0)),
+            host_id: Arc::new(Mutex::new(0)),
         }
+    }
+
+    pub fn parse_dataset_id(loader_id: u64) -> u32 {
+        (loader_id >> 32) as u32
     }
 }

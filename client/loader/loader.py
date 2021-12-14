@@ -1,6 +1,6 @@
 import grpc
 import sys
-sys.path.append("/home/xiej/ATC/DLCache/client/proto")
+sys.path.append("./proto")
 
 from loader.shm import SharedMemory
 import proto.dataloader_pb2_grpc as dataloader_pb2_grpc
@@ -12,7 +12,7 @@ import socket
 
 
 class Loader(object):
-    def __init__(self, ip, length: int, loader_id: int, shm_path: str, name: str, dataset_name: str, server_ip: str):
+    def __init__(self, ip, length: int, loader_id: int, shm_path: str, name: str, dataset_name: str, server_ip: str, nums: int):
         self.length = length
         self.client = None
         self.loader_id = loader_id
@@ -31,18 +31,19 @@ class Loader(object):
         self.LEN = 4
         self.OFF = 8
         self.ip = ip
-        self.ip = self.get_host_ip()
+        self.nums = nums
 
     @staticmethod
-    def new(dataset_name: str, name: str, ip: str):
+    def new(dataset_name: str, name: str, ip: str, nums: int = 1):
+        # nums indicate the number of distributed tasks
         channel = grpc.insecure_channel(ip)
         client = dataloader_pb2_grpc.DataLoaderSvcStub(channel)
         request = dataloader_pb2.CreateDataloaderRequest(
-            dataset_name=dataset_name, name=name)
+            dataset_name=dataset_name, name=name, nums=nums)
         resp = client.CreateDataloader(request)
         # close to enable multi process grpc
         channel.close()
-        return Loader(ip, resp.length, resp.loader_id, resp.shm_path, name, dataset_name, ip)
+        return Loader(ip, resp.length, resp.loader_id, resp.shm_path, name, dataset_name, ip, nums)
 
     def get_host_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -69,12 +70,12 @@ class Loader(object):
 
     def dummy_read(self, address):
         self.buf[address+self.READ] = 0
-        return address
+        return int(address/self.HEAD_SIZE)
 
     def read(self):
         address = self.cached_addr.pop()*self.HEAD_SIZE
-        # return self.dummy_read(address*self.HEAD_SIZE)
-        return self.read_data(address)
+        return self.dummy_read(address)
+        # return self.read_data(address)
 
     def next(self):
         assert self.length > 0
@@ -91,7 +92,7 @@ class Loader(object):
     def delete(self):
         request = dataloader_pb2.DeleteDataloaderRequest(
             dataset_name=self.dataset_name, name=self.name)
-        # Todo(xj):bug
+        # Todo(xj): bug
         # self.shm.close()
         resp = self.client.DeleteDataloader(request)
         return resp
