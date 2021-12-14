@@ -31,8 +31,8 @@ class Loader(object):
         self.LEN = 4
         self.OFF = 8
         self.ip = ip
-        self.ip = self.get_host_ip()
         self.nums = nums
+
     @staticmethod
     def new(dataset_name: str, name: str, ip: str, nums: int = 1):
         # nums indicate the number of distributed tasks
@@ -70,7 +70,7 @@ class Loader(object):
 
     def dummy_read(self, address):
         self.buf[address+self.READ] = 0
-        return address
+        return int(address/self.HEAD_SIZE)
 
     def read(self):
         address = self.cached_addr.pop()*self.HEAD_SIZE
@@ -92,7 +92,7 @@ class Loader(object):
     def delete(self):
         request = dataloader_pb2.DeleteDataloaderRequest(
             dataset_name=self.dataset_name, name=self.name)
-        # Todo(xj):bug
+        # Todo(xj): bug
         # self.shm.close()
         resp = self.client.DeleteDataloader(request)
         return resp
