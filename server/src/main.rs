@@ -41,7 +41,8 @@ async fn start_follower(
         ip: ip.clone(),
         port: port.parse().unwrap(),
     };
-    leader.register_host(request).await.unwrap();
+    let resp = leader.register_host(request).await.unwrap();
+    log::debug!("Register Host resp: {:?}", resp);
     let sample_request = SampleRequest { ip };
     loop {
         let resp = leader.sample(sample_request.clone()).await.unwrap();

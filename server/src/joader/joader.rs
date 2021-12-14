@@ -24,9 +24,8 @@ impl Joader {
         self.loader_table.contains_key(&id)
     }
 
-    pub fn set_hash_key(&mut self, num: u32) {
-        log::debug!("Hash key is {}", num + 1);
-        self.key = num + 1;
+    pub fn set_hash_key(&mut self, key: u32) {
+        self.key = key;
     }
 
     // pub fn get_mut(&mut self, id: u64) -> &mut Loader {

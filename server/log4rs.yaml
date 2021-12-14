@@ -25,7 +25,7 @@ appenders:
       # log 信息模式
       pattern: "{d} - {m}{n}"
 root:
-  level: debug
+  level: info
   appenders:
     - stdout
 loggers:

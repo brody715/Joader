@@ -9,6 +9,7 @@ pub struct JoaderTable {
     // Joader is hash by the name of dataset
     joader_table: HashMap<u32, Joader>,
     cache: Cache,
+    hash_key: u32,
 }
 
 impl JoaderTable {
@@ -16,11 +17,13 @@ impl JoaderTable {
         JoaderTable {
             joader_table: HashMap::new(),
             cache,
+            hash_key: 1,
         }
     }
 
-    pub fn add_joader(&mut self, joader: Joader) {
+    pub fn add_joader(&mut self, mut joader: Joader) {
         log::debug!("Add Joader {:?}", joader.get_id());
+        joader.set_hash_key(self.hash_key);
         let id = joader.get_id();
         self.joader_table.insert(id, joader);
     }
@@ -56,9 +59,7 @@ impl JoaderTable {
     }
 
     pub fn set_hash_key(&mut self, num: u32) {
-        for (_, v) in self.joader_table.iter_mut() {
-            v.set_hash_key(num);
-        }
+        self.hash_key = num+1;
     }
 
     pub async fn remote_read(&mut self, sample_res: &Vec<SampleResult>) {
