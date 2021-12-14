@@ -35,21 +35,23 @@ pub struct GlobalID {
 impl GlobalID {
     pub async fn get_dataset_id(&self) -> u32 {
         let mut id = self.dataset_id.lock().await;
+        let dataset_id = *id;
         *id += 1;
-        *id
+        dataset_id
     }
 
     pub async fn get_loader_id(&self, dataset_id: u32) -> u64 {
         let mut id = self.loader_id.lock().await;
-        *id += 1;
         let loader_id = *id as u64;
+        *id += 1;
         ((dataset_id as u64) << 32) + loader_id
     }
 
     pub async fn get_host_id(&self) -> u32 {
         let mut id = self.host_id.lock().await;
+        let host_id = *id;
         *id += 1;
-        *id
+        host_id
     }
 
     pub fn new() -> GlobalID {
