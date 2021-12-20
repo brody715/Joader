@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::service::encode_addr_read_off;
+
 use super::channel::{self as loader_channel, LoaderReceiver, LoaderSender};
 // Loader store the information of schema, dataset and filter
 
@@ -63,8 +65,9 @@ impl Loader {
         self.loader_id
     }
 
-    pub async fn send_data(&self, addr: u64) {
-        self.data_addr_s.as_ref().unwrap().send(addr).await;
+    pub async fn send_data(&self, addr: u64, read_off: usize) {
+        let data = encode_addr_read_off(addr, read_off);
+        self.data_addr_s.as_ref().unwrap().send(data).await;
     }
 
     pub async fn send_idx(&mut self, idx: u32, host_id: u64) -> bool {

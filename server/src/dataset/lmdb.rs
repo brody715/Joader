@@ -40,11 +40,12 @@ impl LmdbDataset {
         id: u64,
         key: &str,
         ref_cnt: usize,
+        loader_cnt: usize
     ) -> u64 {
         let acc = txn.access();
         let data: &[u8] = acc.get(db, key).unwrap();
         let len = data.len();
-        let (block_slice, idx) = cache.allocate(len, ref_cnt, id);
+        let (block_slice, idx) = cache.allocate(len, ref_cnt, id, loader_cnt);
         assert_eq!(block_slice.len(), len);
         block_slice.copy_from_slice(data);
         idx as u64
@@ -62,16 +63,17 @@ impl Dataset for LmdbDataset {
         (start..end).collect::<Vec<_>>()
     }
 
-    fn read(&self, cache: &mut Cache, idx: u32, ref_cnt: usize) -> u64 {
+    fn read(&self, cache: &mut Cache, idx: u32, ref_cnt: usize, loader_cnt: usize) -> u64 {
         let data_id = data_id(self.id, idx);
-        if let Some(addr) = cache.contains_data(data_id) {
-            return addr as u64;
+        if let Some(head_idx) = cache.contains_data(data_id) {
+            cache.mark_unreaded(head_idx, loader_cnt);
+            return head_idx as u64;
         }
 
         let db = lmdb::Database::open(&self.env, None, &lmdb::DatabaseOptions::defaults()).unwrap();
         let txn = lmdb::ReadTransaction::new(&self.env).unwrap();
         let key = &self.items[idx as usize].keys[0];
-        self.read_one(cache, &db, &txn, data_id, key, ref_cnt)
+        self.read_one(cache, &db, &txn, data_id, key, ref_cnt, loader_cnt)
     }
 
     fn len(&self) -> u64 {

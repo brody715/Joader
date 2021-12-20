@@ -37,7 +37,7 @@ loggers:
       - cache
     additive: false
   joader::sampler:
-    level: debug
+    level: info
     appenders:
       - sampler
     additive: false
@@ -52,7 +52,7 @@ loggers:
       - joader
     additive: false
   joader::dataset:
-    level: debug
+    level: info
     appenders:
       - joader
     additive: false

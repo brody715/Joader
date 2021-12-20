@@ -27,6 +27,8 @@ pub struct NextRequest {
 pub struct NextResponse {
     #[prost(uint64, repeated, tag = "2")]
     pub address: ::prost::alloc::vec::Vec<u64>,
+    #[prost(uint32, tag = "3")]
+    pub read_off: u32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteDataloaderRequest {

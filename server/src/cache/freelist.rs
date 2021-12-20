@@ -1,4 +1,3 @@
-use super::head::HEAD_SIZE;
 use std::{
     collections::{HashMap, LinkedList},
     sync::Arc,
@@ -11,14 +10,6 @@ struct Zone {
 }
 
 impl Zone {
-    fn is_valid(&self) -> bool {
-        // Now we can only support zone that space is greater than Head
-        self.end - self.start > HEAD_SIZE
-    }
-
-    fn start(&self) -> u64 {
-        self.start
-    }
 
     fn len(&self) -> u64 {
         self.end - self.start
@@ -43,6 +34,9 @@ impl FreeList {
     }
 
     pub fn insert(&mut self, off: u64, len: u64) {
+        if len == 0 {
+            return;
+        }
         // Todo(xj): merge the continues space
         let mut start = off;
         let mut end = off + len;
@@ -68,29 +62,24 @@ impl FreeList {
         );
     }
 
-    pub fn get(&mut self) -> Option<(u64, u64)> {
+    pub fn get(&mut self, requested_len: u64) -> Option<(u64, u64)> {
         //Todo(xj): find the biggest block
         // find the block larger than head
-        let mut max_zone: Option<&Arc<Zone>> = None;
+        self.clear();
+        let mut ret: Option<(u64, u64)> = None;
         for zone in self.free_list.iter() {
-            if self.is_valid(zone) {
-                if let Some(_zone) = max_zone {
-                    if zone.len() <= _zone.len() {
-                        continue;
-                    }
-                }
-                max_zone = Some(&zone);
+            if self.is_valid(zone) && zone.len() >= requested_len {
+                self.start_hash.remove_entry(&zone.start);
+                self.end_hash.remove_entry(&zone.end);
+                ret = Some((zone.start, zone.len()));
+                break;
             }
         }
-
-        let mut ret = None;
-        if let Some(zone) = max_zone {
-            ret = Some((zone.start(), zone.len()));
-            self.start_hash.remove_entry(&zone.start);
-            self.end_hash.remove_entry(&zone.end);
+        if let Some((off, len)) = ret {
+            self.insert(off+requested_len, len-requested_len);
+            return Some((off, requested_len));
         }
-        self.clear();
-        ret
+        None
     }
 
     fn clear(&mut self) {
@@ -104,9 +93,7 @@ impl FreeList {
     }
 
     fn is_valid(&self, zone: &Zone) -> bool {
-        zone.is_valid()
-            && self.start_hash.contains_key(&zone.start)
-            && self.end_hash.contains_key(&zone.end)
+        self.start_hash.contains_key(&zone.start) && self.end_hash.contains_key(&zone.end)
     }
 }
 
@@ -129,8 +116,8 @@ mod tests {
         for (len, off) in &space {
             fl.insert(*len, *off);
         }
-        assert_eq!(fl.get(), Some((start, end)));
-        assert_eq!(fl.get(), None);
+        assert_eq!(fl.get(end - start), Some((start, end)));
+        assert_eq!(fl.get(1), None);
 
         let mut max = (0, 0);
         for (idx, (off, len)) in space.iter().enumerate() {
@@ -139,7 +126,7 @@ mod tests {
                 max = (*off, *len);
             }
         }
-        assert_eq!(fl.get(), Some(max));
+        assert_eq!(fl.get(max.1 - max.0), Some(max));
         fl.insert(max.0, max.1);
 
         for (idx, (off, len)) in space.iter().enumerate() {
@@ -147,6 +134,6 @@ mod tests {
                 fl.insert(*off, *len);
             }
         }
-        assert_eq!(fl.get(), Some((start, end)));
+        assert_eq!(fl.get(end - start), Some((start, end)));
     }
 }

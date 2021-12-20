@@ -25,11 +25,13 @@ class Loader(object):
         self.channel = None
         self.server_ip = server_ip
 
-        self.HEAD_SIZE = 16
-        self.END = 0
-        self.READ = 1
-        self.LEN = 4
-        self.OFF = 8
+        self.HEAD_SIZE = 20
+        self.READ_OFF = 12
+        self.LEN_OFF = 0
+        self.OFF_OFF = 4
+        self.READ_LEN = 8
+        self.LEN_LEN = 4
+        self.OFF_LEN = 8
         self.ip = ip
         self.nums = nums
 
@@ -53,29 +55,20 @@ class Loader(object):
         return str(ip)
 
     def read_header(self, address):
-        end = self.buf[address+self.END] == 1
         len = int.from_bytes(
-            self.buf[address+self.LEN:address+self.OFF], 'big')
-        v = []
-        v.extend(self.buf[address+self.OFF:self.HEAD_SIZE])
+            self.buf[address+self.LEN_OFF:address+self.LEN_OFF+self.LEN_LEN], 'big')
         off = int.from_bytes(
-            self.buf[address+self.OFF:address+self.HEAD_SIZE], 'big')
-        return end, off, len
+            self.buf[address+self.OFF_OFF:address+self.OFF_OFF+self.OFF_LEN], 'big')
+        return off, len
 
-    def read_data(self, address):
-        end, off, len = self.read_header(address)
-        assert end == True
-        self.buf[address+self.READ] = 0
+    def read_data(self, address, read_off):
+        off, len = self.read_header(address)
+        self.buf[address+self.READ_OFF + read_off] = 0
         return self.buf[off: off+len]
 
     def dummy_read(self, address):
         self.buf[address+self.READ] = 0
         return int(address/self.HEAD_SIZE)
-
-    def read(self):
-        address = self.cached_addr.pop()*self.HEAD_SIZE
-        return self.dummy_read(address)
-        # return self.read_data(address)
 
     def next(self):
         assert self.length > 0
@@ -83,16 +76,31 @@ class Loader(object):
             self.channel = grpc.insecure_channel(self.server_ip)
             self.client = dataloader_pb2_grpc.DataLoaderSvcStub(self.channel)
         self.length -= 1
-        while len(self.cached_addr) == 0:
-            request = dataloader_pb2.NextRequest(loader_id=self.loader_id)
-            resp = self.client.Next(request)
-            self.cached_addr = resp.address
-        return self.read()
+        request = dataloader_pb2.NextRequest(loader_id=self.loader_id)
+        resp = self.client.Next(request)
+        read_off = resp.read_off
+        addr = resp.address[0]*self.HEAD_SIZE
+        return self.read_data(addr, read_off)
 
     def delete(self):
+        if self.channel is None:
+            self.channel = grpc.insecure_channel(self.server_ip)
+            self.client = dataloader_pb2_grpc.DataLoaderSvcStub(self.channel)
         request = dataloader_pb2.DeleteDataloaderRequest(
             dataset_name=self.dataset_name, name=self.name)
         # Todo(xj): bug
         # self.shm.close()
         resp = self.client.DeleteDataloader(request)
         return resp
+    def reset(self):
+        if self.channel is None:
+            self.channel = grpc.insecure_channel(self.server_ip)
+            self.client = dataloader_pb2_grpc.DataLoaderSvcStub(self.channel)
+        request = dataloader_pb2.DeleteDataloaderRequest(
+            dataset_name=self.dataset_name, name=self.name)
+        # Todo(xj): bug
+        # self.shm.close()
+        self.client.DeleteDataloader(request)
+        request = dataloader_pb2.CreateDataloaderRequest(
+            dataset_name=self.dataset_name, name=self.name, nums=self.nums)
+        self.client.CreateDataloader(request)

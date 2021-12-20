@@ -26,6 +26,7 @@ message NextRequest {
 
 message NextResponse {
     repeated uint64 address = 2;
+    uint32 read_off = 3;
 }
 
 message DeleteDataloaderRequest {

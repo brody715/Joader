@@ -18,17 +18,19 @@ impl DataSegment {
         }
     }
 
-    pub fn allocate(&mut self) -> Option<Data> {
-        let ret = self.free_list.get();
+    pub fn allocate(&mut self, request_len: u64) -> Option<Data> {
+        let ret = self.free_list.get(request_len);
         if let Some((off, len)) = ret {
-            let data = self.data.allocate(off, len);
-            log::debug!(
-                "Allocate data {:?}: [{:?}, {})",
-                data.as_ptr(),
-                data.off(),
-                data.off() + data.len()
-            );
-            return Some(data);
+            if len >= request_len {
+                let data = self.data.allocate(off, request_len);
+                log::debug!(
+                    "Allocate data {:?}: [{:?}, {})",
+                    data.as_ptr(),
+                    data.off(),
+                    data.off() + data.len()
+                );
+                return Some(data);
+            }
         }
         None
     }
@@ -51,10 +53,10 @@ mod tests {
         let mut bytes = [0u8; LEN];
         let ptr = bytes.as_mut_ptr();
         let mut ds = DataSegment::new(ptr, 0, LEN as u64);
-        assert!(ds.allocate() == Some(Data::new(ptr, 0, LEN as u64)));
-        assert!(ds.allocate() == None);
+        assert_eq!(ds.allocate(1023), Some(Data::new(ptr, 0, 1023 as u64)));
+        assert!(ds.allocate(2) == None);
 
         ds.free(1, 17);
-        unsafe { assert_eq!(ds.allocate(), Some(Data::new(ptr.offset(1), 1, 17))) }
+        unsafe { assert_eq!(ds.allocate(17), Some(Data::new(ptr.offset(1), 1, 17))) }
     }
 }

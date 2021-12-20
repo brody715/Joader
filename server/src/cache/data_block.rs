@@ -77,72 +77,25 @@ impl Data {
 #[derive(Debug, Clone, Copy)]
 pub struct DataBlock {
     pub head: Head,
-    pub data: Data,
-    // if it's true, we should transfer the data in head to data
-    pub transfer: bool,
+    pub data: Data
 }
 
 impl DataBlock {
+    pub fn new(mut head: Head, data: Data, cnt: usize) -> Self {
+        head.set(data.len() as u32, data.off(), cnt);
+        Self { head, data }
+    }
+
     pub fn size(&self) -> u64 {
-        if self.transfer {
-            self.data.len() - HEAD_SIZE
-        } else {
-            self.data.len()
-        }
+        self.data.len()
     }
 
     pub fn ptr(&mut self) -> *mut c_void {
-        let mut offset = 0;
-        if self.transfer {
-            offset = HEAD_SIZE as isize;
-        }
-
-        unsafe { self.data.as_mut_ptr().offset(offset).cast::<c_void>() }
+        self.data.as_mut_ptr().cast::<c_void>()
     }
 
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        let mut offset = 0;
-        if self.transfer {
-            offset = HEAD_SIZE as isize;
-        }
-        unsafe { from_raw_parts_mut(self.data.as_mut_ptr().offset(offset), self.size() as usize) }
-    }
-
-    pub fn occupy(&mut self, size: usize) -> Option<DataBlock> {
-        if size == 0 {
-            return Some(*self);
-        }
-        // lazy copy head to the front of the block
-        if self.transfer {
-            self.data.copy_head(self.head);
-        }
-
-        // write head the meta information
-        let mut size = size as u64;
-        if self.transfer {
-            size += HEAD_SIZE;
-        }
-        self.head.set(false, size as u32, self.data.off());
-        log::debug!(
-            "Occupy {:?} : [{:},{:})",
-            self.ptr(),
-            self.data.off(),
-            self.data.off() + size
-        );
-
-        // remain some data, share the same head
-        if let Some(data) = self.data.remain(size) {
-            return Some(DataBlock {
-                head: self.head,
-                data,
-                transfer: false,
-            });
-        }
-        None
-    }
-
-    pub fn finish(&mut self) {
-        self.head.set_end(true);
+        unsafe { from_raw_parts_mut(self.data.as_mut_ptr(), self.size() as usize) }
     }
 
     pub fn data(&mut self) -> Data {

@@ -51,7 +51,7 @@ impl Dataset for DummyDataset {
         (start..end).collect::<Vec<_>>()
     }
 
-    fn read(&self, _cache: &mut Cache, idx: u32, _ref_cnt: usize) -> u64 {
+    fn read(&self, _cache: &mut Cache, idx: u32, _ref_cnt: usize, _loader_cnt: usize) -> u64 {
         idx as u64
     }
 

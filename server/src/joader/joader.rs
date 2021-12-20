@@ -94,12 +94,14 @@ impl Joader {
         sampler_res: &HashMap<u32, HashSet<u64>>,
         cache: &mut Cache,
     ) {
+        
         for (data_idx, loader_ids) in sampler_res {
             // Todo: Support remote ref_cnt
-            let addr = self.dataset.read(cache, *data_idx, 0);
-            for id in loader_ids.iter() {
+            let loader_cnt = loader_ids.len();
+            let addr = self.dataset.read(cache, *data_idx, 0, loader_cnt);
+            for (idx, id) in loader_ids.iter().enumerate() {
                 log::debug!("Joader load data {:} at {:?} to {:?}", data_idx, addr, id);
-                self.loader_table[id].send_data(addr).await;
+                self.loader_table[id].send_data(addr, idx).await;
             }
         }
     }
@@ -110,24 +112,24 @@ impl Joader {
         for (data_idx, loader_ids) in data_table.iter_mut() {
             let ref_cnt = self.get_ref_cnt(*data_idx, loader_ids.len());
             self.distributed(*data_idx, loader_ids).await;
+            let loader_cnt = loader_ids.len();
             if !loader_ids.is_empty() {
-                let addr = self.dataset.read(cache, *data_idx, ref_cnt);
-                for id in loader_ids.iter() {
+                let addr = self.dataset.read(cache, *data_idx, ref_cnt, loader_cnt);
+                for (idx, id) in loader_ids.iter().enumerate() {
                     log::debug!("Joader load data {:} at {:?} to {:?}", data_idx, addr, id);
-                    self.loader_table[id].send_data(addr).await;
+                    self.loader_table[id].send_data(addr, idx).await;
                 }
             }
         }
     }
 
-    pub fn del(&mut self, id: u64) -> Result<(), String> {
+    pub fn del_loader(&mut self, id: u64) {
         let valuse = self.sampler_tree.get_loader_values(id);
         self.sampler_tree.delete(id);
         for v in valuse.iter() {
             *self.ref_table.get_mut(v).unwrap() -= 1;
         }
         self.loader_table.remove(&id);
-        Ok(())
     }
 
     pub fn add_idx_sender(&mut self, loader_id: u64, idx_sender: IdxSender, host_id: u64) {

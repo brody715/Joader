@@ -30,4 +30,6 @@ impl CachedData {
         log::debug!("Hit data {:?}", data_id);
         self.data2head.get(&data_id).map(|x| *x)
     }
+
+    
 }

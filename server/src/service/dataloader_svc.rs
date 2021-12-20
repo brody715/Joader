@@ -1,4 +1,4 @@
-use super::{GlobalID, IDTable};
+use super::{decode_addr_read_off, GlobalID, IDTable};
 use crate::joader::joader_table::JoaderTable;
 use crate::loader::{create_data_channel, DataReceiver};
 use crate::proto::dataloader::data_loader_svc_server::DataLoaderSvc;
@@ -135,11 +135,16 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let recv = loader_table
             .get_mut(&loader_id)
             .ok_or_else(|| Status::not_found(format!("Loader {} not found", loader_id)))?;
-        let (address, empty) = recv.recv_all().await;
+        let (recv_data, empty) = recv.recv_one().await;
+        // let (address, empty) = recv.
         if empty {
             delete_loaders.insert(loader_id);
         }
-        Ok(Response::new(NextResponse { address }))
+        let (address, read_off) = decode_addr_read_off(recv_data[0]);
+        Ok(Response::new(NextResponse {
+            address: vec![address],
+            read_off,
+        }))
     }
 
     async fn delete_dataloader(
@@ -164,6 +169,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         // 3 if all subhost have removed in loader, then remove loader_id
         if joader.is_loader_empty(loader_id) {
             id_table.remove(&request.name);
+            joader.del_loader(loader_id);
         }
 
         if let Some(mut leader) = self.leader.clone() {

@@ -48,7 +48,17 @@ where
     pub fn get_loader_id(&self) -> u64 {
         self.loader_id
     }
-
+    pub async fn recv_one(&mut self) -> (Vec<T>, bool) {
+        let del_sig = T::from_u32(DEL_SIG).unwrap();
+        let mut ret = Vec::new();
+        let v = self.recv.recv().await.unwrap();
+        let empty = v == del_sig;
+        ret.push(v);
+        if empty {
+            ret.pop();
+        }
+        (ret, empty)
+    }
     pub async fn recv_all(&mut self) -> (Vec<T>, bool) {
         let del_sig = T::from_u32(DEL_SIG).unwrap();
 
