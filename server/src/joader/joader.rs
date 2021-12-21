@@ -100,7 +100,7 @@ impl Joader {
             let loader_cnt = loader_ids.len();
             let addr = self.dataset.read(cache, *data_idx, 0, loader_cnt);
             for (idx, id) in loader_ids.iter().enumerate() {
-                log::debug!("Joader load data {:} at {:?} to {:?}", data_idx, addr, id);
+                log::debug!("Joader remote load data {:} at {:?} to {:?}", data_idx, addr, id);
                 self.loader_table[id].send_data(addr, idx).await;
             }
         }
@@ -133,15 +133,18 @@ impl Joader {
     }
 
     pub fn add_idx_sender(&mut self, loader_id: u64, idx_sender: IdxSender, host_id: u64) {
+        log::debug!("Add a idxsender {}", loader_id);
         let loader = self.loader_table.get_mut(&loader_id).unwrap();
         loader.add_idx_sender(idx_sender, host_id);
         if loader.ready() {
+            log::debug!("loader id {} ready", loader_id);
             self.sampler_tree
                 .insert(self.dataset.get_indices(), loader_id);
         }
     }
 
     pub fn add_data_sender(&mut self, loader_id: u64, data_sender: DataSender) {
+        log::debug!("Add a datasender {}", loader_id);
         let loader = self.loader_table.get_mut(&loader_id).unwrap();
         loader.add_data_sender(data_sender);
         if loader.ready() {

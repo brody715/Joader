@@ -104,7 +104,7 @@ impl SamplerTree {
                 *len -= 1;
             }
         }
-        log::info!("Sampler get {:?}", res);
+        log::debug!("Sampler get {:?}", res);
         res
     }
 

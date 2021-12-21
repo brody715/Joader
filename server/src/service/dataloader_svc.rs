@@ -135,10 +135,11 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let recv = loader_table
             .get_mut(&loader_id)
             .ok_or_else(|| Status::not_found(format!("Loader {} not found", loader_id)))?;
-        let (recv_data, empty) = recv.recv_one().await;
+        let (mut recv_data, empty) = recv.recv_one().await;
         // let (address, empty) = recv.
         if empty {
             delete_loaders.insert(loader_id);
+            recv_data.push(0);
         }
         let (address, read_off) = decode_addr_read_off(recv_data[0]);
         Ok(Response::new(NextResponse {

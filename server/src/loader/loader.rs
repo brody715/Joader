@@ -85,7 +85,6 @@ impl Loader {
 
     pub fn add_idx_sender(&mut self, idx_sender: IdxSender, host_id: u64) {
         self.nums -= 1;
-        log::debug!("Add idx sender {:?}, host_id {:}", idx_sender, host_id);
         self.hosts.insert(host_id, idx_sender);
         self.cursor.push(host_id);
     }

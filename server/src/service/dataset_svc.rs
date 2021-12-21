@@ -45,7 +45,7 @@ impl DatasetSvc for DatasetSvcImpl {
         request: Request<CreateDatasetRequest>,
     ) -> Result<Response<CreateDatasetResponse>, Status> {
         let request = request.into_inner();
-
+        let mut jt = self.joader_table.lock().await;
         let mut dt = self.dataset_table.lock().await;
         if dt.contains_key(&request.name) {
             return Err(Status::already_exists(format!(
@@ -59,7 +59,7 @@ impl DatasetSvc for DatasetSvcImpl {
         dt.insert(request.name.clone(), id);
         // insert dataset to dataset table
         let joader = Joader::new(dataset::build_dataset(request.clone(), id));
-        self.joader_table.lock().await.add_joader(joader);
+        jt.add_joader(joader);
         if self.role == Role::Leader {
             for ip_port in self.followers.iter().cloned() {
                 let mut f = DistributedSvcClient::connect(ip_port.to_string())
@@ -82,8 +82,8 @@ impl DatasetSvc for DatasetSvcImpl {
     ) -> Result<Response<DeleteDatasetResponse>, Status> {
         log::debug!("call delete dataset {:?}", request);
         let request = request.into_inner();
-        let mut dt = self.dataset_table.lock().await;
         let mut jt = self.joader_table.lock().await;
+        let mut dt = self.dataset_table.lock().await;
         match dt.get(&request.name) {
             Some(id) => {
                 jt.del_joader(*id);

@@ -48,6 +48,7 @@ impl LmdbDataset {
         let (block_slice, idx) = cache.allocate(len, ref_cnt, id, loader_cnt);
         assert_eq!(block_slice.len(), len);
         block_slice.copy_from_slice(data);
+        log::debug!("Read data {:?} at {:?} in lmdb", id, idx);
         idx as u64
     }
 }
@@ -67,6 +68,7 @@ impl Dataset for LmdbDataset {
         let data_id = data_id(self.id, idx);
         if let Some(head_idx) = cache.contains_data(data_id) {
             cache.mark_unreaded(head_idx, loader_cnt);
+            log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
             return head_idx as u64;
         }
 
