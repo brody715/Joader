@@ -58,10 +58,10 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
     ) -> Result<Response<CreateDataloaderResponse>, Status> {
         log::info!("call create loader {:?}", request);
         let request = request.into_inner();
-        let mut jt = self.joader_table.lock().await;
         let mut rt = self.recv_table.lock().await;
+        let mut jt = self.joader_table.lock().await;
         let mut loader_id_table = self.loader_id_table.lock().await;
-
+        let dt = self.dataset_table.lock().await;
         let dataset_id;
         let length;
         let loader_id;
@@ -94,7 +94,6 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
             loader_id_table.insert(request.name.clone(), loader_id);
         } else {
             // leader behavior
-            let dt = self.dataset_table.lock().await;
             dataset_id = *dt
                 .get(&request.dataset_name)
                 .ok_or_else(|| Status::not_found(&request.dataset_name))?;
@@ -126,7 +125,9 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
     }
 
     async fn next(&self, request: Request<NextRequest>) -> Result<Response<NextResponse>, Status> {
-        let loader_id = request.into_inner().loader_id;
+        let request = request.into_inner();
+        let loader_id = request.loader_id;
+        let bs = request.batch_size;
         let mut delete_loaders = self.delete_loaders.lock().await;
         if delete_loaders.contains(&loader_id) {
             return Err(Status::out_of_range(format!("data has used up")));
@@ -135,15 +136,20 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let recv = loader_table
             .get_mut(&loader_id)
             .ok_or_else(|| Status::not_found(format!("Loader {} not found", loader_id)))?;
-        let (mut recv_data, empty) = recv.recv_one().await;
+        let (recv_data, empty) = recv.recv_batch(bs).await;
         // let (address, empty) = recv.
         if empty {
             delete_loaders.insert(loader_id);
-            recv_data.push(0);
         }
-        let (address, read_off) = decode_addr_read_off(recv_data[0]);
+        let mut address = Vec::with_capacity(bs as usize);
+        let mut read_off = Vec::with_capacity(bs as usize);
+        for data in recv_data {
+            let (a, r) = decode_addr_read_off(data);
+            address.push(a);
+            read_off.push(r);
+        }
         Ok(Response::new(NextResponse {
-            address: vec![address],
+            address,
             read_off,
         }))
     }

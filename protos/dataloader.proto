@@ -22,11 +22,12 @@ message CreateDataloaderResponse {
 
 message NextRequest {
     uint64 loader_id = 1;
+    uint32 batch_size = 2;
 }
 
 message NextResponse {
     repeated uint64 address = 2;
-    uint32 read_off = 3;
+    repeated uint32 read_off = 3;
 }
 
 message DeleteDataloaderRequest {

@@ -90,6 +90,7 @@ impl DistributedSvc for DistributedSvcImpl {
         let request = request.into_inner();
         log::info!("Create Host {:?}", request);
         let mut ht = self.host_table.lock().await;
+        let mut jt = self.joader_table.lock().await;
         if ht.contains_key(&request.ip) {
             return Err(Status::already_exists(format!("{}", request.ip)));
         }
@@ -99,7 +100,6 @@ impl DistributedSvc for DistributedSvcImpl {
         ht.insert(request.ip.clone(), host);
 
         // update host number
-        let mut jt = self.joader_table.lock().await;
         jt.set_hash_key(ht.len() as u32);
         Ok(Response::new(RegisterHostResponse { host_id: id as u64 }))
     }
