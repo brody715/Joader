@@ -104,7 +104,7 @@ impl SamplerTree {
                 *len -= 1;
             }
         }
-        log::info!("Sampler get {:?}", res);
+        log::debug!("Sampler get {:?}", res);
         res
     }
 
@@ -119,7 +119,10 @@ impl SamplerTree {
     }
 
     pub fn get_loader_values(&self, loader_id: u64) -> Vec<u32> {
-        self.root.as_ref().unwrap().get_loader_values(loader_id)
+        if let Some(root) = self.root.as_ref() {
+            return root.get_loader_values(loader_id);
+        }
+        Vec::default()
     }
 }
 

@@ -1,4 +1,4 @@
-use super::{GlobalID, IDTable};
+use super::{decode_addr_read_off, GlobalID, IDTable};
 use crate::joader::joader_table::JoaderTable;
 use crate::loader::{create_data_channel, DataReceiver};
 use crate::proto::dataloader::data_loader_svc_server::DataLoaderSvc;
@@ -58,10 +58,10 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
     ) -> Result<Response<CreateDataloaderResponse>, Status> {
         log::info!("call create loader {:?}", request);
         let request = request.into_inner();
-        let mut jt = self.joader_table.lock().await;
         let mut rt = self.recv_table.lock().await;
+        let mut jt = self.joader_table.lock().await;
         let mut loader_id_table = self.loader_id_table.lock().await;
-
+        let dt = self.dataset_table.lock().await;
         let dataset_id;
         let length;
         let loader_id;
@@ -94,7 +94,6 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
             loader_id_table.insert(request.name.clone(), loader_id);
         } else {
             // leader behavior
-            let dt = self.dataset_table.lock().await;
             dataset_id = *dt
                 .get(&request.dataset_name)
                 .ok_or_else(|| Status::not_found(&request.dataset_name))?;
@@ -126,7 +125,9 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
     }
 
     async fn next(&self, request: Request<NextRequest>) -> Result<Response<NextResponse>, Status> {
-        let loader_id = request.into_inner().loader_id;
+        let request = request.into_inner();
+        let loader_id = request.loader_id;
+        let bs = request.batch_size;
         let mut delete_loaders = self.delete_loaders.lock().await;
         if delete_loaders.contains(&loader_id) {
             return Err(Status::out_of_range(format!("data has used up")));
@@ -135,11 +136,22 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let recv = loader_table
             .get_mut(&loader_id)
             .ok_or_else(|| Status::not_found(format!("Loader {} not found", loader_id)))?;
-        let (address, empty) = recv.recv_all().await;
+        let (recv_data, empty) = recv.recv_batch(bs).await;
+        // let (address, empty) = recv.
         if empty {
             delete_loaders.insert(loader_id);
         }
-        Ok(Response::new(NextResponse { address }))
+        let mut address = Vec::with_capacity(bs as usize);
+        let mut read_off = Vec::with_capacity(bs as usize);
+        for data in recv_data {
+            let (a, r) = decode_addr_read_off(data);
+            address.push(a);
+            read_off.push(r);
+        }
+        Ok(Response::new(NextResponse {
+            address,
+            read_off,
+        }))
     }
 
     async fn delete_dataloader(
@@ -164,6 +176,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         // 3 if all subhost have removed in loader, then remove loader_id
         if joader.is_loader_empty(loader_id) {
             id_table.remove(&request.name);
+            joader.del_loader(loader_id);
         }
 
         if let Some(mut leader) = self.leader.clone() {

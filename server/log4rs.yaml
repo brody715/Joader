@@ -24,6 +24,13 @@ appenders:
     encoder:
       # log 信息模式
       pattern: "{d} - {m}{n}"
+  dataset:
+    kind: file
+    path: "./log/dataset.log"
+    append: false
+    encoder:
+      # log 信息模式
+      pattern: "{d} - {m}{n}"
 root:
   level: info
   appenders:
@@ -37,22 +44,22 @@ loggers:
       - cache
     additive: false
   joader::sampler:
-    level: debug
+    level: info
     appenders:
       - sampler
     additive: false
   joader::joader:
-    level: debug
+    level: info
     appenders:
       - joader
     additive: false
   joader::loader:
-    level: debug
+    level: info
     appenders:
       - joader
     additive: false
   joader::dataset:
     level: debug
     appenders:
-      - joader
+      - dataset
     additive: false

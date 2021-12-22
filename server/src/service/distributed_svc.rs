@@ -90,6 +90,7 @@ impl DistributedSvc for DistributedSvcImpl {
         let request = request.into_inner();
         log::info!("Create Host {:?}", request);
         let mut ht = self.host_table.lock().await;
+        let mut jt = self.joader_table.lock().await;
         if ht.contains_key(&request.ip) {
             return Err(Status::already_exists(format!("{}", request.ip)));
         }
@@ -99,7 +100,6 @@ impl DistributedSvc for DistributedSvcImpl {
         ht.insert(request.ip.clone(), host);
 
         // update host number
-        let mut jt = self.joader_table.lock().await;
         jt.set_hash_key(ht.len() as u32);
         Ok(Response::new(RegisterHostResponse { host_id: id as u64 }))
     }
@@ -120,13 +120,14 @@ impl DistributedSvc for DistributedSvcImpl {
         log::info!("Create sampler {:?}", request);
         let request = request.into_inner();
         let mut ht = self.host_table.lock().await;
-        let mut loader_id_table = self.loader_id_table.lock().await;
         let mut jt = self.joader_table.lock().await;
+        let mut loader_id_table = self.loader_id_table.lock().await;
         let dt = self.dataset_table.lock().await;
-
+        println!("Host table {:?}", ht);
         let host = ht
             .get_mut(&request.ip)
             .ok_or_else(|| Status::not_found(format!("{} not exited", request.ip)))?;
+        println!("Get host id {:?}", request.ip);
         let dataset_id = dt
             .get(&request.dataset_name)
             .ok_or_else(|| Status::not_found(&request.dataset_name))?;
@@ -136,10 +137,12 @@ impl DistributedSvc for DistributedSvcImpl {
         let loader_id;
         if loader_id_table.contains_key(&request.name) {
             loader_id = loader_id_table[&request.name];
+            println!("Exsited loader {:?}", loader_id);
         } else {
             loader_id = self.id.get_loader_id(*dataset_id).await;
             joader.add_loader(loader_id, request.nums);
             loader_id_table.insert(request.name.clone(), loader_id);
+            println!("Create loader {:?}", loader_id);
         }
 
         // 2. Add sample to loader

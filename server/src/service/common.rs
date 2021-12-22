@@ -17,6 +17,15 @@ pub fn to_status<T>(result: &Result<T, String>) -> RspStatus {
     }
 }
 
+pub fn encode_addr_read_off(addr: u64, off: usize) -> u64 {
+    ((off as u64) << 32) + addr
+}
+
+pub fn decode_addr_read_off(addr: u64) -> (u64, u32) {
+    let read_off = (addr >> 32) as u32;
+    (((addr << 32) >> 32), read_off)
+}
+
 #[inline]
 pub fn succ() -> RspStatus {
     RspStatus {

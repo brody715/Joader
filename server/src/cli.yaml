@@ -45,7 +45,7 @@ args:
         takes_value: true
     - head_num:
         long: head
-        default_value: "2048"
+        default_value: "4096"
         value_name: head_num
         takes_value: true
     - cache_capacity:

@@ -27,6 +27,7 @@ async fn start_leader(joader_table: Arc<Mutex<JoaderTable>>) {
             continue;
         }
         joader_table.next().await;
+        // we add it it because the mmap block, in the future, we will use io_uring
     }
 }
 
