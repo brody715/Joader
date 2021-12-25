@@ -14,7 +14,7 @@ pub struct LoaderReceiver<T> {
 }
 
 pub fn new<T: std::fmt::Debug>(loader_id: u64) -> (LoaderSender<T>, LoaderReceiver<T>) {
-    let (sender, recv) = channel::<T>(4098);
+    let (sender, recv) = channel::<T>(1048);
     (
         LoaderSender { loader_id, sender },
         LoaderReceiver { loader_id, recv },

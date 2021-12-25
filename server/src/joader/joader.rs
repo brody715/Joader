@@ -144,7 +144,7 @@ impl Joader {
     }
 
     pub fn add_data_sender(&mut self, loader_id: u64, data_sender: DataSender) {
-        log::debug!("Add a datasender {}", loader_id);
+        log::debug!("Add a datasender {} at {}", loader_id, self.dataset.get_id());
         let loader = self.loader_table.get_mut(&loader_id).unwrap();
         loader.add_data_sender(data_sender);
         if loader.ready() {
@@ -169,7 +169,7 @@ impl Joader {
     }
 
     pub fn add_loader(&mut self, loader_id: u64, nums: u32) {
-        log::debug!("Add a loader {}", loader_id);
+        log::debug!("Add a loader {} at {}", loader_id, self.dataset.get_id());
         self.loader_table
             .insert(loader_id, Loader::new(loader_id, nums));
         for (_, cnt) in self.ref_table.iter_mut() {

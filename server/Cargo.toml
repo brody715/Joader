@@ -24,15 +24,13 @@ ctrlc = "3.2.1"
 lmdb-zero = "0.4.4"
 coz = "0.1"
 num-traits = "0.2"
+rmp = "^0.8"
 
 [build-dependencies]
 tonic-build = "0.5"
 
-# [profile.release]
-# debug = 1
-
-[rust]
-debuginfo-level = 1
+[profile.release]
+opt-level = 3
 
 [lib]
 name = "joader"

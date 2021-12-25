@@ -59,7 +59,7 @@ loggers:
       - joader
     additive: false
   joader::dataset:
-    level: debug
+    level: info
     appenders:
       - dataset
     additive: false

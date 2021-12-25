@@ -230,7 +230,7 @@ impl Node {
             //The first task choose diff
             let mut loader_set = HashSet::new();
             loader_set.insert(loaders[0].0);
-            log::debug!(
+            log::trace!(
                 "Dicide: {:?} decide node [{:?}]",
                 loader_set,
                 self.left.as_ref().unwrap().get_loader_id()
@@ -279,7 +279,7 @@ impl Node {
         let choice_idx = (random_probility() * (len as f32)) as usize;
         let choice_item = self.values[choice_idx];
 
-        log::debug!(
+        log::trace!(
             "Choose: {:?} choose {:} from node [{:?}:{:?}]",
             loader_ids,
             choice_item,

@@ -84,11 +84,12 @@ impl Cache {
         let mut block = DataBlock::new(head, data, loader_cnt);
         let ptr = block.data().as_mut_ptr();
         log::debug!(
-            "allocate head_idx:{}, data:{} [{},{})",
+            "allocate head_idx:{}, data:{} [{},{}), loader_cnt:{}",
             idx,
             data.len(),
             data.off(),
-            data.off() + data.len()
+            data.off() + data.len(),
+            loader_cnt
         );
         return (unsafe { from_raw_parts_mut(ptr, len) }, idx);
     }

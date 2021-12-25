@@ -15,7 +15,7 @@ impl CachedData {
     }
 
     pub fn add(&mut self, head: usize, data_id: u64) {
-        log::debug!("Cache data {:?} in {:?}", head, data_id);
+        log::debug!("Cache data {:?} in {:?}", data_id, head);
         self.data2head.insert(data_id, head);
         self.head2data.insert(head, data_id);
     }
@@ -27,9 +27,6 @@ impl CachedData {
     }
 
     pub fn contains(&self, data_id: u64) -> Option<usize> {
-        log::debug!("Hit data {:?}", data_id);
         self.data2head.get(&data_id).map(|x| *x)
     }
-
-    
 }

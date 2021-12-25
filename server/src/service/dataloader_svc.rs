@@ -129,14 +129,15 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let loader_id = request.loader_id;
         let bs = request.batch_size;
         let mut delete_loaders = self.delete_loaders.lock().await;
+        let mut rt = self.recv_table.lock().await;
         if delete_loaders.contains(&loader_id) {
             return Err(Status::out_of_range(format!("data has used up")));
         }
-        let mut loader_table = self.recv_table.lock().await;
-        let recv = loader_table
+        let recv = rt
             .get_mut(&loader_id)
             .ok_or_else(|| Status::not_found(format!("Loader {} not found", loader_id)))?;
         let (recv_data, empty) = recv.recv_batch(bs).await;
+        
         // let (address, empty) = recv.
         if empty {
             delete_loaders.insert(loader_id);
