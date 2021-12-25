@@ -7,7 +7,7 @@ import proto.dataloader_pb2_grpc as dataloader_pb2_grpc
 import proto.dataloader_pb2 as dataloader_pb2
 import socket
 import time
-
+import logging
 
 
 
@@ -36,7 +36,7 @@ class Loader(object):
         self.OFF_LEN = 8
         self.ip = ip
         self.nums = nums
-
+        logging.basicConfig(filename='/home/xiej/ATC/log/py_loader.log', level=logging.DEBUG)
         #profile
         self.read_time = 0
         self.rpc_time = 0
@@ -84,6 +84,7 @@ class Loader(object):
         return data
 
     def next(self):
+        logging.debug("%s start", self.name)
         assert self.length > 0
         if self.channel is None:
             self.channel = grpc.insecure_channel(self.server_ip)
@@ -96,10 +97,10 @@ class Loader(object):
             self.read_off = resp.read_off
             self.address = resp.address
             self.rpc_time = time.time() - now
+            logging.debug("%s read addr %s, %s", self.name, self.address, self.read_off)
             # print(len(self.read_off), self.bs, self.rpc_time, self.read_time)
             self.rpc_time = 0
             self.read_time = 0
-
         return self.read_one()
 
     def delete(self):
