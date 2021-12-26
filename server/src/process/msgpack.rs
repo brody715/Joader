@@ -23,7 +23,7 @@ pub enum MsgObject<'a> {
 fn parse_object<'a>(buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
     match read_marker(buf) {
         Ok(Marker::FixArray(num)) => parse_array(num, buf),
-        Ok(Marker::Bin8) | Ok(Marker::Bin32) | Ok(Marker::Bin32) => parse_bin(buf),
+        Ok(Marker::Bin8) | Ok(Marker::Bin16) | Ok(Marker::Bin32) => parse_bin(buf),
         Ok(Marker::FixMap(num)) => parse_map(num, buf),
         Ok(Marker::U32) => parse_u32(buf),
         Ok(Marker::U16) => parse_u16(buf),
