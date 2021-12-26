@@ -27,6 +27,7 @@ fn parse_object<'a>(buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
         Ok(Marker::FixMap(num)) => parse_map(num, buf),
         Ok(Marker::U32) => parse_u32(buf),
         Ok(Marker::U16) => parse_u16(buf),
+        Ok(Marker::U16) => parse_u8(buf),
         Ok(Marker::True) => MsgObject::Bool(true),
         err => unimplemented!("can not parse msg pack {:?}", err),
     }
@@ -44,6 +45,14 @@ fn parse_u32<'a>(buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
 fn parse_u16<'a>(buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
     let pos = buf.position() as usize;
     let bin = &buf.get_ref()[pos..pos + 2];
+    buf.seek(SeekFrom::Current(2 as i64)).unwrap();
+    MsgObject::UInt(bin)
+}
+
+#[inline]
+fn parse_u8<'a>(buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
+    let pos = buf.position() as usize;
+    let bin = &buf.get_ref()[pos..pos + 1];
     buf.seek(SeekFrom::Current(2 as i64)).unwrap();
     MsgObject::UInt(bin)
 }
