@@ -39,7 +39,7 @@ loggers:
   # Route log events sent to the "app" logger to the "file" appender,
   # and *not* the normal appenders installed at the root
   joader::cache:
-    level: info
+    level: debug
     appenders:
       - cache
     additive: false
@@ -49,7 +49,7 @@ loggers:
       - sampler
     additive: false
   joader::joader:
-    level: info
+    level: debug
     appenders:
       - joader
     additive: false

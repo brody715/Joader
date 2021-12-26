@@ -4,6 +4,7 @@ use crate::{
     cache::cache::Cache,
     proto::dataset::{CreateDatasetRequest, DataItem},
 };
+use std::sync::Mutex;
 use std::{fmt::Debug, sync::Arc};
 
 #[derive(Clone, Default, Debug)]
@@ -33,7 +34,7 @@ impl Dataset for FileDataset {
         (start..end).collect::<Vec<_>>()
     }
 
-    fn read(&self, _cache: &mut Cache, idx: u32, _ref_cnt: usize, _loader_cnt: usize) -> u64 {
+    fn read(&self, _cache: Arc::<Mutex::<Cache>>, idx: u32, _ref_cnt: usize, _loader_cnt: usize) -> u64 {
         idx as u64
     }
 

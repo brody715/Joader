@@ -13,6 +13,7 @@ use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::process;
 use std::sync::Arc;
+use std::sync::Mutex as StdMutex;
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
 use tonic::transport::{Channel, Server};
@@ -71,8 +72,12 @@ async fn start_server(
     log::info!("start server");
     let id = GlobalID::new();
     let dataset_table = Arc::new(Mutex::new(HashMap::new()));
-    let cache = Cache::new(cache_capacity, &shm_path, head_num);
-    let joader_table = Arc::new(Mutex::new(JoaderTable::new(cache)));
+    let cache = Arc::new(StdMutex::new(Cache::new(
+        cache_capacity,
+        &shm_path,
+        head_num,
+    )));
+    let joader_table = Arc::new(Mutex::new(JoaderTable::new(cache, shm_path.to_string())));
     let ip_port = ip.to_string() + ":" + port;
     let addr: SocketAddr = ip_port.parse()?;
     let loader_id_table = Arc::new(Mutex::new(HashMap::new()));

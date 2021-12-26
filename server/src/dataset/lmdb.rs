@@ -20,6 +20,7 @@ use rmp::encode::write_array_len;
 use rmp::encode::write_bin_len;
 use rmp::encode::write_uint;
 use std::io::Cursor;
+use std::sync::Mutex;
 use std::{fmt::Debug, sync::Arc};
 
 #[derive(Debug)]
@@ -48,10 +49,22 @@ pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
     })
 }
 
+fn decode<'a>(image: &MsgObject<'a>) -> JpegDecoder<Cursor<&'a [u8]>> {
+    {
+        let content = match image {
+            MsgObject::Map(map) => &map["data"],
+            err => unimplemented!("{:?}", err),
+        };
+        match *content.as_ref() {
+            MsgObject::Bin(bin) => JpegDecoder::new(Cursor::new(bin)).unwrap(),
+            _ => unimplemented!(),
+        }
+    }
+}
 impl LmdbDataset {
     fn read_one(
         &self,
-        cache: &mut Cache,
+        cache: Arc<Mutex<Cache>>,
         db: &Database,
         txn: &ReadTransaction,
         id: u64,
@@ -59,6 +72,7 @@ impl LmdbDataset {
         ref_cnt: usize,
         loader_cnt: usize,
     ) -> u64 {
+        let mut cache = cache.lock().unwrap();
         let acc = txn.access();
         let data: &[u8] = acc.get(db, key).unwrap();
         let len = data.len();
@@ -71,7 +85,7 @@ impl LmdbDataset {
 
     fn read_and_decode_one(
         &self,
-        cache: &mut Cache,
+        cache: Arc<Mutex<Cache>>,
         db: &Database,
         txn: &ReadTransaction,
         id: u64,
@@ -79,6 +93,7 @@ impl LmdbDataset {
         ref_cnt: usize,
         loader_cnt: usize,
     ) -> u64 {
+        let mut cache = cache.lock().unwrap();
         let acc = txn.access();
         let data: &[u8] = acc.get(db, key).unwrap();
         let data = msg_unpack(data);
@@ -87,16 +102,7 @@ impl LmdbDataset {
             _ => unimplemented!(),
         };
         let image = &data[0];
-        let decoder = {
-            let content = match image.as_ref() {
-                MsgObject::Map(map) => &map["data"],
-                err => unimplemented!("{:?}", err),
-            };
-            match content.as_ref() {
-                MsgObject::Bin(bin) => JpegDecoder::new(Cursor::new(bin)).unwrap(),
-                _ => unimplemented!(),
-            }
-        };
+        let decoder = decode(image.as_ref());
         let label = match data[1].as_ref() {
             &MsgObject::UInt(b) => b,
             _ => unimplemented!(),
@@ -141,12 +147,15 @@ impl Dataset for LmdbDataset {
         (start..end).collect::<Vec<_>>()
     }
 
-    fn read(&self, cache: &mut Cache, idx: u32, ref_cnt: usize, loader_cnt: usize) -> u64 {
+    fn read(&self, cache: Arc<Mutex<Cache>>, idx: u32, ref_cnt: usize, loader_cnt: usize) -> u64 {
         let data_id = data_id(self.id, idx);
-        if let Some(head_idx) = cache.contains_data(data_id) {
-            cache.mark_unreaded(head_idx, loader_cnt);
-            log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
-            return head_idx as u64;
+        {
+            let mut cache = cache.lock().unwrap();
+            if let Some(head_idx) = cache.contains_data(data_id) {
+                cache.mark_unreaded(head_idx, loader_cnt);
+                log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
+                return head_idx as u64;
+            }
         }
 
         let db = lmdb::Database::open(&self.env, None, &lmdb::DatabaseOptions::defaults()).unwrap();
@@ -178,7 +187,7 @@ mod tests {
         let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
         let len = 1001;
         let name = "DLCache".to_string();
-        let mut cache = Cache::new(1024 * 1024 * 1024, &name, 1024);
+        let cache = Arc::new(Mutex::new(Cache::new(1024 * 1024 * 1024, &name, 1024)));
         let mut items = Vec::new();
         for i in 0..len as usize {
             items.push(DataItem {
@@ -196,7 +205,7 @@ mod tests {
             },
             decode: true,
         });
-        dataset.read(&mut cache, 0, 0, 1);
+        dataset.read(cache, 0, 0, 1);
     }
     #[test]
     fn test_lmdb() {
@@ -236,7 +245,7 @@ mod tests {
         let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
         let len = 1001;
         let name = "DLCache".to_string();
-        let mut cache = Cache::new(1024 * 1024 * 1024, &name, 1024);
+        let cache = Arc::new(Mutex::new(Cache::new(1024 * 1024 * 1024, &name, 1024)));
         let mut items = Vec::new();
         for i in 0..len as usize {
             items.push(DataItem {
@@ -258,12 +267,13 @@ mod tests {
         let (s, mut r) = create_data_channel(0);
         joader.add_loader(0, 1);
         joader.add_data_sender(0, s);
-
+        // we not mark readed, so the max_read num is the number of the head
         let reader = tokio::spawn(async move {
             let now = SystemTime::now();
             let mut consume = 0;
             loop {
                 let (indices, empty) = r.recv_all().await;
+                println!("read {:?}", indices);
                 consume += indices.len();
                 if consume != 0 && consume % 1000 == 0 {
                     let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
@@ -283,7 +293,7 @@ mod tests {
         let writer = tokio::spawn(async move {
             let now = SystemTime::now();
             for i in 0..len {
-                joader.next(&mut cache).await;
+                joader.next(cache.clone()).await;
                 let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
                 if i != 0 && i % 1000 == 0 {
                     print!("write {} data need {}, avg: {}\n", i, time, time / i as f32);

@@ -1,6 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
+
+use std::sync::Mutex;
 
 use super::joader::*;
+use crate::service::decode_addr_read_off;
 use crate::{
     cache::cache::Cache,
     dataset::new_dummy,
@@ -10,7 +13,8 @@ use crate::{
 async fn read_data(mut r: DataReceiver) -> Vec<u64> {
     let mut res = Vec::new();
     loop {
-        let (mut indices, empty) = r.recv_all().await;
+        let (indices, empty) = r.recv_all().await;
+        let mut indices = indices.iter().map(|x| decode_addr_read_off(*x).0).collect::<Vec<_>>();
         res.append(&mut indices);
         if empty {
             r.close();
@@ -33,9 +37,9 @@ async fn read_indices(mut r: IdxReceiver) -> Vec<u32> {
     return res;
 }
 
-async fn write(mut joader: Joader, mut cache: Cache) {
+async fn write(mut joader: Joader, cache: Arc::<Mutex::<Cache>>) {
     loop {
-        joader.next(&mut cache).await;
+        joader.next(cache.clone()).await;
         if joader.is_empty() {
             break;
         }
@@ -51,7 +55,7 @@ async fn test_1_loader() {
     let (s, r) = create_data_channel(0);
     joader.add_loader(0, 1);
     joader.add_data_sender(0, s);
-    let cache = Cache::new(256, &name, 1);
+    let cache = Arc::new(Mutex::new(Cache::new(256, &name, 1)));
     tokio::spawn(async move { write(joader, cache).await });
     let mut res = tokio::spawn(async move { read_data(r).await })
         .await
@@ -74,7 +78,7 @@ async fn test_k_loader() {
         joader.add_data_sender(id, s);
         reader_map.insert(id, tokio::spawn(async move { read_data(r).await }));
     }
-    let cache = Cache::new(256, &name, 1);
+    let cache = Arc::new(Mutex::new(Cache::new(256, &name, 1)));
     tokio::spawn(async move { write(joader, cache).await });
 
     for (_id, handler) in reader_map.iter_mut() {
@@ -103,7 +107,7 @@ async fn test_1_loader_k_sampler() {
         joader.add_idx_sender(0, s, host_id.into());
         id_reader_map.insert(host_id, tokio::spawn(async move { read_indices(r).await }));
     }
-    let cache = Cache::new(256, &name, 1);
+    let cache = Arc::new(Mutex::new(Cache::new(256, &name, 1)));
     tokio::spawn(async move { write(joader, cache).await });
     let mut res = Vec::new();
     for (id, handler) in id_reader_map.iter_mut() {
@@ -150,7 +154,7 @@ async fn test_k_loader_m_sampler() {
         }
     }
 
-    let cache = Cache::new(256, &name, 1);
+    let cache = Arc::new(Mutex::new(Cache::new(256, &name, 1)));
     tokio::spawn(async move { write(joader, cache).await });
 
     for ((loader_id, host_id), handler) in id_reader_map.iter_mut() {

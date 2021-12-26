@@ -1,8 +1,11 @@
+use std::sync::Mutex;
+
 use crate::dataset::DatasetRef;
 use crate::loader::{DataSender, Loader};
 use crate::sampler::sampler_tree::SamplerTree;
 use crate::{cache::cache::Cache, loader::IdxSender};
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Joader {
@@ -92,13 +95,13 @@ impl Joader {
     pub async fn remote_read(
         &mut self,
         sampler_res: &HashMap<u32, HashSet<u64>>,
-        cache: &mut Cache,
+        cache: Arc::<Mutex::<Cache>>,
     ) {
         
         for (data_idx, loader_ids) in sampler_res {
             // Todo: Support remote ref_cnt
             let loader_cnt = loader_ids.len();
-            let addr = self.dataset.read(cache, *data_idx, 0, loader_cnt);
+            let addr = self.dataset.read(cache.clone(), *data_idx, 0, loader_cnt);
             for (idx, id) in loader_ids.iter().enumerate() {
                 log::debug!("Joader remote load data {:} at {:?} to {:?}", data_idx, addr, id);
                 self.loader_table[id].send_data(addr, idx).await;
@@ -106,7 +109,7 @@ impl Joader {
         }
     }
 
-    pub async fn next(&mut self, cache: &mut Cache) {
+    pub async fn next(&mut self, cache: Arc::<Mutex::<Cache>>) {
         self.clear_empty_loader().await;
         let mut data_table = self.sampler_tree.sample();
         for (data_idx, loader_ids) in data_table.iter_mut() {
@@ -114,7 +117,7 @@ impl Joader {
             self.distributed(*data_idx, loader_ids).await;
             let loader_cnt = loader_ids.len();
             if !loader_ids.is_empty() {
-                let addr = self.dataset.read(cache, *data_idx, ref_cnt, loader_cnt);
+                let addr = self.dataset.read(cache.clone(), *data_idx, ref_cnt, loader_cnt);
                 for (idx, id) in loader_ids.iter().enumerate() {
                     log::debug!("Joader load data {:} at {:?} to {:?}", data_idx, addr, id);
                     self.loader_table[id].send_data(addr, idx).await;
