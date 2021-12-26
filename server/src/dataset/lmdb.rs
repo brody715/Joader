@@ -1,15 +1,25 @@
 use super::data_id;
 use super::Dataset;
 use super::DatasetRef;
+use crate::process::get_array_head_size;
+use crate::process::get_bin_size_from_len;
 use crate::process::msg_unpack;
+use crate::process::MsgObject;
 use crate::{
     cache::cache::Cache,
     proto::dataset::{CreateDatasetRequest, DataItem},
 };
+use image::jpeg::JpegDecoder;
+use image::ImageDecoder;
 use lmdb::open::{NOSUBDIR, RDONLY};
 use lmdb::Database;
 use lmdb::ReadTransaction;
 use lmdb_zero as lmdb;
+use rmp::encode::write_array_len;
+use rmp::encode::write_bin_len;
+use rmp::encode::write_i16;
+use std::convert::TryInto;
+use std::io::Cursor;
 use std::{fmt::Debug, sync::Arc};
 
 #[derive(Debug)]
@@ -17,6 +27,7 @@ struct LmdbDataset {
     items: Vec<DataItem>,
     id: u32,
     env: lmdb::Environment,
+    decode: bool,
 }
 
 pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
@@ -29,7 +40,12 @@ pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
             .unwrap()
     };
     // Open the default database.
-    Arc::new(LmdbDataset { items, id, env })
+    Arc::new(LmdbDataset {
+        items,
+        id,
+        env,
+        decode: true,
+    })
 }
 
 impl LmdbDataset {
@@ -41,7 +57,7 @@ impl LmdbDataset {
         id: u64,
         key: &str,
         ref_cnt: usize,
-        loader_cnt: usize
+        loader_cnt: usize,
     ) -> u64 {
         let acc = txn.access();
         let data: &[u8] = acc.get(db, key).unwrap();
@@ -61,18 +77,42 @@ impl LmdbDataset {
         id: u64,
         key: &str,
         ref_cnt: usize,
-        loader_cnt: usize
+        loader_cnt: usize,
     ) -> u64 {
         let acc = txn.access();
         let data: &[u8] = acc.get(db, key).unwrap();
         let data = msg_unpack(data);
-        todo!()
-        // let len = data.len();
-        // let (block_slice, idx) = cache.allocate(len, ref_cnt, id, loader_cnt);
-        // assert_eq!(block_slice.len(), len);
-        // block_slice.copy_from_slice(data);
-        // log::debug!("Read data {:?} at {:?} in lmdb", id, idx);
-        // idx as u64
+        let image = &data[0];
+        let decoder = {
+            let content = match &image {
+                &MsgObject::Map(map) => &map["data"],
+                _ => unimplemented!(),
+            };
+            match content.as_ref() {
+                &MsgObject::Bin(bin) => JpegDecoder::new(Cursor::new(bin)).unwrap(),
+                _ => unimplemented!(),
+            }
+        };
+        let label = match &data[1] {
+            &MsgObject::UInt(b) => i16::from_be_bytes(b.try_into().unwrap()),
+            _ => unimplemented!(),
+        };
+        let img_size = decoder.total_bytes();
+        let bin_len = get_bin_size_from_len(img_size as usize);
+        let array_head = get_array_head_size(2);
+        let label_len = 3;
+        let len = array_head + bin_len + label_len;
+        let (block_slice, idx) = cache.allocate(len, ref_cnt, id, loader_cnt);
+        assert_eq!(block_slice.len(), len);
+        let mut writer = Cursor::new(block_slice);
+        write_array_len(&mut writer, 2).unwrap();
+        write_i16(&mut writer, label).unwrap();
+        write_bin_len(&mut writer, img_size as u32).unwrap();
+        decoder
+            .read_image(&mut writer.into_inner()[len - img_size as usize..])
+            .unwrap();
+        log::debug!("Read and decode data {:?} at {:?} in lmdb", id, idx);
+        idx as u64
     }
 }
 
@@ -98,7 +138,11 @@ impl Dataset for LmdbDataset {
         let db = lmdb::Database::open(&self.env, None, &lmdb::DatabaseOptions::defaults()).unwrap();
         let txn = lmdb::ReadTransaction::new(&self.env).unwrap();
         let key = &self.items[idx as usize].keys[0];
-        self.read_one(cache, &db, &txn, data_id, key, ref_cnt, loader_cnt)
+        if self.decode {
+            self.read_one(cache, &db, &txn, data_id, key, ref_cnt, loader_cnt)
+        } else {
+            self.read_and_decode_one(cache, &db, &txn, data_id, key, ref_cnt, loader_cnt)
+        }
     }
 
     fn len(&self) -> u64 {
@@ -168,6 +212,7 @@ mod tests {
                     .open(&location, RDONLY | NOSUBDIR, 0o600)
                     .unwrap()
             },
+            decode: false,
         });
         let mut joader = Joader::new(dataset);
         let (s, mut r) = create_data_channel(0);

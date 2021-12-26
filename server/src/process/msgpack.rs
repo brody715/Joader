@@ -97,25 +97,31 @@ pub fn msg_unpack<'a>(bytes: &'a [u8]) -> Vec<MsgObject<'a>> {
 }
 
 fn get_array_size(vec: &Vec<Box<MsgObject>>) -> usize {
-    let mut size = {
-        match vec.len() {
-            0..=15 => 1,
-            16..=U8_MAX => 2,
-            err => unimplemented!("can not encode bin with size {:?}", err),
-        }
-    };
+    let mut size = get_array_head_size(vec.len());
     for obj in vec {
         size += msg_size(obj.as_ref());
     }
     size
 }
 
+pub fn get_array_head_size(len: usize) -> usize {
+    match len {
+        0..=15 => 1,
+        16..=U8_MAX => 2,
+        err => unimplemented!("can not encode vec with size {:?}", err),
+    }
+}
+
 fn get_bin_size(bin: &[u8]) -> usize {
     let l = bin.len();
-    match l {
-        1..=U8_MAX => 2 + bin.len(),
-        1..=U16_MAX => 3 + bin.len(),
-        1..=U32_MAX => 5 + bin.len(),
+    get_bin_size_from_len(l)
+}
+
+pub fn get_bin_size_from_len(len: usize) -> usize {
+    match len {
+        1..=U8_MAX => 2 + len,
+        1..=U16_MAX => 3 + len,
+        1..=U32_MAX => 5 + len,
         err => unimplemented!("can not encode bin with size {:?}", err),
     }
 }
@@ -136,7 +142,7 @@ fn write_array(w: &mut Cursor<&mut [u8]>, vec: &Vec<Box<MsgObject>>) {
     }
 }
 
-fn write_int(w: &mut Cursor<&mut [u8]>, bin: &[u8]) {
+pub fn write_int(w: &mut Cursor<&mut [u8]>, bin: &[u8]) {
     println!("{:}", w.position());
     match bin.len() {
         1 => write_u8(w, u8::from_be_bytes(bin.try_into().unwrap())).unwrap(),
