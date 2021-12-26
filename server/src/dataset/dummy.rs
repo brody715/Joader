@@ -52,8 +52,24 @@ impl Dataset for DummyDataset {
         (start..end).collect::<Vec<_>>()
     }
 
-    fn read(&self, _cache: Arc::<Mutex::<Cache>>, idx: u32, _ref_cnt: usize, _loader_cnt: usize) -> u64 {
+    fn read(
+        &self,
+        _cache: Arc<Mutex<Cache>>,
+        idx: u32,
+        _ref_cnt: usize,
+        _loader_cnt: usize,
+    ) -> u64 {
         idx as u64
+    }
+
+    fn read_batch(
+        &self,
+        _cache: Arc<Mutex<Cache>>,
+        idx: Vec<u32>,
+        _ref_cnt: Vec<usize>,
+        _loader_cnt: Vec<usize>,
+    ) -> Vec<u64> {
+        idx.iter().cloned().map(|x| x as u64).collect::<Vec<_>>()
     }
 
     fn len(&self) -> u64 {

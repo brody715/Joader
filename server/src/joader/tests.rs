@@ -37,6 +37,15 @@ async fn read_indices(mut r: IdxReceiver) -> Vec<u32> {
     return res;
 }
 
+async fn write_batch(mut joader: Joader, cache: Arc::<Mutex::<Cache>>) {
+    loop {
+        joader.next_batch(cache.clone(), 32).await;
+        if joader.is_empty() {
+            break;
+        }
+    }
+}
+
 async fn write(mut joader: Joader, cache: Arc::<Mutex::<Cache>>) {
     loop {
         joader.next(cache.clone()).await;
@@ -44,6 +53,25 @@ async fn write(mut joader: Joader, cache: Arc::<Mutex::<Cache>>) {
             break;
         }
     }
+}
+
+#[tokio::test]
+async fn test_1_loader_batch_read() {
+    log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+    let len = 4096;
+    let name = "dummy".to_string();
+    let dataset = new_dummy(len, name.clone());
+    let mut joader = Joader::new(dataset);
+    let (s, r) = create_data_channel(0);
+    joader.add_loader(0, 1);
+    joader.add_data_sender(0, s);
+    let cache = Arc::new(Mutex::new(Cache::new(256, &name, 1)));
+    tokio::spawn(async move { write_batch(joader, cache).await });
+    let mut res = tokio::spawn(async move { read_data(r).await })
+        .await
+        .unwrap();
+    res.sort();
+    assert_eq!(res, (0..len).map(|x| x as u64).collect::<Vec<_>>());
 }
 
 #[tokio::test]

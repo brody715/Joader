@@ -11,7 +11,16 @@ use std::{fmt::Debug, sync::Arc};
 pub trait Dataset: Sync + Send + Debug {
     fn get_id(&self) -> u32;
     fn get_indices(&self) -> Vec<u32>;
-    fn read(&self, cache: Arc::<Mutex::<Cache>>, idx: u32, ref_cnt: usize, loader_cnt: usize) -> u64;
+    fn read(&self, cache: Arc<Mutex<Cache>>, idx: u32, ref_cnt: usize, loader_cnt: usize) -> u64;
+    fn read_batch(
+        &self,
+        _cache: Arc<Mutex<Cache>>,
+        _idx: Vec<u32>,
+        _ref_cnt: Vec<usize>,
+        _loader_cnt: Vec<usize>,
+    ) -> Vec<u64> {
+        unimplemented!()
+    }
     fn len(&self) -> u64;
 }
 pub type DatasetRef = Arc<dyn Dataset>;
