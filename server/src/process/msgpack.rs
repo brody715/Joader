@@ -1,8 +1,7 @@
-use rmp::decode::{read_bin_len, read_marker};
-use rmp::encode::{write_array_len, write_bin, write_u16, write_u32, write_u8};
+use rmp::decode::{read_bin_len, read_int, read_marker};
+use rmp::encode::{write_array_len, write_bin, write_uint};
 use rmp::Marker;
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::io::{Cursor, Seek, SeekFrom};
 
 // https://github.com/msgpack/msgpack/blob/master/spec.md
@@ -15,7 +14,7 @@ pub enum MsgObject<'a> {
     Array(Vec<Box<MsgObject<'a>>>),
     Bin(&'a [u8]),
     Map(HashMap<&'a str, Box<MsgObject<'a>>>),
-    UInt(&'a [u8]),
+    UInt(u64),
     Bool(bool),
 }
 
@@ -25,36 +24,19 @@ fn parse_object<'a>(buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
         Ok(Marker::FixArray(num)) => parse_array(num, buf),
         Ok(Marker::Bin8) | Ok(Marker::Bin16) | Ok(Marker::Bin32) => parse_bin(buf),
         Ok(Marker::FixMap(num)) => parse_map(num, buf),
-        Ok(Marker::U32) => parse_u32(buf),
-        Ok(Marker::U16) => parse_u16(buf),
-        Ok(Marker::U8) => parse_u8(buf),
+        Ok(Marker::U32) | Ok(Marker::U16) | Ok(Marker::U8) | Ok(Marker::FixPos(_)) => {
+            parse_uint(buf)
+        }
         Ok(Marker::True) => MsgObject::Bool(true),
         err => unimplemented!("can not parse msg pack {:?}", err),
     }
 }
 
 #[inline]
-fn parse_u32<'a>(buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
-    let pos = buf.position() as usize;
-    let bin = &buf.get_ref()[pos..pos + 4];
-    buf.seek(SeekFrom::Current(4 as i64)).unwrap();
-    MsgObject::UInt(bin)
-}
-
-#[inline]
-fn parse_u16<'a>(buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
-    let pos = buf.position() as usize;
-    let bin = &buf.get_ref()[pos..pos + 2];
-    buf.seek(SeekFrom::Current(2 as i64)).unwrap();
-    MsgObject::UInt(bin)
-}
-
-#[inline]
-fn parse_u8<'a>(buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
-    let pos = buf.position() as usize;
-    let bin = &buf.get_ref()[pos..pos + 1];
-    buf.seek(SeekFrom::Current(2 as i64)).unwrap();
-    MsgObject::UInt(bin)
+fn parse_uint<'a>(buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
+    buf.seek(SeekFrom::Current(-1)).unwrap();
+    let data = read_int(buf).unwrap();
+    MsgObject::UInt(data)
 }
 
 #[inline]
@@ -135,11 +117,21 @@ pub fn get_bin_size_from_len(len: usize) -> usize {
     }
 }
 
+pub fn get_int_size(data: u64) -> usize {
+    match data as usize {
+        0..=127 => 1,
+        0..=U8_MAX => 2,
+        0..=U16_MAX => 3,
+        0..=U32_MAX => 5,
+        err => unimplemented!("can not encode bin with size {:?}", err),
+    }
+}
+
 pub fn msg_size(object: &MsgObject) -> usize {
     match object {
         MsgObject::Array(vec) => get_array_size(vec),
         MsgObject::Bin(bin) => get_bin_size(*bin),
-        MsgObject::UInt(bin) => bin.len() + 1,
+        MsgObject::UInt(data) => get_int_size(*data),
         err => unimplemented!("can not parse msg pack {:?}", err),
     }
 }
@@ -151,21 +143,13 @@ fn write_array(w: &mut Cursor<&mut [u8]>, vec: &Vec<Box<MsgObject>>) {
     }
 }
 
-pub fn write_int(w: &mut Cursor<&mut [u8]>, bin: &[u8]) {
-    println!("{:}", w.position());
-    match bin.len() {
-        1 => write_u8(w, u8::from_be_bytes(bin.try_into().unwrap())).unwrap(),
-        2 => write_u16(w, u16::from_be_bytes(bin.try_into().unwrap())).unwrap(),
-        4 => write_u32(w, u32::from_be_bytes(bin.try_into().unwrap())).unwrap(),
-        err => unimplemented!("can not parse msg pack {:?}", err),
-    };
-}
-
 fn write_object(w: &mut Cursor<&mut [u8]>, object: &MsgObject) {
     match object {
         MsgObject::Array(vec) => write_array(w, vec),
         MsgObject::Bin(bin) => write_bin(w, *bin).unwrap(),
-        MsgObject::UInt(bin) => write_int(w, *bin),
+        MsgObject::UInt(data) => {
+            write_uint(w, *data).unwrap();
+        }
         err => unimplemented!("can not parse msg pack {:?}", err),
     }
 }
@@ -213,7 +197,12 @@ mod tests {
         if let MsgObject::Bin(bytes) = image.as_ref() {
             println!("{}", bytes.len());
             let x = JpegDecoder::new(Cursor::new(bytes)).unwrap();
-            println!("{:?} color_type {:?} bytes_num {}", x.dimensions(), x.original_color_type(), x.total_bytes());
+            println!(
+                "{:?} color_type {:?} bytes_num {}",
+                x.dimensions(),
+                x.original_color_type(),
+                x.total_bytes()
+            );
             let mut vec = vec![0u8; 499500];
             println!("{:?}", x.read_image(&mut vec));
         }
@@ -223,17 +212,14 @@ mod tests {
     fn test_encode() {
         let int = &2u16.to_be_bytes();
         let bin = &[7u8; 16];
-        let msg_int = Box::new(MsgObject::UInt(int));
+        let msg_int = Box::new(MsgObject::UInt(2));
         let msg_bin = Box::new(MsgObject::Bin(bin));
         let array = MsgObject::Array(vec![msg_bin, msg_int]);
         let size = msg_size(&array);
-        assert_eq!(size, 1 + 18 + 3);
+        assert_eq!(size, 1 + 18 + 1);
         let mut write = vec![0u8; size];
         msgpack(&mut write, &array);
         assert_eq!(&write[3..19], bin);
-        assert_eq!(&write[20..], int);
-        let b = &mut [0u8; 3];
-        write_int(&mut Cursor::new(b), &2u16.to_be_bytes());
-        assert_eq!(&b[1..], &2u16.to_be_bytes());
+        assert_eq!(&write[19..], &int[1..]);
     }
 }

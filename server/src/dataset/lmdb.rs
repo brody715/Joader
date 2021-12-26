@@ -17,8 +17,7 @@ use lmdb::ReadTransaction;
 use lmdb_zero as lmdb;
 use rmp::encode::write_array_len;
 use rmp::encode::write_bin_len;
-use rmp::encode::write_i16;
-use std::convert::TryInto;
+use rmp::encode::write_uint;
 use std::io::Cursor;
 use std::{fmt::Debug, sync::Arc};
 
@@ -98,7 +97,7 @@ impl LmdbDataset {
             }
         };
         let label = match data[1].as_ref() {
-            &MsgObject::UInt(b) => i16::from_be_bytes(b.try_into().unwrap()),
+            &MsgObject::UInt(b) => b,
             _ => unimplemented!(),
         };
         let img_size = decoder.total_bytes();
@@ -106,12 +105,11 @@ impl LmdbDataset {
         let array_head = get_array_head_size(2);
         let label_len = 3;
         let len = array_head + bin_len + label_len;
-        println!("{:}", len);
         let (block_slice, idx) = cache.allocate(len, ref_cnt, id, loader_cnt);
         assert_eq!(block_slice.len(), len);
         let mut writer = Cursor::new(block_slice);
         write_array_len(&mut writer, 2).unwrap();
-        write_i16(&mut writer, label).unwrap();
+        write_uint(&mut writer, label).unwrap();
         write_bin_len(&mut writer, img_size as u32).unwrap();
         decoder
             .read_image(&mut writer.into_inner()[len - img_size as usize..])
