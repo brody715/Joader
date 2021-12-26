@@ -186,7 +186,7 @@ mod tests {
         let acc = txn.access();
         let data: &[u8] = acc.get(&db, 0.to_string().as_bytes()).unwrap();
         let mut data = msg_unpack(data);
-        let mut image = None;
+        let image;
         match &mut data[0] {
             MsgObject::Array(data) => {
                 match data[0].as_mut() {
@@ -204,7 +204,9 @@ mod tests {
         if let MsgObject::Bin(bytes) = image.as_ref() {
             println!("{}", bytes.len());
             let x = JpegDecoder::new(Cursor::new(bytes)).unwrap();
-            println!("{:?}", x.dimensions());
+            println!("{:?} color_type {:?} bytes_num {}", x.dimensions(), x.original_color_type(), x.total_bytes());
+            let mut vec = vec![0u8; 499500];
+            println!("{:?}", x.read_image(&mut vec));
         }
     }
 
