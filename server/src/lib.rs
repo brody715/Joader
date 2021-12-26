@@ -1,4 +1,5 @@
 #![feature(get_mut_unchecked)]
+#![feature(cursor_remaining)]
 pub mod cache;
 pub mod dataset;
 pub mod joader;

@@ -1,6 +1,7 @@
 use super::data_id;
 use super::Dataset;
 use super::DatasetRef;
+use crate::process::msg_unpack;
 use crate::{
     cache::cache::Cache,
     proto::dataset::{CreateDatasetRequest, DataItem},
@@ -50,6 +51,28 @@ impl LmdbDataset {
         block_slice.copy_from_slice(data);
         log::debug!("Read data {:?} at {:?} in lmdb", id, idx);
         idx as u64
+    }
+
+    fn read_and_decode_one(
+        &self,
+        cache: &mut Cache,
+        db: &Database,
+        txn: &ReadTransaction,
+        id: u64,
+        key: &str,
+        ref_cnt: usize,
+        loader_cnt: usize
+    ) -> u64 {
+        let acc = txn.access();
+        let data: &[u8] = acc.get(db, key).unwrap();
+        let data = msg_unpack(data);
+        todo!()
+        // let len = data.len();
+        // let (block_slice, idx) = cache.allocate(len, ref_cnt, id, loader_cnt);
+        // assert_eq!(block_slice.len(), len);
+        // block_slice.copy_from_slice(data);
+        // log::debug!("Read data {:?} at {:?} in lmdb", id, idx);
+        // idx as u64
     }
 }
 
