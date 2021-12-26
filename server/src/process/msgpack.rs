@@ -1,4 +1,4 @@
-use rmp::decode::{read_bin_len, read_int, read_marker};
+use rmp::decode::{read_array_len, read_bin_len, read_int, read_marker};
 use rmp::encode::{write_array_len, write_bin, write_uint};
 use rmp::Marker;
 use std::collections::HashMap;
@@ -21,7 +21,7 @@ pub enum MsgObject<'a> {
 #[inline]
 fn parse_object<'a>(buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
     match read_marker(buf) {
-        Ok(Marker::FixArray(num)) => parse_array(num, buf),
+        Ok(Marker::FixArray(_)) | Ok(Marker::Array16) => parse_array(buf),
         Ok(Marker::Bin8) | Ok(Marker::Bin16) | Ok(Marker::Bin32) => parse_bin(buf),
         Ok(Marker::FixMap(num)) => parse_map(num, buf),
         Ok(Marker::U32) | Ok(Marker::U16) | Ok(Marker::U8) | Ok(Marker::FixPos(_)) => {
@@ -67,8 +67,10 @@ fn parse_map<'a>(num: u8, buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
 }
 
 #[inline]
-fn parse_array<'a>(num: u8, buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
-    let mut ret = Vec::with_capacity(num as usize);
+fn parse_array<'a>(buf: &mut Cursor<&'a [u8]>) -> MsgObject<'a> {
+    buf.seek(SeekFrom::Current(-1)).unwrap();
+    let num = read_array_len(buf).unwrap() as usize;
+    let mut ret = Vec::with_capacity(num);
     for _ in 0..num {
         ret.push(Box::new(parse_object(buf)));
     }
