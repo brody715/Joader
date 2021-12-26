@@ -3,6 +3,7 @@ use super::Dataset;
 use super::DatasetRef;
 use crate::process::get_array_head_size;
 use crate::process::get_bin_size_from_len;
+use crate::process::get_int_size;
 use crate::process::msg_unpack;
 use crate::process::MsgObject;
 use crate::{
@@ -101,15 +102,25 @@ impl LmdbDataset {
             _ => unimplemented!(),
         };
         let img_size = decoder.total_bytes();
+        let (w, h) = decoder.dimensions();
+        // |array [label, w, h, image]
+        let array_size = 4;
+        let array_head = get_array_head_size(array_size);
+
+        let label_len = get_int_size(label);
+        let width_len = get_int_size(w as u64);
+        let height_len = get_int_size(h as u64);
         let bin_len = get_bin_size_from_len(img_size as usize);
-        let array_head = get_array_head_size(2);
-        let label_len = 3;
-        let len = array_head + bin_len + label_len;
+
+        let len = array_head + bin_len + label_len + width_len + height_len;
         let (block_slice, idx) = cache.allocate(len, ref_cnt, id, loader_cnt);
         assert_eq!(block_slice.len(), len);
+
         let mut writer = Cursor::new(block_slice);
-        write_array_len(&mut writer, 2).unwrap();
+        write_array_len(&mut writer, array_size as u32).unwrap();
         write_uint(&mut writer, label).unwrap();
+        write_uint(&mut writer, w as u64).unwrap();
+        write_uint(&mut writer, h as u64).unwrap();
         write_bin_len(&mut writer, img_size as u32).unwrap();
         decoder
             .read_image(&mut writer.into_inner()[len - img_size as usize..])
