@@ -244,6 +244,7 @@ impl Dataset for LmdbDataset {
             for (data, data_id, ref_cnt, loader_cnt) in raw_data {
                 let thread_cache = cache.clone();
                 let thread_sender = sender.clone();
+                let data = data.to_vec();
                 s.spawn(move |_| {
                     decode_and_cache(
                         &data,
@@ -281,9 +282,9 @@ mod tests {
     fn test_read_bacth() {
         log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
         let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
-        let len = 1000;
+        let len = 32*64;
         let name = "DLCache".to_string();
-        let cache = Arc::new(Mutex::new(Cache::new(1024 * 1024 * 1024, &name, 2048)));
+        let cache = Arc::new(Mutex::new(Cache::new(3096 * 1024 * 1024, &name, 2048)));
         let mut items = Vec::new();
         for i in 0..len as usize {
             items.push(DataItem {
@@ -301,7 +302,8 @@ mod tests {
             },
             decode: true,
         });
-        let batch_size = 48 as usize;
+        let now = SystemTime::now();
+        let batch_size = 8 as usize;
         for i in 0..(len/batch_size as usize) {
             dataset.read_batch(
                 cache.clone(),
@@ -310,6 +312,8 @@ mod tests {
                 vec![1; batch_size],
             );
         }
+        let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
+        println!("total{} avg{}", time, time/(len as f32));
     }
     #[test]
     fn test_decode() {
