@@ -47,10 +47,11 @@ pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
         items,
         id,
         env,
-        decode: true,
+        decode: false,
     })
 }
 
+#[inline]
 fn decode<'a>(data: &'a [u8]) -> (u64, JpegDecoder<Cursor<&'a [u8]>>) {
     let data = msg_unpack(data);
     let data = match &data[0] {
@@ -81,7 +82,6 @@ fn decode_and_cache(
     cache: Arc<Mutex<Cache>>,
     sender: Sender<u64>,
 ) {
-    let mut cache = cache.lock().unwrap();
     let (label, decoder) = decode(data.as_ref());
     let img_size = decoder.total_bytes();
     let (w, h) = decoder.dimensions();
@@ -95,9 +95,11 @@ fn decode_and_cache(
     let bin_len = get_bin_size_from_len(img_size as usize);
 
     let len = array_head + bin_len + label_len + width_len + height_len;
-    let (block_slice, idx) = cache.allocate(len, ref_cnt, id, loader_cnt);
+    let (block_slice, idx) = {
+        let mut locked_cache = cache.lock().unwrap();
+        locked_cache.allocate(len, ref_cnt, id, loader_cnt)
+    };
     assert_eq!(block_slice.len(), len);
-
     let mut writer = Cursor::new(block_slice);
     write_array_len(&mut writer, array_size as u32).unwrap();
     write_uint(&mut writer, label).unwrap();
@@ -220,8 +222,8 @@ impl Dataset for LmdbDataset {
         let acc = txn.access();
         let mut ret = Vec::new();
         let (sender, receiver) = std::sync::mpsc::channel::<u64>();
-        let mut producer = 0;
         crossbeam::scope(|s| {
+            let mut raw_data = Vec::new();
             for ((&idx, &ref_cnt), &loader_cnt) in
                 idx.iter().zip(ref_cnt.iter()).zip(loader_cnt.iter())
             {
@@ -236,10 +238,12 @@ impl Dataset for LmdbDataset {
                 }
                 let key = self.items[idx as usize].keys[0].as_str();
                 let data: &[u8] = acc.get(&db, key).unwrap();
-                let data = Arc::new(data);
+                raw_data.push((data, data_id, ref_cnt, loader_cnt));
+            }
+            let producer_num = raw_data.len();
+            for (data, data_id, ref_cnt, loader_cnt) in raw_data {
                 let thread_cache = cache.clone();
                 let thread_sender = sender.clone();
-                producer += 1;
                 s.spawn(move |_| {
                     decode_and_cache(
                         &data,
@@ -251,7 +255,7 @@ impl Dataset for LmdbDataset {
                     )
                 });
             }
-            for _ in 0..producer {
+            for _ in 0..producer_num {
                 let idx = receiver.recv().unwrap();
                 ret.push(idx);
             }
@@ -277,9 +281,9 @@ mod tests {
     fn test_read_bacth() {
         log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
         let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
-        let len = 1001;
+        let len = 1000;
         let name = "DLCache".to_string();
-        let cache = Arc::new(Mutex::new(Cache::new(1024 * 1024 * 1024, &name, 1024)));
+        let cache = Arc::new(Mutex::new(Cache::new(1024 * 1024 * 1024, &name, 2048)));
         let mut items = Vec::new();
         for i in 0..len as usize {
             items.push(DataItem {
@@ -297,13 +301,15 @@ mod tests {
             },
             decode: true,
         });
-        let res = dataset.read_batch(
-            cache,
-            vec![0, 1, 2, 4, 5, 6, 7, 8, 9, 10],
-            vec![0; 10],
-            vec![1; 10],
-        );
-        println!("{:?}", res);
+        let batch_size = 48 as usize;
+        for i in 0..(len/batch_size as usize) {
+            dataset.read_batch(
+                cache.clone(),
+                (i..(i+batch_size)).map(|x| x as u32).collect::<Vec<_>>(),
+                vec![0; batch_size],
+                vec![1; batch_size],
+            );
+        }
     }
     #[test]
     fn test_decode() {

@@ -49,7 +49,7 @@ loggers:
       - sampler
     additive: false
   joader::joader:
-    level: debug
+    level: info
     appenders:
       - joader
     additive: false
