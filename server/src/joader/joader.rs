@@ -113,6 +113,37 @@ impl Joader {
         }
     }
 
+    pub async fn remote_read_batch(
+        &mut self,
+        sampler_res: &HashMap<u32, HashSet<u64>>,
+        cache: Arc<Mutex<Cache>>,
+    ) {
+        let mut batch_data_idx = Vec::new();
+        let mut batch_loader_cnt = Vec::new();
+        let mut batch_ref_cnt = Vec::new();
+        let mut loader_table = HashMap::new();
+        for (data_idx, loader_ids) in sampler_res {
+            batch_data_idx.push(*data_idx);
+            let loader_cnt = loader_ids.len();
+            batch_loader_cnt.push(loader_cnt);
+            // Todo: Support remote ref_cnt
+            batch_ref_cnt.push(0);
+            loader_table.insert(data_idx, loader_ids);
+        }
+        let addr = self.dataset.read_batch(
+            cache.clone(),
+            batch_data_idx.clone(),
+            batch_ref_cnt,
+            batch_loader_cnt,
+        );
+        for (addr, data_idx) in addr.iter().zip(batch_data_idx.iter()) {
+            for (idx, id) in loader_table[data_idx].iter().enumerate() {
+                log::debug!("Joader load data {:} at {:?} to {:?}", data_idx, addr, id);
+                self.loader_table[id].send_data(*addr, idx).await;
+            }
+        }
+    }
+
     pub async fn next(&mut self, cache: Arc<Mutex<Cache>>) {
         self.clear_empty_loader().await;
         let mut data_table = self.sampler_tree.sample();

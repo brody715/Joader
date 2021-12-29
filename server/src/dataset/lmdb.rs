@@ -275,14 +275,16 @@ mod tests {
     use tokio::join;
 
     use super::*;
+    use crate::cache::head::Head;
     use crate::joader::joader::Joader;
     use crate::loader::create_data_channel;
     use std::time::SystemTime;
+    
     #[test]
     fn test_read_bacth() {
         log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
         let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
-        let len = 32*64;
+        let len = 32 * 64;
         let name = "DLCache".to_string();
         let cache = Arc::new(Mutex::new(Cache::new(3096 * 1024 * 1024, &name, 2048)));
         let mut items = Vec::new();
@@ -304,16 +306,16 @@ mod tests {
         });
         let now = SystemTime::now();
         let batch_size = 8 as usize;
-        for i in 0..(len/batch_size as usize) {
+        for i in 0..(len / batch_size as usize) {
             dataset.read_batch(
                 cache.clone(),
-                (i..(i+batch_size)).map(|x| x as u32).collect::<Vec<_>>(),
+                (i..(i + batch_size)).map(|x| x as u32).collect::<Vec<_>>(),
                 vec![0; batch_size],
                 vec![1; batch_size],
             );
         }
         let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-        println!("total{} avg{}", time, time/(len as f32));
+        println!("total{} avg{}", time, time / (len as f32));
     }
     #[test]
     fn test_decode() {
@@ -350,7 +352,6 @@ mod tests {
                 .open(location, RDONLY | NOSUBDIR, 0o600)
                 .unwrap()
         };
-
         let now = SystemTime::now();
         let len = 10000;
         for i in 0..len {
@@ -377,7 +378,7 @@ mod tests {
     async fn test_cache_lmdb() {
         log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
         let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
-        let len = 1001;
+        let len = 10000;
         let name = "DLCache".to_string();
         let cache = Arc::new(Mutex::new(Cache::new(1024 * 1024 * 1024, &name, 1024)));
         let mut items = Vec::new();
@@ -401,13 +402,22 @@ mod tests {
         let (s, mut r) = create_data_channel(0);
         joader.add_loader(0, 1);
         joader.add_data_sender(0, s);
-        // we not mark readed, so the max_read num is the number of the head
+        let thread_cache = cache.clone();
         let reader = tokio::spawn(async move {
+            
             let now = SystemTime::now();
             let mut consume = 0;
             loop {
                 let (indices, empty) = r.recv_all().await;
-                println!("read {:?}", indices);
+                {
+                    let start_ptr = thread_cache.lock().unwrap().start_ptr();
+                    for idx in &indices {
+                        let addr =
+                            unsafe { start_ptr.offset((*idx as isize) * (Head::size() as isize)) };
+                        let mut head = Head::from(addr);
+                        head.readed(1);
+                    }
+                }
                 consume += indices.len();
                 if consume != 0 && consume % 1000 == 0 {
                     let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();

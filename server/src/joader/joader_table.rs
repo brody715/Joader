@@ -1,7 +1,10 @@
-use std::{collections::{HashMap, HashSet}, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 // casue aysnc trait has not been supported, we use thread pool
-use std::sync::Mutex;
 use crate::{cache::cache::Cache, proto::distributed::SampleResult, service::GlobalID};
+use std::sync::Mutex;
 
 use super::joader::Joader;
 
@@ -9,18 +12,18 @@ use super::joader::Joader;
 pub struct JoaderTable {
     // Joader is hash by the name of dataset
     joader_table: HashMap<u32, Joader>,
-    cache: Arc::<Mutex::<Cache>>,
+    cache: Arc<Mutex<Cache>>,
     hash_key: u32,
-    shm_path: String
+    shm_path: String,
 }
 
 impl JoaderTable {
-    pub fn new(cache: Arc::<Mutex::<Cache>>, shm_path: String) -> JoaderTable {
+    pub fn new(cache: Arc<Mutex<Cache>>, shm_path: String) -> JoaderTable {
         JoaderTable {
             joader_table: HashMap::new(),
             cache,
             hash_key: 1,
-            shm_path
+            shm_path,
         }
     }
 
@@ -56,14 +59,14 @@ impl JoaderTable {
     pub async fn next(&mut self) {
         for (_, joader) in self.joader_table.iter_mut() {
             if !joader.is_empty() {
-                joader.next_batch(self.cache.clone(), 48).await;
-                // joader.next(self.cache.clone()).await;
+                // joader.next_batch(self.cache.clone(), 48).await;
+                joader.next(self.cache.clone()).await;
             }
         }
     }
 
     pub fn set_hash_key(&mut self, num: u32) {
-        self.hash_key = num+1;
+        self.hash_key = num + 1;
     }
 
     pub async fn remote_read(&mut self, sample_res: &Vec<SampleResult>) {
@@ -87,7 +90,7 @@ impl JoaderTable {
             self.joader_table
                 .get_mut(&dataset_id)
                 .unwrap()
-                .remote_read(&s, self.cache.clone())
+                .remote_read_batch(&s, self.cache.clone())
                 .await;
         }
     }
