@@ -17,7 +17,6 @@ use lmdb::Database;
 use lmdb::Environment;
 use lmdb::EnvironmentFlags;
 use lmdb::Transaction;
-use std::thread;
 use threadpool::ThreadPool;
 // use lmdb_zero::open::{NOSUBDIR, RDONLY};
 // use lmdb_zero::Database;
@@ -29,7 +28,6 @@ use std::io::Cursor;
 use std::path::Path;
 use std::sync::mpsc::Sender;
 use std::sync::Mutex;
-use std::time::SystemTime;
 use std::{fmt::Debug, sync::Arc};
 
 #[derive(Debug)]
@@ -40,22 +38,22 @@ struct LmdbDataset {
     db: Database,
     pool: Arc<Mutex<ThreadPool>>,
 }
-const POOL_SIZE: usize = 48;
+const POOL_SIZE: usize = 8;
 pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
     let location = request.location;
     let items = request.items;
     let p = Path::new(&location);
     let env = lmdb::Environment::new()
-        .set_flags(
-            EnvironmentFlags::NO_SUB_DIR
-                | EnvironmentFlags::READ_ONLY
-                | EnvironmentFlags::FIXED_MAP
-                | EnvironmentFlags::NO_META_SYNC
-                | EnvironmentFlags::NO_TLS
-                | EnvironmentFlags::NO_READAHEAD,
-        )
+    .set_flags(
+        EnvironmentFlags::NO_SUB_DIR
+            | EnvironmentFlags::READ_ONLY
+            | EnvironmentFlags::NO_READAHEAD
+            | EnvironmentFlags::NO_MEM_INIT
+            | EnvironmentFlags::NO_LOCK
+            | EnvironmentFlags::NO_SYNC,
+    )
         .set_max_readers(256)
-        .open_with_permissions(p, 0o600)
+        .open_with_permissions(p, 0o400)
         .unwrap();
     Arc::new(LmdbDataset {
         items,
@@ -410,6 +408,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_lmdb() {
+        let batch_size = POOL_SIZE;
         println!(
             "{:?} {:?}",
             Command::new("dd")
@@ -425,7 +424,7 @@ mod tests {
                 .output()
                 .expect("cmd exec error!")
         );
-        let location = "/home/xiej/nfs/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
+        let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
         let len = 100000;
         let name = "DLCache".to_string();
         let cache = Arc::new(Mutex::new(Cache::new(1024 * 1024 * 1024, &name, 1024)));
@@ -437,11 +436,9 @@ mod tests {
         }
         let p = Path::new(&location);
         let env = lmdb::Environment::new()
-            .set_max_readers(100)
             .set_flags(
                 EnvironmentFlags::NO_SUB_DIR
                     | EnvironmentFlags::READ_ONLY
-                    | EnvironmentFlags::NO_READAHEAD
                     | EnvironmentFlags::NO_MEM_INIT
                     | EnvironmentFlags::NO_LOCK
                     | EnvironmentFlags::NO_SYNC,
@@ -490,7 +487,7 @@ mod tests {
             }
             println!("exist reading.....");
         });
-        let batch_size = 48;
+        
         let writer = tokio::spawn(async move {
             let now = SystemTime::now();
             for i in 0..(len / batch_size) as usize {
