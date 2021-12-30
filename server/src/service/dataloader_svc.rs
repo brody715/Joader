@@ -136,23 +136,22 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let recv = rt
             .get_mut(&loader_id)
             .ok_or_else(|| Status::not_found(format!("Loader {} not found", loader_id)))?;
-        let (recv_data, empty) = recv.recv_batch(bs).await;
-        
-        // let (address, empty) = recv.
+        let (recv_data, empty) = match bs {
+            -1 => recv.recv_all().await,
+            _ => recv.recv_batch(bs as u32).await,
+        };
+
         if empty {
             delete_loaders.insert(loader_id);
         }
-        let mut address = Vec::with_capacity(bs as usize);
-        let mut read_off = Vec::with_capacity(bs as usize);
+        let mut address = Vec::with_capacity(recv_data.len());
+        let mut read_off = Vec::with_capacity(recv_data.len());
         for data in recv_data {
             let (a, r) = decode_addr_read_off(data);
             address.push(a);
             read_off.push(r);
         }
-        Ok(Response::new(NextResponse {
-            address,
-            read_off,
-        }))
+        Ok(Response::new(NextResponse { address, read_off }))
     }
 
     async fn delete_dataloader(

@@ -48,7 +48,7 @@ async fn write_batch(mut joader: Joader, cache: Arc::<Mutex::<Cache>>) {
 
 async fn write(mut joader: Joader, cache: Arc::<Mutex::<Cache>>) {
     loop {
-        joader.next(cache.clone()).await;
+        joader.next_batch(cache.clone(), 1).await;
         if joader.is_empty() {
             break;
         }

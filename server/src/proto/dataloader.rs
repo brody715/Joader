@@ -22,8 +22,8 @@ pub struct CreateDataloaderResponse {
 pub struct NextRequest {
     #[prost(uint64, tag = "1")]
     pub loader_id: u64,
-    #[prost(uint32, tag = "2")]
-    pub batch_size: u32,
+    #[prost(int32, tag = "2")]
+    pub batch_size: i32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct NextResponse {

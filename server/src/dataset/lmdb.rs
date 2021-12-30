@@ -15,7 +15,7 @@ use image::jpeg::JpegDecoder;
 use image::ImageDecoder;
 use lmdb::open::{NOSUBDIR, RDONLY};
 use lmdb::Database;
-use lmdb::ReadTransaction;
+use lmdb::Environment;
 use lmdb_zero as lmdb;
 use rmp::encode::write_array_len;
 use rmp::encode::write_bin_len;
@@ -30,7 +30,6 @@ struct LmdbDataset {
     items: Vec<DataItem>,
     id: u32,
     env: lmdb::Environment,
-    decode: bool,
 }
 
 pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
@@ -43,12 +42,7 @@ pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
             .unwrap()
     };
     // Open the default database.
-    Arc::new(LmdbDataset {
-        items,
-        id,
-        env,
-        decode: false,
-    })
+    Arc::new(LmdbDataset { items, id, env })
 }
 
 #[inline]
@@ -74,14 +68,19 @@ fn decode<'a>(data: &'a [u8]) -> (u64, JpegDecoder<Cursor<&'a [u8]>>) {
     (label, decoder)
 }
 
-fn decode_and_cache(
-    data: &[u8],
+fn read_decode_one(
     id: u64,
     ref_cnt: usize,
     loader_cnt: usize,
     cache: Arc<Mutex<Cache>>,
     sender: Sender<u64>,
+    db: &Database,
+    env: &Environment,
+    key: &str,
 ) {
+    let txn = lmdb::ReadTransaction::new(env).unwrap();
+    let acc = txn.access();
+    let data: &[u8] = acc.get(db, key).unwrap();
     let (label, decoder) = decode(data.as_ref());
     let img_size = decoder.total_bytes();
     let (w, h) = decoder.dimensions();
@@ -113,69 +112,28 @@ fn decode_and_cache(
     sender.send(idx as u64).unwrap();
 }
 
-impl LmdbDataset {
-    fn read_one(
-        &self,
-        cache: Arc<Mutex<Cache>>,
-        db: &Database,
-        txn: &ReadTransaction,
-        id: u64,
-        key: &str,
-        ref_cnt: usize,
-        loader_cnt: usize,
-    ) -> u64 {
+fn read_one(
+    id: u64,
+    ref_cnt: usize,
+    loader_cnt: usize,
+    cache: Arc<Mutex<Cache>>,
+    sender: Sender<u64>,
+    db: &Database,
+    env: &Environment,
+    key: &str,
+) {
+    let txn = lmdb::ReadTransaction::new(env).unwrap();
+    let acc = txn.access();
+    let data: &[u8] = acc.get(db, key).unwrap();
+    let len = data.len();
+    let (block_slice, idx) = {
         let mut cache = cache.lock().unwrap();
-        let acc = txn.access();
-        let data: &[u8] = acc.get(db, key).unwrap();
-        let len = data.len();
-        let (block_slice, idx) = cache.allocate(len, ref_cnt, id, loader_cnt);
-        assert_eq!(block_slice.len(), len);
-        block_slice.copy_from_slice(data);
-        log::debug!("Read data {:?} at {:?} in lmdb", id, idx);
-        idx as u64
-    }
-
-    fn read_and_decode_one(
-        &self,
-        cache: Arc<Mutex<Cache>>,
-        db: &Database,
-        txn: &ReadTransaction,
-        id: u64,
-        key: &str,
-        ref_cnt: usize,
-        loader_cnt: usize,
-    ) -> u64 {
-        let mut cache = cache.lock().unwrap();
-        let acc = txn.access();
-        let data: &[u8] = acc.get(db, key).unwrap();
-        let (label, decoder) = decode(data);
-        let img_size = decoder.total_bytes();
-        let (w, h) = decoder.dimensions();
-        // |array [label, w, h, image]
-        let array_size = 4;
-        let array_head = get_array_head_size(array_size);
-
-        let label_len = get_int_size(label);
-        let width_len = get_int_size(w as u64);
-        let height_len = get_int_size(h as u64);
-        let bin_len = get_bin_size_from_len(img_size as usize);
-
-        let len = array_head + bin_len + label_len + width_len + height_len;
-        let (block_slice, idx) = cache.allocate(len, ref_cnt, id, loader_cnt);
-        assert_eq!(block_slice.len(), len);
-
-        let mut writer = Cursor::new(block_slice);
-        write_array_len(&mut writer, array_size as u32).unwrap();
-        write_uint(&mut writer, label).unwrap();
-        write_uint(&mut writer, w as u64).unwrap();
-        write_uint(&mut writer, h as u64).unwrap();
-        write_bin_len(&mut writer, img_size as u32).unwrap();
-        decoder
-            .read_image(&mut writer.into_inner()[len - img_size as usize..])
-            .unwrap();
-        log::debug!("Read and decode data {:?} at {:?} in lmdb", id, idx);
-        idx as u64
-    }
+        cache.allocate(len, ref_cnt, id, loader_cnt)
+    };
+    assert_eq!(block_slice.len(), len);
+    block_slice.copy_from_slice(data);
+    log::debug!("Read data {:?} at {:?} in lmdb", id, idx);
+    sender.send(idx as u64).unwrap();
 }
 
 impl Dataset for LmdbDataset {
@@ -189,27 +147,6 @@ impl Dataset for LmdbDataset {
         (start..end).collect::<Vec<_>>()
     }
 
-    fn read(&self, cache: Arc<Mutex<Cache>>, idx: u32, ref_cnt: usize, loader_cnt: usize) -> u64 {
-        let data_id = data_id(self.id, idx);
-        {
-            let mut cache = cache.lock().unwrap();
-            if let Some(head_idx) = cache.contains_data(data_id) {
-                cache.mark_unreaded(head_idx, loader_cnt);
-                log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
-                return head_idx as u64;
-            }
-        }
-
-        let db = lmdb::Database::open(&self.env, None, &lmdb::DatabaseOptions::defaults()).unwrap();
-        let txn = lmdb::ReadTransaction::new(&self.env).unwrap();
-        let key = &self.items[idx as usize].keys[0];
-        if self.decode {
-            self.read_and_decode_one(cache, &db, &txn, data_id, key, ref_cnt, loader_cnt)
-        } else {
-            self.read_one(cache, &db, &txn, data_id, key, ref_cnt, loader_cnt)
-        }
-    }
-
     fn read_batch(
         &self,
         cache: Arc<Mutex<Cache>>,
@@ -218,12 +155,10 @@ impl Dataset for LmdbDataset {
         loader_cnt: Vec<usize>,
     ) -> Vec<u64> {
         let db = lmdb::Database::open(&self.env, None, &lmdb::DatabaseOptions::defaults()).unwrap();
-        let txn = lmdb::ReadTransaction::new(&self.env).unwrap();
-        let acc = txn.access();
         let mut ret = Vec::new();
         let (sender, receiver) = std::sync::mpsc::channel::<u64>();
+        let mut producer_num = 0;
         crossbeam::scope(|s| {
-            let mut raw_data = Vec::new();
             for ((&idx, &ref_cnt), &loader_cnt) in
                 idx.iter().zip(ref_cnt.iter()).zip(loader_cnt.iter())
             {
@@ -234,25 +169,76 @@ impl Dataset for LmdbDataset {
                         cache.mark_unreaded(head_idx, loader_cnt);
                         log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
                         ret.push(head_idx as u64);
+                        continue;
                     }
                 }
-                let key = self.items[idx as usize].keys[0].as_str();
-                let data: &[u8] = acc.get(&db, key).unwrap();
-                raw_data.push((data, data_id, ref_cnt, loader_cnt));
-            }
-            let producer_num = raw_data.len();
-            for (data, data_id, ref_cnt, loader_cnt) in raw_data {
                 let thread_cache = cache.clone();
                 let thread_sender = sender.clone();
-                let data = data.to_vec();
+                let key = self.items[idx as usize].keys[0].as_str();
+                let db_ref = &db;
                 s.spawn(move |_| {
-                    decode_and_cache(
-                        &data,
+                    read_one(
                         data_id,
                         ref_cnt,
                         loader_cnt,
                         thread_cache,
                         thread_sender,
+                        db_ref,
+                        &self.env,
+                        key,
+                    )
+                });
+                producer_num += 1;
+            }
+            for _ in 0..producer_num {
+                let idx = receiver.recv().unwrap();
+                ret.push(idx);
+            }
+        })
+        .unwrap();
+        ret
+    }
+
+    fn read_decode_batch(
+        &self,
+        cache: Arc<Mutex<Cache>>,
+        idx: Vec<u32>,
+        ref_cnt: Vec<usize>,
+        loader_cnt: Vec<usize>,
+    ) -> Vec<u64> {
+        let db = lmdb::Database::open(&self.env, None, &lmdb::DatabaseOptions::defaults()).unwrap();
+        let mut ret = Vec::new();
+        let (sender, receiver) = std::sync::mpsc::channel::<u64>();
+        let mut producer_num = 0;
+        crossbeam::scope(|s| {
+            for ((&idx, &ref_cnt), &loader_cnt) in
+                idx.iter().zip(ref_cnt.iter()).zip(loader_cnt.iter())
+            {
+                let data_id = data_id(self.id, idx);
+                {
+                    let mut cache = cache.lock().unwrap();
+                    if let Some(head_idx) = cache.contains_data(data_id) {
+                        cache.mark_unreaded(head_idx, loader_cnt);
+                        log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
+                        ret.push(head_idx as u64);
+                        continue;
+                    }
+                }
+                producer_num += 1;
+                let thread_cache = cache.clone();
+                let thread_sender = sender.clone();
+                let key = self.items[idx as usize].keys[0].as_str();
+                let db_ref = &db;
+                s.spawn(move |_| {
+                    read_decode_one(
+                        data_id,
+                        ref_cnt,
+                        loader_cnt,
+                        thread_cache,
+                        thread_sender,
+                        db_ref,
+                        &self.env,
+                        key,
                     )
                 });
             }
@@ -278,12 +264,13 @@ mod tests {
     use crate::cache::head::Head;
     use crate::joader::joader::Joader;
     use crate::loader::create_data_channel;
+    use std::process::Command;
     use std::time::SystemTime;
-    
+
     #[test]
     fn test_read_bacth() {
         log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
-        let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
+        let location = "/home/nfs/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
         let len = 32 * 64;
         let name = "DLCache".to_string();
         let cache = Arc::new(Mutex::new(Cache::new(3096 * 1024 * 1024, &name, 2048)));
@@ -302,7 +289,6 @@ mod tests {
                     .open(&location, RDONLY | NOSUBDIR, 0o600)
                     .unwrap()
             },
-            decode: true,
         });
         let now = SystemTime::now();
         let batch_size = 8 as usize;
@@ -339,9 +325,8 @@ mod tests {
                     .open(&location, RDONLY | NOSUBDIR, 0o600)
                     .unwrap()
             },
-            decode: true,
         });
-        dataset.read(cache, 0, 0, 1);
+        dataset.read_batch(cache, vec![0], vec![0], vec![1]);
     }
     #[test]
     fn test_lmdb() {
@@ -377,8 +362,23 @@ mod tests {
     #[tokio::test]
     async fn test_cache_lmdb() {
         log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+        println!(
+            "{:?} {:?}",
+            Command::new("dd")
+                .arg("if=/home/xiej/nfs/lmdb-imagenet/ILSVRC-train.lmdb")
+                .arg("iflag=nocache")
+                .arg("count=0")
+                .output()
+                .expect("cmd exec error!"),
+            Command::new("dd")
+                .arg("if=/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb")
+                .arg("iflag=nocache")
+                .arg("count=0")
+                .output()
+                .expect("cmd exec error!")
+        );
         let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
-        let len = 10000;
+        let len = 100000;
         let name = "DLCache".to_string();
         let cache = Arc::new(Mutex::new(Cache::new(1024 * 1024 * 1024, &name, 1024)));
         let mut items = Vec::new();
@@ -396,7 +396,6 @@ mod tests {
                     .open(&location, RDONLY | NOSUBDIR, 0o600)
                     .unwrap()
             },
-            decode: false,
         });
         let mut joader = Joader::new(dataset);
         let (s, mut r) = create_data_channel(0);
@@ -404,7 +403,6 @@ mod tests {
         joader.add_data_sender(0, s);
         let thread_cache = cache.clone();
         let reader = tokio::spawn(async move {
-            
             let now = SystemTime::now();
             let mut consume = 0;
             loop {
@@ -437,7 +435,7 @@ mod tests {
         let writer = tokio::spawn(async move {
             let now = SystemTime::now();
             for i in 0..len {
-                joader.next(cache.clone()).await;
+                joader.next_batch(cache.clone(), 4).await;
                 let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
                 if i != 0 && i % 1000 == 0 {
                     print!("write {} data need {}, avg: {}\n", i, time, time / i as f32);

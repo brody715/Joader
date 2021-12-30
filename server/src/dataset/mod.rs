@@ -1,6 +1,5 @@
-mod filesystem;
+
 mod lmdb;
-pub use filesystem::*;
 pub use lmdb::*;
 use std::sync::Mutex;
 mod dummy;
@@ -11,8 +10,12 @@ use std::{fmt::Debug, sync::Arc};
 pub trait Dataset: Sync + Send + Debug {
     fn get_id(&self) -> u32;
     fn get_indices(&self) -> Vec<u32>;
-    fn read(&self, cache: Arc<Mutex<Cache>>, idx: u32, ref_cnt: usize, loader_cnt: usize) -> u64;
-    fn read_batch(
+    fn read_batch(&self,
+        cache: Arc<Mutex<Cache>>,
+        idx: Vec<u32>,
+        ref_cnt: Vec<usize>,
+        loader_cnt: Vec<usize>) -> Vec<u64>;
+    fn read_decode_batch(
         &self,
         _cache: Arc<Mutex<Cache>>,
         _idx: Vec<u32>,
@@ -29,8 +32,8 @@ pub fn build_dataset(request: CreateDatasetRequest, dataset_id: u32) -> DatasetR
     let t: Type = unsafe { std::mem::transmute(request.r#type) };
     match t {
         Type::Dummy => dummy::from_proto(request, dataset_id),
-        Type::Filesystem => filesystem::from_proto(request, dataset_id),
         Type::Lmdb => lmdb::from_proto(request, dataset_id),
+        Type::Filesystem => unimplemented!(),
     }
 }
 
