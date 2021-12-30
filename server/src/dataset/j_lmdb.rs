@@ -44,16 +44,14 @@ pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
     let items = request.items;
     let p = Path::new(&location);
     let env = lmdb::Environment::new()
-    .set_flags(
-        EnvironmentFlags::NO_SUB_DIR
-            | EnvironmentFlags::READ_ONLY
-            | EnvironmentFlags::NO_READAHEAD
-            | EnvironmentFlags::NO_MEM_INIT
-            | EnvironmentFlags::NO_LOCK
-            | EnvironmentFlags::NO_SYNC,
-    )
-        .set_max_readers(256)
-        .open_with_permissions(p, 0o400)
+        .set_flags(
+            EnvironmentFlags::NO_SUB_DIR
+                | EnvironmentFlags::READ_ONLY
+                | EnvironmentFlags::NO_MEM_INIT
+                | EnvironmentFlags::NO_LOCK
+                | EnvironmentFlags::NO_SYNC,
+        )
+        .open_with_permissions(p, 0o600)
         .unwrap();
     Arc::new(LmdbDataset {
         items,
@@ -487,7 +485,7 @@ mod tests {
             }
             println!("exist reading.....");
         });
-        
+
         let writer = tokio::spawn(async move {
             let now = SystemTime::now();
             for i in 0..(len / batch_size) as usize {
