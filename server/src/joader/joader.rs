@@ -1,20 +1,42 @@
 use std::sync::Mutex;
+use std::thread;
 use std::time::SystemTime;
 
 use crate::dataset::DatasetRef;
+use crate::joader::condition::Cond;
 use crate::loader::{DataSender, Loader};
 use crate::sampler::sampler_tree::SamplerTree;
 use crate::{cache::cache::Cache, loader::IdxSender};
+use crossbeam::channel::{Receiver, Sender};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 #[derive(Debug)]
 pub struct Joader {
     dataset: DatasetRef,
-    sampler_tree: SamplerTree,
+    sampler_tree: Arc<Mutex<SamplerTree>>,
     // map loader id to loader
     loader_table: HashMap<u64, Loader>,
     ref_table: HashMap<u32, usize>,
     key: u32,
+    sampler_recv: Receiver<HashMap<u32, HashSet<u64>>>,
+    cond: Arc<Cond>,
+}
+
+fn sample(
+    sampler_tree: Arc<Mutex<SamplerTree>>,
+    sender: Sender<HashMap<u32, HashSet<u64>>>,
+    cond: Arc<Cond>,
+) {
+    cond.wait();
+    loop {
+        let mut sampler_tree_lock = sampler_tree.lock().unwrap();
+        let res = sampler_tree_lock.sample();
+        if res.is_empty() {
+            println!("pending .....");
+            cond.wait();
+        }
+        sender.send(res).unwrap();
+    }
 }
 
 impl Joader {
@@ -40,13 +62,22 @@ impl Joader {
         for i in dataset.get_indices() {
             ref_table.insert(i, 0);
         }
-        Joader {
+        let (s, r) = crossbeam::channel::bounded(4096);
+        let sampler_tree = Arc::new(Mutex::new(SamplerTree::new()));
+        let cond = Arc::new(Cond::new());
+        let joader = Joader {
             dataset,
-            sampler_tree: SamplerTree::new(),
+            sampler_tree: sampler_tree.clone(),
             loader_table: HashMap::new(),
             ref_table,
             key: 1,
-        }
+            sampler_recv: r,
+            cond: cond.clone(),
+        };
+        thread::spawn(move || {
+            sample(sampler_tree, s, cond);
+        });
+        joader
     }
 
     #[inline]
@@ -55,7 +86,7 @@ impl Joader {
     }
 
     pub async fn clear_empty_loader(&mut self) {
-        let del_loader = self.sampler_tree.clear_loader();
+        let del_loader = self.sampler_tree.lock().unwrap().clear_loader();
         for id in del_loader {
             self.loader_table.get_mut(&id).unwrap().close().await;
             // We do not del loader there. Insteadly, the deletion is done by user
@@ -124,14 +155,13 @@ impl Joader {
     }
 
     pub async fn next_batch(&mut self, cache: Arc<Mutex<Cache>>, batch_size: usize) {
-        let now = SystemTime::now();
-        self.clear_empty_loader().await;
+        // let now = SystemTime::now();
         let mut batch_data_idx = Vec::new();
         let mut batch_ref_cnt = Vec::new();
         let mut batch_loader_cnt = Vec::new();
         let mut loader_table = HashMap::new();
         while batch_data_idx.len() < batch_size {
-            let data_table = self.sampler_tree.sample();
+            let data_table = self.sampler_recv.recv().unwrap();
             if data_table.is_empty() {
                 break;
             }
@@ -147,7 +177,7 @@ impl Joader {
                 }
             }
         }
-        let time1 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
+        // let time1 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
         let addr = self.dataset.read_batch(
             cache.clone(),
             batch_data_idx.clone(),
@@ -160,13 +190,14 @@ impl Joader {
                 self.loader_table[id].send_data(*addr, idx).await;
             }
         }
-        let time2 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-        println!("{} {}", time1, (time2-time1)/(batch_size as f32));
+        // let time2 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
+        // println!("{} {}", time1, (time2 - time1) / (batch_size as f32));
     }
 
     pub fn del_loader(&mut self, id: u64) {
-        let valuse = self.sampler_tree.get_loader_values(id);
-        self.sampler_tree.delete(id);
+        let mut sampler_tree = self.sampler_tree.lock().unwrap();
+        let valuse = sampler_tree.get_loader_values(id);
+        sampler_tree.delete(id);
         for v in valuse.iter() {
             *self.ref_table.get_mut(v).unwrap() -= 1;
         }
@@ -180,7 +211,10 @@ impl Joader {
         if loader.ready() {
             log::debug!("loader id {} ready", loader_id);
             self.sampler_tree
+                .lock()
+                .unwrap()
                 .insert(self.dataset.get_indices(), loader_id);
+            self.cond.notify();
         }
     }
 
@@ -195,7 +229,10 @@ impl Joader {
         if loader.ready() {
             log::debug!("loader id {} ready", loader_id);
             self.sampler_tree
+                .lock()
+                .unwrap()
                 .insert(self.dataset.get_indices(), loader_id);
+            self.cond.notify();
         }
     }
 
