@@ -38,7 +38,7 @@ struct LmdbDataset {
     db: Database,
     pool: Arc<Mutex<ThreadPool>>,
 }
-const POOL_SIZE: usize = 8;
+const POOL_SIZE: usize = 64;
 pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
     let location = request.location;
     let items = request.items;
@@ -425,7 +425,7 @@ mod tests {
                 .expect("cmd exec error!")
         );
         let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
-        let len = 100000;
+        let len = 1281166;
         let name = "DLCache".to_string();
         let cache = Arc::new(Mutex::new(Cache::new(1024 * 1024 * 1024, &name, 1024)));
         let mut items = Vec::new();

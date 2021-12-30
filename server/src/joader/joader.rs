@@ -1,7 +1,5 @@
 use std::sync::Mutex;
 use std::thread;
-use std::time::SystemTime;
-
 use crate::dataset::DatasetRef;
 use crate::joader::condition::Cond;
 use crate::loader::{DataSender, Loader};
