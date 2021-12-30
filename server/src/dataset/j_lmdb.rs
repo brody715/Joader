@@ -13,36 +13,57 @@ use crate::{
 use crossbeam;
 use image::jpeg::JpegDecoder;
 use image::ImageDecoder;
-use lmdb::open::{NOSUBDIR, RDONLY};
 use lmdb::Database;
 use lmdb::Environment;
-use lmdb_zero as lmdb;
+use lmdb::EnvironmentFlags;
+use lmdb::Transaction;
+use std::thread;
+use threadpool::ThreadPool;
+// use lmdb_zero::open::{NOSUBDIR, RDONLY};
+// use lmdb_zero::Database;
+// use lmdb_zero::Environment;
 use rmp::encode::write_array_len;
 use rmp::encode::write_bin_len;
 use rmp::encode::write_uint;
 use std::io::Cursor;
+use std::path::Path;
 use std::sync::mpsc::Sender;
 use std::sync::Mutex;
+use std::time::SystemTime;
 use std::{fmt::Debug, sync::Arc};
 
 #[derive(Debug)]
 struct LmdbDataset {
     items: Vec<DataItem>,
     id: u32,
-    env: lmdb::Environment,
+    env: Arc<lmdb::Environment>,
+    db: Database,
+    pool: Arc<Mutex<ThreadPool>>,
 }
-
+const POOL_SIZE: usize = 48;
 pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
     let location = request.location;
     let items = request.items;
-    let env = unsafe {
-        lmdb::EnvBuilder::new()
-            .unwrap()
-            .open(&location, RDONLY | NOSUBDIR, 0o600)
-            .unwrap()
-    };
-    // Open the default database.
-    Arc::new(LmdbDataset { items, id, env })
+    let p = Path::new(&location);
+    let env = lmdb::Environment::new()
+        .set_flags(
+            EnvironmentFlags::NO_SUB_DIR
+                | EnvironmentFlags::READ_ONLY
+                | EnvironmentFlags::FIXED_MAP
+                | EnvironmentFlags::NO_META_SYNC
+                | EnvironmentFlags::NO_TLS
+                | EnvironmentFlags::NO_READAHEAD,
+        )
+        .set_max_readers(256)
+        .open_with_permissions(p, 0o600)
+        .unwrap();
+    Arc::new(LmdbDataset {
+        items,
+        id,
+        db: env.open_db(None).unwrap(),
+        env: Arc::new(env),
+        pool: Arc::new(Mutex::new(ThreadPool::new(POOL_SIZE))),
+    })
 }
 
 #[inline]
@@ -74,13 +95,12 @@ fn read_decode_one(
     loader_cnt: usize,
     cache: Arc<Mutex<Cache>>,
     sender: Sender<u64>,
-    db: &Database,
+    db: Database,
     env: &Environment,
     key: &str,
 ) {
-    let txn = lmdb::ReadTransaction::new(env).unwrap();
-    let acc = txn.access();
-    let data: &[u8] = acc.get(db, key).unwrap();
+    let txn = env.begin_ro_txn().unwrap();
+    let data: &[u8] = txn.get(db, &key.to_string()).unwrap();
     let (label, decoder) = decode(data.as_ref());
     let img_size = decoder.total_bytes();
     let (w, h) = decoder.dimensions();
@@ -118,19 +138,17 @@ fn read_one(
     loader_cnt: usize,
     cache: Arc<Mutex<Cache>>,
     sender: Sender<u64>,
-    db: &Database,
-    env: &Environment,
-    key: &str,
+    db: Database,
+    env: Arc<Environment>,
+    key: String,
 ) {
-    let txn = lmdb::ReadTransaction::new(env).unwrap();
-    let acc = txn.access();
-    let data: &[u8] = acc.get(db, key).unwrap();
+    let txn = env.begin_ro_txn().unwrap();
+    let data: &[u8] = txn.get(db, &key.to_string()).unwrap();
     let len = data.len();
     let (block_slice, idx) = {
         let mut cache = cache.lock().unwrap();
         cache.allocate(len, ref_cnt, id, loader_cnt)
     };
-    assert_eq!(block_slice.len(), len);
     block_slice.copy_from_slice(data);
     log::debug!("Read data {:?} at {:?} in lmdb", id, idx);
     sender.send(idx as u64).unwrap();
@@ -154,48 +172,61 @@ impl Dataset for LmdbDataset {
         ref_cnt: Vec<usize>,
         loader_cnt: Vec<usize>,
     ) -> Vec<u64> {
-        let db = lmdb::Database::open(&self.env, None, &lmdb::DatabaseOptions::defaults()).unwrap();
         let mut ret = Vec::new();
         let (sender, receiver) = std::sync::mpsc::channel::<u64>();
         let mut producer_num = 0;
-        crossbeam::scope(|s| {
-            for ((&idx, &ref_cnt), &loader_cnt) in
-                idx.iter().zip(ref_cnt.iter()).zip(loader_cnt.iter())
+        // let now = SystemTime::now();
+        for ((&idx, &ref_cnt), &loader_cnt) in idx.iter().zip(ref_cnt.iter()).zip(loader_cnt.iter())
+        {
+            let data_id = data_id(self.id, idx);
             {
-                let data_id = data_id(self.id, idx);
-                {
-                    let mut cache = cache.lock().unwrap();
-                    if let Some(head_idx) = cache.contains_data(data_id) {
-                        cache.mark_unreaded(head_idx, loader_cnt);
-                        log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
-                        ret.push(head_idx as u64);
-                        continue;
-                    }
+                let mut cache = cache.lock().unwrap();
+                if let Some(head_idx) = cache.contains_data(data_id) {
+                    cache.mark_unreaded(head_idx, loader_cnt);
+                    log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
+                    ret.push(head_idx as u64);
+                    continue;
                 }
-                let thread_cache = cache.clone();
-                let thread_sender = sender.clone();
-                let key = self.items[idx as usize].keys[0].as_str();
-                let db_ref = &db;
-                s.spawn(move |_| {
-                    read_one(
-                        data_id,
-                        ref_cnt,
-                        loader_cnt,
-                        thread_cache,
-                        thread_sender,
-                        db_ref,
-                        &self.env,
-                        key,
-                    )
-                });
-                producer_num += 1;
             }
-            for _ in 0..producer_num {
-                let idx = receiver.recv().unwrap();
-                ret.push(idx);
-            }
-        })
-        .unwrap();
+            let thread_cache = cache.clone();
+            let thread_sender = sender.clone();
+            let key = self.items[idx as usize].keys[0].clone();
+            let env = self.env.clone();
+            let db = self.db;
+            let pool = self.pool.lock().unwrap();
+            pool.execute(move || {
+                read_one(
+                    data_id,
+                    ref_cnt,
+                    loader_cnt,
+                    thread_cache,
+                    thread_sender,
+                    db,
+                    env,
+                    key,
+                )
+            });
+            // thread::spawn(move || {
+            //     read_one(
+            //         data_id,
+            //         ref_cnt,
+            //         loader_cnt,
+            //         thread_cache,
+            //         thread_sender,
+            //         db,
+            //         env,
+            //         key,
+            //     )
+            // });
+            producer_num += 1;
+        }
+        // let time1 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
+        for _ in 0..producer_num {
+            let idx = receiver.recv().unwrap();
+            ret.push(idx);
+        }
+        // let time2 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
+        // println!("{} {}", time1, time2 - time1);
         ret
     }
 
@@ -206,7 +237,6 @@ impl Dataset for LmdbDataset {
         ref_cnt: Vec<usize>,
         loader_cnt: Vec<usize>,
     ) -> Vec<u64> {
-        let db = lmdb::Database::open(&self.env, None, &lmdb::DatabaseOptions::defaults()).unwrap();
         let mut ret = Vec::new();
         let (sender, receiver) = std::sync::mpsc::channel::<u64>();
         let mut producer_num = 0;
@@ -228,7 +258,7 @@ impl Dataset for LmdbDataset {
                 let thread_cache = cache.clone();
                 let thread_sender = sender.clone();
                 let key = self.items[idx as usize].keys[0].as_str();
-                let db_ref = &db;
+
                 s.spawn(move |_| {
                     read_decode_one(
                         data_id,
@@ -236,7 +266,7 @@ impl Dataset for LmdbDataset {
                         loader_cnt,
                         thread_cache,
                         thread_sender,
-                        db_ref,
+                        self.db,
                         &self.env,
                         key,
                     )
@@ -258,6 +288,7 @@ impl Dataset for LmdbDataset {
 
 #[cfg(test)]
 mod tests {
+    use lmdb::Transaction;
     use tokio::join;
 
     use super::*;
@@ -280,15 +311,17 @@ mod tests {
                 keys: vec![i.to_string()],
             })
         }
+        let p = Path::new(&location);
+        let env = lmdb::Environment::new()
+            .set_flags(EnvironmentFlags::NO_SUB_DIR | EnvironmentFlags::READ_ONLY)
+            .open_with_permissions(p, 0o600)
+            .unwrap();
         let dataset = Arc::new(LmdbDataset {
             items,
             id: 0,
-            env: unsafe {
-                lmdb::EnvBuilder::new()
-                    .unwrap()
-                    .open(&location, RDONLY | NOSUBDIR, 0o600)
-                    .unwrap()
-            },
+            db: env.open_db(None).unwrap(),
+            env: Arc::new(env),
+            pool: Arc::new(Mutex::new(ThreadPool::new(POOL_SIZE))),
         });
         let now = SystemTime::now();
         let batch_size = 8 as usize;
@@ -316,46 +349,62 @@ mod tests {
                 keys: vec![i.to_string()],
             })
         }
+        let p = Path::new(&location);
+        let env = lmdb::Environment::new()
+            .set_flags(EnvironmentFlags::NO_SUB_DIR | EnvironmentFlags::READ_ONLY)
+            .open_with_permissions(p, 0o600)
+            .unwrap();
         let dataset = Arc::new(LmdbDataset {
             items,
             id: 0,
-            env: unsafe {
-                lmdb::EnvBuilder::new()
-                    .unwrap()
-                    .open(&location, RDONLY | NOSUBDIR, 0o600)
-                    .unwrap()
-            },
+            db: env.open_db(None).unwrap(),
+            env: Arc::new(env),
+            pool: Arc::new(Mutex::new(ThreadPool::new(POOL_SIZE))),
         });
         dataset.read_batch(cache, vec![0], vec![0], vec![1]);
     }
     #[test]
     fn test_lmdb() {
-        let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb";
-        let env = unsafe {
-            lmdb::EnvBuilder::new()
-                .unwrap()
-                .open(location, RDONLY | NOSUBDIR, 0o600)
-                .unwrap()
-        };
+        println!(
+            "{:?} {:?}",
+            Command::new("dd")
+                .arg("if=/home/xiej/nfs/lmdb-imagenet/ILSVRC-train.lmdb")
+                .arg("iflag=nocache")
+                .arg("count=0")
+                .output()
+                .expect("cmd exec error!"),
+            Command::new("dd")
+                .arg("if=/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb")
+                .arg("iflag=nocache")
+                .arg("count=0")
+                .output()
+                .expect("cmd exec error!")
+        );
+        let location = "/home/xiej/nfs/lmdb-imagenet/ILSVRC-train.lmdb";
+        let p = Path::new(&location);
+        let env = lmdb::Environment::new()
+            .set_flags(
+                EnvironmentFlags::NO_SUB_DIR
+                    | EnvironmentFlags::READ_ONLY
+                    | EnvironmentFlags::NO_META_SYNC
+                    | EnvironmentFlags::NO_SYNC
+                    | EnvironmentFlags::NO_MEM_INIT
+                    | EnvironmentFlags::NO_LOCK
+                    | EnvironmentFlags::NO_READAHEAD,
+            )
+            .set_max_readers(1024)
+            .open_with_permissions(p, 0o400)
+            .unwrap();
         let now = SystemTime::now();
         let len = 10000;
+        let db = env.open_db(None).unwrap();
+        let txn = env.begin_ro_txn().unwrap();
         for i in 0..len {
-            let db = lmdb::Database::open(&env, None, &lmdb::DatabaseOptions::defaults()).unwrap();
-            let txn = lmdb::ReadTransaction::new(&env).unwrap();
-            let acc = txn.access();
-            let data: &[u8] = acc.get(&db, i.to_string().as_bytes()).unwrap();
-            // cloned
-            let _cloned_dat = data.to_vec();
-            if len != 0 && len % 1000 == 0 {
+            txn.get(db, &(i.to_string())).unwrap();
+            if i != 0 && i % 100 == 0 {
                 let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-                print!(
-                    "read {} data need {}, avg: {}\n",
-                    len,
-                    time,
-                    time / len as f32
-                );
+                print!("read {} data need {}, avg: {}\n", i, time, time / i as f32);
             }
-            println!("{}", data.len());
         }
     }
 
@@ -376,7 +425,7 @@ mod tests {
                 .output()
                 .expect("cmd exec error!")
         );
-        let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
+        let location = "/home/xiej/nfs/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
         let len = 100000;
         let name = "DLCache".to_string();
         let cache = Arc::new(Mutex::new(Cache::new(1024 * 1024 * 1024, &name, 1024)));
@@ -386,15 +435,25 @@ mod tests {
                 keys: vec![i.to_string()],
             })
         }
+        let p = Path::new(&location);
+        let env = lmdb::Environment::new()
+            .set_max_readers(100)
+            .set_flags(
+                EnvironmentFlags::NO_SUB_DIR
+                    | EnvironmentFlags::READ_ONLY
+                    | EnvironmentFlags::NO_READAHEAD
+                    | EnvironmentFlags::NO_MEM_INIT
+                    | EnvironmentFlags::NO_LOCK
+                    | EnvironmentFlags::NO_SYNC,
+            )
+            .open_with_permissions(p, 0o600)
+            .unwrap();
         let dataset = Arc::new(LmdbDataset {
             items,
             id: 0,
-            env: unsafe {
-                lmdb::EnvBuilder::new()
-                    .unwrap()
-                    .open(&location, RDONLY | NOSUBDIR, 0o600)
-                    .unwrap()
-            },
+            db: env.open_db(None).unwrap(),
+            env: Arc::new(env),
+            pool: Arc::new(Mutex::new(ThreadPool::new(POOL_SIZE))),
         });
         let mut joader = Joader::new(dataset);
         let (s, mut r) = create_data_channel(0);
@@ -431,15 +490,20 @@ mod tests {
             }
             println!("exist reading.....");
         });
-        let batch_size = 32;
+        let batch_size = 48;
         let writer = tokio::spawn(async move {
             let now = SystemTime::now();
-            for i in 0..(len/batch_size) as usize {
+            for i in 0..(len / batch_size) as usize {
                 // println!("{:}", i);
                 joader.next_batch(cache.clone(), batch_size).await;
                 let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-                if i != 0 && (i*batch_size) % 1000 == 0 {
-                    print!("write {} data need {}, avg: {}\n", i*batch_size, time, time / ((i*batch_size) as f32));
+                if i != 0 && (i * batch_size) % 1000 == 0 {
+                    print!(
+                        "write {} data need {}, avg: {}\n",
+                        i * batch_size,
+                        time,
+                        time / ((i * batch_size) as f32)
+                    );
                 }
             }
         });

@@ -1,6 +1,6 @@
 
-mod lmdb;
-pub use lmdb::*;
+mod j_lmdb;
+pub use j_lmdb::*;
 use std::sync::Mutex;
 mod dummy;
 use crate::cache::cache::Cache;
@@ -32,7 +32,7 @@ pub fn build_dataset(request: CreateDatasetRequest, dataset_id: u32) -> DatasetR
     let t: Type = unsafe { std::mem::transmute(request.r#type) };
     match t {
         Type::Dummy => dummy::from_proto(request, dataset_id),
-        Type::Lmdb => lmdb::from_proto(request, dataset_id),
+        Type::Lmdb => j_lmdb::from_proto(request, dataset_id),
         Type::Filesystem => unimplemented!(),
     }
 }

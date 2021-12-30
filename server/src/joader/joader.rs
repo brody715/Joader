@@ -123,7 +123,6 @@ impl Joader {
     }
 
     pub async fn next_batch(&mut self, cache: Arc<Mutex<Cache>>, batch_size: usize) {
-        // let now = SystemTime::now();
         self.clear_empty_loader().await;
         let mut batch_data_idx = Vec::new();
         let mut batch_ref_cnt = Vec::new();
@@ -146,7 +145,6 @@ impl Joader {
                 }
             }
         }
-        // let time1 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
         let addr = self.dataset.read_batch(
             cache.clone(),
             batch_data_idx.clone(),
@@ -159,8 +157,6 @@ impl Joader {
                 self.loader_table[id].send_data(*addr, idx).await;
             }
         }
-        // let time2 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-        // println!("{} {}", time1/(batch_size as f32), time2/(batch_size as f32));
     }
 
     pub fn del_loader(&mut self, id: u64) {

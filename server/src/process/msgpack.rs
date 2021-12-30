@@ -165,7 +165,7 @@ pub fn msgpack(bytes: &mut [u8], object: &MsgObject) {
 mod tests {
     use super::*;
     use image::{jpeg::JpegDecoder, ImageDecoder};
-    use lmdb::open::{NOSUBDIR, RDONLY};
+    use lmdb_zero::open::{NOSUBDIR, RDONLY};
     use lmdb_zero as lmdb;
     #[test]
     fn test_decode() {
