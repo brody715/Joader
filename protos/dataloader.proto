@@ -22,7 +22,7 @@ message CreateDataloaderResponse {
 
 message NextRequest {
     uint64 loader_id = 1;
-    uint32 batch_size = 2;
+    int32 batch_size = 2;
 }
 
 message NextResponse {

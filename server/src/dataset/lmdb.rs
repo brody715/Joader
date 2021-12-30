@@ -361,7 +361,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_lmdb() {
-        log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
         println!(
             "{:?} {:?}",
             Command::new("dd")
@@ -432,13 +431,15 @@ mod tests {
             }
             println!("exist reading.....");
         });
+        let batch_size = 32;
         let writer = tokio::spawn(async move {
             let now = SystemTime::now();
-            for i in 0..len {
-                joader.next_batch(cache.clone(), 4).await;
+            for i in 0..(len/batch_size) as usize {
+                // println!("{:}", i);
+                joader.next_batch(cache.clone(), batch_size).await;
                 let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-                if i != 0 && i % 1000 == 0 {
-                    print!("write {} data need {}, avg: {}\n", i, time, time / i as f32);
+                if i != 0 && (i*batch_size) % 1000 == 0 {
+                    print!("write {} data need {}, avg: {}\n", i*batch_size, time, time / ((i*batch_size) as f32));
                 }
             }
         });

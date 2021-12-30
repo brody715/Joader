@@ -1,4 +1,5 @@
 from os import read
+import time
 import grpc
 import sys
 sys.path.append("./proto")
@@ -8,7 +9,7 @@ import proto.dataloader_pb2_grpc as dataloader_pb2_grpc
 import proto.dataloader_pb2 as dataloader_pb2
 import socket
 import multiprocessing
-import threading
+from faster_fifo import Queue
 
 class Loader(object):
     def __init__(self, ip, length: int, loader_id: int, shm_path: str, name: str, dataset_name: str, server_ip: str, nums: int, bs: int, queue: multiprocessing.Queue, client_thread):
@@ -51,18 +52,20 @@ class Loader(object):
         q.put(resp.length)
         q.put(resp.loader_id)
         q.put(resp.shm_path)
-        while length > 0:
+        cnt = 0
+        while length > cnt:
             request = dataloader_pb2.NextRequest(loader_id=loader_id, batch_size=batch_size)
             resp = client.Next(request)
             read_off_list = resp.read_off
             address_list = resp.address
             for (read_off, address) in zip(read_off_list,address_list):
                 q.put((read_off, address))
-            length -= len(read_off_list)
+            cnt += len(read_off_list)
+
     @staticmethod
     def new(dataset_name: str, name: str, ip: str, nums: int = 1, batch_size: int = -1):
-        q = multiprocessing.Queue()
-        t = threading.Thread(target=Loader.run_client, args=(dataset_name, name, ip, nums, batch_size, q,))
+        q = Queue()
+        t = multiprocessing.Process(target=Loader.run_client, args=(dataset_name, name, ip, nums, batch_size, q,))
         t.start()
         # nums indicate the number of distributed tasks
         length = q.get()
@@ -108,6 +111,7 @@ class Loader(object):
         self.buf[self.addr+self.READ_OFF + self.read_off] = 0
 
     def delete(self):
+        self.client_thread.kill()
         if self.channel is None:
             self.channel = grpc.insecure_channel(self.server_ip)
             self.client = dataloader_pb2_grpc.DataLoaderSvcStub(self.channel)
