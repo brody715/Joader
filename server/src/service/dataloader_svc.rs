@@ -140,7 +140,6 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
             -1 => recv.recv_all().await,
             _ => recv.recv_batch(bs as u32).await,
         };
-
         if empty {
             delete_loaders.insert(loader_id);
         }
@@ -151,6 +150,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
             address.push(a);
             read_off.push(r);
         }
+        
         Ok(Response::new(NextResponse { address, read_off }))
     }
 
@@ -160,19 +160,17 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
     ) -> Result<Response<DeleteDataloaderResponse>, Status> {
         log::info!("call delete loader {:?}", request);
         let request = request.into_inner();
+        let mut rt = self.recv_table.lock().await;
+        let mut jt = self.joader_table.lock().await;
         let mut id_table = self.loader_id_table.lock().await;
         let loader_id = id_table[&request.name];
 
-        let mut rt = self.recv_table.lock().await;
-        // 1 remove recv table
-        rt.remove(&loader_id);
-
-        // 2 remove loader
+        // 1 remove loader
         let dataset_id = GlobalID::parse_dataset_id(loader_id);
-        let mut jt = self.joader_table.lock().await;
         let joader = jt.get_mut(dataset_id);
         joader.del_data_sender(loader_id);
-
+        // 2 remove recv table
+        rt.remove(&loader_id);
         // 3 if all subhost have removed in loader, then remove loader_id
         if joader.is_loader_empty(loader_id) {
             id_table.remove(&request.name);

@@ -4,6 +4,7 @@ use crate::{
     cache::cache::Cache,
     proto::dataset::{CreateDatasetRequest, DataItem},
 };
+use std::collections::HashMap;
 use std::sync::Mutex;
 use std::{fmt::Debug, sync::Arc};
 
@@ -55,11 +56,9 @@ impl Dataset for DummyDataset {
     fn read_batch(
         &self,
         _cache: Arc<Mutex<Cache>>,
-        idx: Vec<u32>,
-        _ref_cnt: Vec<usize>,
-        _loader_cnt: Vec<usize>,
-    ) -> Vec<u64> {
-        idx.iter().cloned().map(|x| x as u64).collect::<Vec<_>>()
+        _batch_data: HashMap<u32, (usize, usize)>
+    ) -> Vec<(u32, u64)> {
+        todo!()
     }
 
     fn read_decode_batch(
@@ -68,8 +67,8 @@ impl Dataset for DummyDataset {
         idx: Vec<u32>,
         _ref_cnt: Vec<usize>,
         _loader_cnt: Vec<usize>,
-    ) -> Vec<u64> {
-        idx.iter().cloned().map(|x| x as u64).collect::<Vec<_>>()
+    ) -> Vec<(u32, u64)> {
+        idx.iter().cloned().map(|x|(x, x as u64)).collect::<Vec<_>>()
     }
 
     fn len(&self) -> u64 {

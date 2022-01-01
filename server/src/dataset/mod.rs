@@ -1,6 +1,7 @@
 
 mod j_lmdb;
 pub use j_lmdb::*;
+use std::collections::HashMap;
 use std::sync::Mutex;
 mod dummy;
 use crate::cache::cache::Cache;
@@ -12,16 +13,14 @@ pub trait Dataset: Sync + Send + Debug {
     fn get_indices(&self) -> Vec<u32>;
     fn read_batch(&self,
         cache: Arc<Mutex<Cache>>,
-        idx: Vec<u32>,
-        ref_cnt: Vec<usize>,
-        loader_cnt: Vec<usize>) -> Vec<u64>;
+        batch_data: HashMap<u32, (usize, usize)>) -> Vec<(u32, u64)>;
     fn read_decode_batch(
         &self,
         _cache: Arc<Mutex<Cache>>,
         _idx: Vec<u32>,
         _ref_cnt: Vec<usize>,
         _loader_cnt: Vec<usize>,
-    ) -> Vec<u64> {
+    ) -> Vec<(u32, u64)> {
         unimplemented!()
     }
     fn len(&self) -> u64;

@@ -265,7 +265,7 @@ impl Node {
             return;
         }
         let intersection = node_set[random_weight(&weights)].clone();
-        log::debug!(
+        log::trace!(
             "Dicide: {:?} decide node [{:?}]",
             loader_set,
             intersection.get_loader_id()
@@ -301,7 +301,7 @@ impl Node {
             // We should complent in next turn to avoild sample it in this turn
             self.values.push(item as u32);
             self.values_set.insert(item as u32);
-            log::debug!(
+            log::trace!(
                 "Complent: {:?} in node [{:?}:{:?}] with compset {:?}",
                 item,
                 self.loader_id,

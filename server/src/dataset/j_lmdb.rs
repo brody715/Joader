@@ -24,6 +24,7 @@ use threadpool::ThreadPool;
 use rmp::encode::write_array_len;
 use rmp::encode::write_bin_len;
 use rmp::encode::write_uint;
+use std::collections::HashMap;
 use std::io::Cursor;
 use std::path::Path;
 use std::sync::mpsc::Sender;
@@ -38,7 +39,7 @@ struct LmdbDataset {
     db: Database,
     pool: Arc<Mutex<ThreadPool>>,
 }
-const POOL_SIZE: usize = 64;
+const POOL_SIZE: usize = 8;
 pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
     let location = request.location;
     let items = request.items;
@@ -90,9 +91,10 @@ fn read_decode_one(
     ref_cnt: usize,
     loader_cnt: usize,
     cache: Arc<Mutex<Cache>>,
-    sender: Sender<u64>,
+    sender: Sender<(u32, u64)>,
     db: Database,
     env: &Environment,
+    data_idx: u32,
     key: &str,
 ) {
     let txn = env.begin_ro_txn().unwrap();
@@ -125,7 +127,7 @@ fn read_decode_one(
         .read_image(&mut writer.into_inner()[len - img_size as usize..])
         .unwrap();
     log::debug!("Read and decode data {:?} at {:?} in lmdb", id, idx);
-    sender.send(idx as u64).unwrap();
+    sender.send((data_idx, idx as u64)).unwrap();
 }
 
 fn read_one(
@@ -133,9 +135,10 @@ fn read_one(
     ref_cnt: usize,
     loader_cnt: usize,
     cache: Arc<Mutex<Cache>>,
-    sender: Sender<u64>,
+    sender: Sender<(u32, u64)>,
     db: Database,
     env: Arc<Environment>,
+    data_idx: u32,
     key: String,
 ) {
     let txn = env.begin_ro_txn().unwrap();
@@ -147,7 +150,7 @@ fn read_one(
     };
     block_slice.copy_from_slice(data);
     log::debug!("Read data {:?} at {:?} in lmdb", id, idx);
-    sender.send(idx as u64).unwrap();
+    sender.send((data_idx, idx as u64)).unwrap();
 }
 
 impl Dataset for LmdbDataset {
@@ -164,15 +167,14 @@ impl Dataset for LmdbDataset {
     fn read_batch(
         &self,
         cache: Arc<Mutex<Cache>>,
-        idx: Vec<u32>,
-        ref_cnt: Vec<usize>,
-        loader_cnt: Vec<usize>,
-    ) -> Vec<u64> {
+        batch_data: HashMap<u32, (usize, usize)> // idx, ref_cnt, loader_cnt
+    ) -> Vec<(u32, u64)> {
         let mut ret = Vec::new();
-        let (sender, receiver) = std::sync::mpsc::channel::<u64>();
+        let (sender, receiver) = std::sync::mpsc::channel();
         let mut producer_num = 0;
         // let now = SystemTime::now();
-        for ((&idx, &ref_cnt), &loader_cnt) in idx.iter().zip(ref_cnt.iter()).zip(loader_cnt.iter())
+        let pool = self.pool.lock().unwrap();
+        for (idx, (ref_cnt, loader_cnt)) in batch_data
         {
             let data_id = data_id(self.id, idx);
             {
@@ -180,7 +182,7 @@ impl Dataset for LmdbDataset {
                 if let Some(head_idx) = cache.contains_data(data_id) {
                     cache.mark_unreaded(head_idx, loader_cnt);
                     log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
-                    ret.push(head_idx as u64);
+                    ret.push((idx, head_idx as u64));
                     continue;
                 }
             }
@@ -189,7 +191,6 @@ impl Dataset for LmdbDataset {
             let key = self.items[idx as usize].keys[0].clone();
             let env = self.env.clone();
             let db = self.db;
-            let pool = self.pool.lock().unwrap();
             pool.execute(move || {
                 read_one(
                     data_id,
@@ -199,27 +200,16 @@ impl Dataset for LmdbDataset {
                     thread_sender,
                     db,
                     env,
+                    idx,
                     key,
                 )
             });
-            // thread::spawn(move || {
-            //     read_one(
-            //         data_id,
-            //         ref_cnt,
-            //         loader_cnt,
-            //         thread_cache,
-            //         thread_sender,
-            //         db,
-            //         env,
-            //         key,
-            //     )
-            // });
             producer_num += 1;
         }
         // let time1 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
         for _ in 0..producer_num {
-            let idx = receiver.recv().unwrap();
-            ret.push(idx);
+            let item = receiver.recv().unwrap();
+            ret.push(item);
         }
         // let time2 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
         // println!("{} {}", time1, time2 - time1);
@@ -232,9 +222,9 @@ impl Dataset for LmdbDataset {
         idx: Vec<u32>,
         ref_cnt: Vec<usize>,
         loader_cnt: Vec<usize>,
-    ) -> Vec<u64> {
+    ) -> Vec<(u32, u64)> {
         let mut ret = Vec::new();
-        let (sender, receiver) = std::sync::mpsc::channel::<u64>();
+        let (sender, receiver) = std::sync::mpsc::channel();
         let mut producer_num = 0;
         crossbeam::scope(|s| {
             for ((&idx, &ref_cnt), &loader_cnt) in
@@ -246,7 +236,7 @@ impl Dataset for LmdbDataset {
                     if let Some(head_idx) = cache.contains_data(data_id) {
                         cache.mark_unreaded(head_idx, loader_cnt);
                         log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
-                        ret.push(head_idx as u64);
+                        ret.push((idx, head_idx as u64));
                         continue;
                     }
                 }
@@ -264,13 +254,14 @@ impl Dataset for LmdbDataset {
                         thread_sender,
                         self.db,
                         &self.env,
+                        idx,
                         key,
                     )
                 });
             }
             for _ in 0..producer_num {
-                let idx = receiver.recv().unwrap();
-                ret.push(idx);
+                let item = receiver.recv().unwrap();
+                ret.push(item);
             }
         })
         .unwrap();
@@ -321,12 +312,15 @@ mod tests {
         });
         let now = SystemTime::now();
         let batch_size = 8 as usize;
+        
         for i in 0..(len / batch_size as usize) {
+            let mut batch_data = HashMap::new();
+            for idx in i..(i+ batch_size) {
+                batch_data.insert(idx as u32, (0usize, 1usize));
+            }
             dataset.read_batch(
                 cache.clone(),
-                (i..(i + batch_size)).map(|x| x as u32).collect::<Vec<_>>(),
-                vec![0; batch_size],
-                vec![1; batch_size],
+                batch_data
             );
         }
         let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
@@ -357,7 +351,9 @@ mod tests {
             env: Arc::new(env),
             pool: Arc::new(Mutex::new(ThreadPool::new(POOL_SIZE))),
         });
-        dataset.read_batch(cache, vec![0], vec![0], vec![1]);
+        let mut batch_data = HashMap::new();
+        batch_data.insert(0u32, (0usize, 1usize));
+        dataset.read_batch(cache, batch_data);
     }
     #[test]
     fn test_lmdb() {
