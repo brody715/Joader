@@ -10,7 +10,6 @@ use crate::{
     cache::cache::Cache,
     proto::dataset::{CreateDatasetRequest, DataItem},
 };
-use crossbeam;
 use image::jpeg::JpegDecoder;
 use image::ImageDecoder;
 use lmdb::Database;
@@ -93,9 +92,9 @@ fn read_decode_one(
     cache: Arc<Mutex<Cache>>,
     sender: Sender<(u32, u64)>,
     db: Database,
-    env: &Environment,
+    env: Arc<Environment>,
     data_idx: u32,
-    key: &str,
+    key: String,
 ) {
     let txn = env.begin_ro_txn().unwrap();
     let data: &[u8] = txn.get(db, &key.to_string()).unwrap();
@@ -167,15 +166,14 @@ impl Dataset for LmdbDataset {
     fn read_batch(
         &self,
         cache: Arc<Mutex<Cache>>,
-        batch_data: HashMap<u32, (usize, usize)> // idx, ref_cnt, loader_cnt
+        batch_data: HashMap<u32, (usize, usize)>, // idx, ref_cnt, loader_cnt
     ) -> Vec<(u32, u64)> {
         let mut ret = Vec::new();
         let (sender, receiver) = std::sync::mpsc::channel();
         let mut producer_num = 0;
         // let now = SystemTime::now();
         let pool = self.pool.lock().unwrap();
-        for (idx, (ref_cnt, loader_cnt)) in batch_data
-        {
+        for (idx, (ref_cnt, loader_cnt)) in batch_data {
             let data_id = data_id(self.id, idx);
             {
                 let mut cache = cache.lock().unwrap();
@@ -219,52 +217,51 @@ impl Dataset for LmdbDataset {
     fn read_decode_batch(
         &self,
         cache: Arc<Mutex<Cache>>,
-        idx: Vec<u32>,
-        ref_cnt: Vec<usize>,
-        loader_cnt: Vec<usize>,
+        batch_data: HashMap<u32, (usize, usize)>, // idx, ref_cnt, loader_cnt
     ) -> Vec<(u32, u64)> {
         let mut ret = Vec::new();
         let (sender, receiver) = std::sync::mpsc::channel();
         let mut producer_num = 0;
-        crossbeam::scope(|s| {
-            for ((&idx, &ref_cnt), &loader_cnt) in
-                idx.iter().zip(ref_cnt.iter()).zip(loader_cnt.iter())
+        // let now = SystemTime::now();
+        let pool = self.pool.lock().unwrap();
+        for (idx, (ref_cnt, loader_cnt)) in batch_data {
+            let data_id = data_id(self.id, idx);
             {
-                let data_id = data_id(self.id, idx);
-                {
-                    let mut cache = cache.lock().unwrap();
-                    if let Some(head_idx) = cache.contains_data(data_id) {
-                        cache.mark_unreaded(head_idx, loader_cnt);
-                        log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
-                        ret.push((idx, head_idx as u64));
-                        continue;
-                    }
+                let mut cache = cache.lock().unwrap();
+                if let Some(head_idx) = cache.contains_data(data_id) {
+                    cache.mark_unreaded(head_idx, loader_cnt);
+                    log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
+                    ret.push((idx, head_idx as u64));
+                    continue;
                 }
-                producer_num += 1;
-                let thread_cache = cache.clone();
-                let thread_sender = sender.clone();
-                let key = self.items[idx as usize].keys[0].as_str();
-
-                s.spawn(move |_| {
-                    read_decode_one(
-                        data_id,
-                        ref_cnt,
-                        loader_cnt,
-                        thread_cache,
-                        thread_sender,
-                        self.db,
-                        &self.env,
-                        idx,
-                        key,
-                    )
-                });
             }
-            for _ in 0..producer_num {
-                let item = receiver.recv().unwrap();
-                ret.push(item);
-            }
-        })
-        .unwrap();
+            let thread_cache = cache.clone();
+            let thread_sender = sender.clone();
+            let key = self.items[idx as usize].keys[0].clone();
+            let env = self.env.clone();
+            let db = self.db;
+            pool.execute(move || {
+                read_decode_one(
+                    data_id,
+                    ref_cnt,
+                    loader_cnt,
+                    thread_cache,
+                    thread_sender,
+                    db,
+                    env,
+                    idx,
+                    key,
+                )
+            });
+            producer_num += 1;
+        }
+        // let time1 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
+        for _ in 0..producer_num {
+            let item = receiver.recv().unwrap();
+            ret.push(item);
+        }
+        // let time2 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
+        // println!("{} {}", time1, time2 - time1);
         ret
     }
 
@@ -312,16 +309,13 @@ mod tests {
         });
         let now = SystemTime::now();
         let batch_size = 8 as usize;
-        
+
         for i in 0..(len / batch_size as usize) {
             let mut batch_data = HashMap::new();
-            for idx in i..(i+ batch_size) {
+            for idx in i..(i + batch_size) {
                 batch_data.insert(idx as u32, (0usize, 1usize));
             }
-            dataset.read_batch(
-                cache.clone(),
-                batch_data
-            );
+            dataset.read_batch(cache.clone(), batch_data);
         }
         let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
         println!("total{} avg{}", time, time / (len as f32));

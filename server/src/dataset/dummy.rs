@@ -64,11 +64,9 @@ impl Dataset for DummyDataset {
     fn read_decode_batch(
         &self,
         _cache: Arc<Mutex<Cache>>,
-        idx: Vec<u32>,
-        _ref_cnt: Vec<usize>,
-        _loader_cnt: Vec<usize>,
+        _batch_data: HashMap<u32, (usize, usize)>,
     ) -> Vec<(u32, u64)> {
-        idx.iter().cloned().map(|x|(x, x as u64)).collect::<Vec<_>>()
+        todo!()
     }
 
     fn len(&self) -> u64 {

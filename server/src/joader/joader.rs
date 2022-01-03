@@ -67,7 +67,7 @@ impl Joader {
         for i in dataset.get_indices() {
             ref_table.insert(i, 0);
         }
-        let (s, r) = crossbeam::channel::bounded(1024);
+        let (s, r) = crossbeam::channel::bounded(128);
         let sampler_tree = Arc::new(Mutex::new(SamplerTree::new()));
         let cond = Arc::new(Cond::new());
         let joader = Joader {
@@ -170,17 +170,17 @@ impl Joader {
             for (data_idx, mut loader_ids) in data_table {
                 let ref_cnt = self.get_ref_cnt(data_idx, loader_ids.len());
                 self.distributed(data_idx, &mut loader_ids).await;
-                let mut loader_cnt = loader_ids.len();
+
                 if !loader_ids.is_empty() {
-                    if batch_data.contains_key(&data_idx) {
-                        loader_cnt = batch_data[&data_idx].1 + loader_cnt;
-                        let set = loader_table.get_mut(&data_idx).unwrap();
+                    if let Some(set) = loader_table.get_mut(&data_idx) {
                         loader_ids.iter().for_each(|x| {
                             set.insert(*x);
                         });
                     } else {
                         loader_table.insert(data_idx, loader_ids.clone());
                     }
+                    let loader_cnt = loader_ids.len();
+                    assert!(loader_cnt != 0);
                     batch_data.insert(data_idx, (ref_cnt, loader_cnt));
                 }
             }
@@ -190,7 +190,10 @@ impl Joader {
         for (data_idx, addr) in &ret {
             for (idx, id) in loader_table[data_idx].iter().enumerate() {
                 log::debug!("Joader load data {:} at {:?} to {:?}", data_idx, addr, id);
-                self.loader_table[id].send_data(*addr, idx).await;
+                if self.loader_table.contains_key(&id) {
+                    // Todo(xj): clean cache
+                    self.loader_table[id].send_data(*addr, idx).await;
+                }
             }
         }
         // let time2 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();

@@ -179,7 +179,7 @@ mod tests {
     }
     #[test]
     fn test_insert() {
-        insert(128);
+        insert(4);
     }
     fn insert(tasks: u32) {
         let mut sampler = SamplerTree::new();
@@ -187,7 +187,7 @@ mod tests {
         let mut vec_keys = Vec::<Vec<u32>>::new();
 
         for _i in 0..tasks {
-            let size = rng.gen_range(100..10000);
+            let size = rng.gen_range(100000..1000000);
             let keys = (0..size).into_iter().collect();
             vec_keys.push(keys);
         }

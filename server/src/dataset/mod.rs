@@ -17,9 +17,7 @@ pub trait Dataset: Sync + Send + Debug {
     fn read_decode_batch(
         &self,
         _cache: Arc<Mutex<Cache>>,
-        _idx: Vec<u32>,
-        _ref_cnt: Vec<usize>,
-        _loader_cnt: Vec<usize>,
+        _batch_data: HashMap<u32, (usize, usize)>,
     ) -> Vec<(u32, u64)> {
         unimplemented!()
     }

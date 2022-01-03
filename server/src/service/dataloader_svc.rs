@@ -164,7 +164,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let mut jt = self.joader_table.lock().await;
         let mut id_table = self.loader_id_table.lock().await;
         let loader_id = id_table[&request.name];
-
+        println!("lock success");
         // 1 remove loader
         let dataset_id = GlobalID::parse_dataset_id(loader_id);
         let joader = jt.get_mut(dataset_id);
@@ -187,6 +187,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
                 .await
                 .unwrap();
         }
+        
         Ok(Response::new(DeleteDataloaderResponse {}))
     }
 }

@@ -9,13 +9,14 @@ import proto.dataloader_pb2_grpc as dataloader_pb2_grpc
 import proto.dataloader_pb2 as dataloader_pb2
 import socket
 import multiprocessing
-from faster_fifo import Queue
+from multiprocessing import Queue
 
 class Loader(object):
-    def __init__(self, ip, length: int, loader_id: int, shm_path: str, name: str, dataset_name: str, server_ip: str, nums: int, bs: int, queue: multiprocessing.Queue, client_thread):
+    def __init__(self, ip, length: int, loader_id: int, shm_path: str, name: str, dataset_name: str, server_ip: str, nums: int, bs: int, queue: multiprocessing.Queue, client_thread, command):
         self.length = length
         self.client = None
         self.client_thread = client_thread
+        self.command = command
         self.loader_id = loader_id
         self.shm_path = shm_path
         self.shm = SharedMemory(self.shm_path)
@@ -41,37 +42,41 @@ class Loader(object):
         self.queue = queue
     
     @staticmethod
-    def run_client(dataset_name: str, name: str, ip: str, nums: int, batch_size, q):
-        channel = grpc.insecure_channel(ip)
+    def run_client(dataset_name: str, name: str, ip: str, nums: int, batch_size, data_queue, command_queue):
+        channel = grpc.insecure_channel(ip, options=(('grpc.enable_http_proxy', 0),))
         client = dataloader_pb2_grpc.DataLoaderSvcStub(channel)
         request = dataloader_pb2.CreateDataloaderRequest(
             dataset_name=dataset_name, name=name, nums=nums)
         resp = client.CreateDataloader(request)
         loader_id = resp.loader_id
         length = resp.length
-        q.put(resp.length)
-        q.put(resp.loader_id)
-        q.put(resp.shm_path)
+        data_queue.put((resp.length, resp.loader_id, resp.shm_path))
         cnt = 0
         while length > cnt:
+            if command_queue.qsize() > 0:
+                break
             request = dataloader_pb2.NextRequest(loader_id=loader_id, batch_size=batch_size)
             resp = client.Next(request)
             read_off_list = resp.read_off
             address_list = resp.address
             for (read_off, address) in zip(read_off_list,address_list):
-                q.put((read_off, address))
+                data_queue.put((read_off, address))
+            if len(read_off_list) == 0:
+                time.sleep(0.01)
             cnt += len(read_off_list)
+        c = command_queue.get()
+        if c == "Delete":
+            data_queue.put((-1, -1))
 
     @staticmethod
     def new(dataset_name: str, name: str, ip: str, nums: int = 1, batch_size: int = -1):
-        q = Queue()
-        t = multiprocessing.Process(target=Loader.run_client, args=(dataset_name, name, ip, nums, batch_size, q,))
+        data_queue = Queue()
+        command_queue = Queue()
+        t = multiprocessing.Process(target=Loader.run_client, args=(dataset_name, name, ip, nums, batch_size, data_queue, command_queue))
         t.start()
         # nums indicate the number of distributed tasks
-        length = q.get()
-        loader_id = q.get()
-        shm_path = q.get()
-        return Loader(ip, length, loader_id, shm_path, name, dataset_name, ip, nums, batch_size, q, t)
+        length, loader_id, shm_path = data_queue.get()
+        return Loader(ip, length, loader_id, shm_path, name, dataset_name, ip, nums, batch_size, data_queue, t, command_queue)
 
     def get_host_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -89,7 +94,6 @@ class Loader(object):
 
     def read_data(self, address, read_off):
         off, len = self.read_header(address)
-        self.buf[address+self.READ_OFF + read_off] = 0
         return self.buf[off: off+len]
 
     def dummy_read(self, address):
@@ -97,7 +101,13 @@ class Loader(object):
         return int(address/self.HEAD_SIZE)
     
     def read_one(self):
-        self.read_off, self.addr = self.queue.get()
+        data = ()
+        while len(data) != 2:
+            data = self.queue.get()
+        self.read_off, self.addr = data
+        if self.read_off == -1:
+            print("exit")
+            exit(0)
         self.addr = self.addr*self.HEAD_SIZE
         data = self.read_data(self.addr, self.read_off)
         return data
@@ -111,25 +121,23 @@ class Loader(object):
         self.buf[self.addr+self.READ_OFF + self.read_off] = 0
 
     def delete(self):
+        # Todo(xj): bug
+        # self.shm.close()
+        self.command.put("Delete")
+        self.client_thread.join()
+        # ensure client_thread has closed
         self.client_thread.kill()
-        if self.channel is None:
-            self.channel = grpc.insecure_channel(self.server_ip)
-            self.client = dataloader_pb2_grpc.DataLoaderSvcStub(self.channel)
-        request = dataloader_pb2.DeleteDataloaderRequest(
-            dataset_name=self.dataset_name, name=self.name)
-        # Todo(xj): bug
-        # self.shm.close()
-        resp = self.client.DeleteDataloader(request)
-        return resp
+        # if self.channel is None:
+        #     self.channel = grpc.insecure_channel(self.ip, options=(('grpc.enable_http_proxy', 0),))
+        #     self.client = dataloader_pb2_grpc.DataLoaderSvcStub(self.channel)
+        # request = dataloader_pb2.DeleteDataloaderRequest(
+        #     dataset_name=self.dataset_name, name=self.name)
+        # resp = self.client.DeleteDataloader(request)
+        # return resp
     def reset(self):
+        self.delete()
         if self.channel is None:
-            self.channel = grpc.insecure_channel(self.server_ip)
+            self.channel = grpc.insecure_channel(self.ip, options=(('grpc.enable_http_proxy', 0),))
             self.client = dataloader_pb2_grpc.DataLoaderSvcStub(self.channel)
-        request = dataloader_pb2.DeleteDataloaderRequest(
-            dataset_name=self.dataset_name, name=self.name)
-        # Todo(xj): bug
-        # self.shm.close()
-        self.client.DeleteDataloader(request)
-        request = dataloader_pb2.CreateDataloaderRequest(
-            dataset_name=self.dataset_name, name=self.name, nums=self.nums)
-        self.client.CreateDataloader(request)
+        self.client_thread = multiprocessing.Process(target=Loader.run_client, args=(self.dataset_name, self.name, self.ip, self.nums, self.bs, self.queue, self.command))
+        self.client_thread.start()
