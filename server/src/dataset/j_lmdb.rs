@@ -10,9 +10,8 @@ use crate::{
     cache::cache::Cache,
     proto::dataset::{CreateDatasetRequest, DataItem},
 };
-use image::ImageBuffer;
-use image::ImageFormat;
-use image::Rgb;
+use image::jpeg::JpegDecoder;
+use image::ImageDecoder;
 use lmdb::Database;
 use lmdb::Environment;
 use lmdb::EnvironmentFlags;
@@ -64,7 +63,7 @@ pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
 }
 
 #[inline]
-fn decode<'a>(data: &'a [u8]) -> (u64, ImageBuffer<Rgb<u8>, Vec<u8>>) {
+fn decode<'a>(data: &'a [u8]) -> (u64, JpegDecoder<Cursor<&'a [u8]>>) {
     let data = msg_unpack(data);
     let data = match &data[0] {
         MsgObject::Array(data) => data,
@@ -79,11 +78,11 @@ fn decode<'a>(data: &'a [u8]) -> (u64, ImageBuffer<Rgb<u8>, Vec<u8>>) {
         MsgObject::Map(map) => &map["data"],
         err => unimplemented!("{:?}", err),
     };
-    let image = match *content.as_ref() {
-        MsgObject::Bin(bin) => image::load_from_memory_with_format(bin, ImageFormat::Jpeg).unwrap().into_rgb8(),
+    let decoder = match *content.as_ref() {
+        MsgObject::Bin(bin) => JpegDecoder::new(Cursor::new(bin)).unwrap(),
         _ => unimplemented!(),
     };
-    (label, image)
+    (label, decoder)
 }
 
 fn read_decode_one(
@@ -99,9 +98,9 @@ fn read_decode_one(
 ) {
     let txn = env.begin_ro_txn().unwrap();
     let data: &[u8] = txn.get(db, &key.to_string()).unwrap();
-    let (label, image) = decode(data.as_ref());
-    let (w, h) = image.dimensions();
-    let img_size = w*h*3;
+    let (label, decoder) = decode(data.as_ref());
+    let img_size = decoder.total_bytes();
+    let (w, h) = decoder.dimensions();
     // |array [label, w, h, image]
     let array_size = 4;
     let array_head = get_array_head_size(array_size);
@@ -123,12 +122,10 @@ fn read_decode_one(
     write_uint(&mut writer, w as u64).unwrap();
     write_uint(&mut writer, h as u64).unwrap();
     write_bin_len(&mut writer, img_size as u32).unwrap();
-    let image_bytes: &[u8] = image.as_raw();
-    writer.into_inner()[len - img_size as usize..].copy_from_slice(image_bytes);
-    // decoder
-    //     .read_image(&mut writer.into_inner()[len - img_size as usize..])
-    //     .unwrap();
-    // log::debug!("Read and decode data {:?} at {:?} in lmdb", id, idx);
+    decoder
+        .read_image(&mut writer.into_inner()[len - img_size as usize..])
+        .unwrap();
+    log::debug!("Read and decode data {:?} at {:?} in lmdb", id, idx);
     sender.send((data_idx, idx as u64)).unwrap();
 }
 
