@@ -3,7 +3,7 @@ use std::{
     sync::Arc
 };
 // casue aysnc trait has not been supported, we use thread pool
-use crate::{cache::cache::Cache, proto::distributed::SampleResult, service::GlobalID};
+use crate::{cache::cache::Cache, proto::distributed::SampleResult, service::GlobalID, dataset::POOL_SIZE};
 use std::sync::Mutex;
 
 use super::joader::Joader;
@@ -59,7 +59,7 @@ impl JoaderTable {
     pub async fn next(&mut self) {
         for (_, joader) in self.joader_table.iter_mut() {
             if !joader.is_empty() {
-                joader.next_batch(self.cache.clone(), 32).await;
+                joader.next_batch(self.cache.clone(), POOL_SIZE*4).await;
             }
         }
     }

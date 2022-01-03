@@ -20,8 +20,8 @@ use tonic::transport::{Channel, Server};
 
 async fn start_leader(joader_table: Arc<Mutex<JoaderTable>>) {
     log::info!("start leader service ....");
+    sleep(Duration::from_secs_f32(0.1)).await;
     loop {
-        
         let mut joader_table = joader_table.lock().await;
         if joader_table.is_empty() {
             log::debug!("sleep ....");

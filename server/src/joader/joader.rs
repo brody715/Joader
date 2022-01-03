@@ -67,7 +67,7 @@ impl Joader {
         for i in dataset.get_indices() {
             ref_table.insert(i, 0);
         }
-        let (s, r) = crossbeam::channel::bounded(128);
+        let (s, r) = crossbeam::channel::bounded(64);
         let sampler_tree = Arc::new(Mutex::new(SamplerTree::new()));
         let cond = Arc::new(Cond::new());
         let joader = Joader {

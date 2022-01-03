@@ -56,12 +56,12 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         &self,
         request: Request<CreateDataloaderRequest>,
     ) -> Result<Response<CreateDataloaderResponse>, Status> {
-        log::info!("call create loader {:?}", request);
         let request = request.into_inner();
         let mut rt = self.recv_table.lock().await;
         let mut jt = self.joader_table.lock().await;
         let mut loader_id_table = self.loader_id_table.lock().await;
         let dt = self.dataset_table.lock().await;
+        log::info!("call create loader {:?}", request);
         let dataset_id;
         let length;
         let loader_id;
@@ -97,7 +97,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
             dataset_id = *dt
                 .get(&request.dataset_name)
                 .ok_or_else(|| Status::not_found(&request.dataset_name))?;
-
+            
             joader = jt.get_mut(dataset_id);
             // 1. Update loader id table
             if loader_id_table.contains_key(&request.name) {
@@ -115,7 +115,6 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let (ds, dr) = create_data_channel(loader_id);
         joader.add_data_sender(loader_id, ds);
         rt.insert(loader_id, dr);
-
         Ok(Response::new(CreateDataloaderResponse {
             length,
             shm_path: jt.get_shm_path(),
@@ -133,6 +132,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         if delete_loaders.contains(&loader_id) {
             return Err(Status::out_of_range(format!("data has used up")));
         }
+        
         let recv = rt
             .get_mut(&loader_id)
             .ok_or_else(|| Status::not_found(format!("Loader {} not found", loader_id)))?;

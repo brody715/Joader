@@ -10,26 +10,27 @@ use crate::{
     cache::cache::Cache,
     proto::dataset::{CreateDatasetRequest, DataItem},
 };
-use image::jpeg::JpegDecoder;
-use image::ImageDecoder;
 use lmdb::Database;
 use lmdb::Environment;
 use lmdb::EnvironmentFlags;
 use lmdb::Transaction;
-use threadpool::ThreadPool;
-// use lmdb_zero::open::{NOSUBDIR, RDONLY};
-// use lmdb_zero::Database;
-// use lmdb_zero::Environment;
+use opencv::imgcodecs::imdecode;
+use opencv::imgproc::COLOR_BGR2RGB;
+use opencv::imgproc::cvt_color;
+use opencv::prelude::Mat;
+use opencv::prelude::MatTrait;
+use opencv::prelude::MatTraitConst;
 use rmp::encode::write_array_len;
 use rmp::encode::write_bin_len;
 use rmp::encode::write_uint;
 use std::collections::HashMap;
 use std::io::Cursor;
 use std::path::Path;
+use std::slice::from_raw_parts;
 use std::sync::mpsc::Sender;
 use std::sync::Mutex;
 use std::{fmt::Debug, sync::Arc};
-
+use threadpool::ThreadPool;
 #[derive(Debug)]
 struct LmdbDataset {
     items: Vec<DataItem>,
@@ -38,7 +39,7 @@ struct LmdbDataset {
     db: Database,
     pool: Arc<Mutex<ThreadPool>>,
 }
-const POOL_SIZE: usize = 8;
+pub const POOL_SIZE: usize = 8;
 pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
     let location = request.location;
     let items = request.items;
@@ -63,7 +64,7 @@ pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
 }
 
 #[inline]
-fn decode<'a>(data: &'a [u8]) -> (u64, JpegDecoder<Cursor<&'a [u8]>>) {
+fn decode<'a>(data: &'a [u8]) -> (u64, Mat) {
     let data = msg_unpack(data);
     let data = match &data[0] {
         MsgObject::Array(data) => data,
@@ -78,11 +79,13 @@ fn decode<'a>(data: &'a [u8]) -> (u64, JpegDecoder<Cursor<&'a [u8]>>) {
         MsgObject::Map(map) => &map["data"],
         err => unimplemented!("{:?}", err),
     };
-    let decoder = match *content.as_ref() {
-        MsgObject::Bin(bin) => JpegDecoder::new(Cursor::new(bin)).unwrap(),
+    let data = match *content.as_ref() {
+        MsgObject::Bin(bin) => bin,
         _ => unimplemented!(),
     };
-    (label, decoder)
+    let mat = Mat::from_slice(data).unwrap();
+    let image = imdecode(&mat, 1).unwrap();
+    (label, image)
 }
 
 fn read_decode_one(
@@ -98,9 +101,10 @@ fn read_decode_one(
 ) {
     let txn = env.begin_ro_txn().unwrap();
     let data: &[u8] = txn.get(db, &key.to_string()).unwrap();
-    let (label, decoder) = decode(data.as_ref());
-    let img_size = decoder.total_bytes();
-    let (w, h) = decoder.dimensions();
+    let (label, image) = decode(data.as_ref());
+    let h = image.rows();
+    let w = image.cols();
+    let img_size = (h * w * image.channels()) as usize;
     // |array [label, w, h, image]
     let array_size = 4;
     let array_head = get_array_head_size(array_size);
@@ -122,9 +126,15 @@ fn read_decode_one(
     write_uint(&mut writer, w as u64).unwrap();
     write_uint(&mut writer, h as u64).unwrap();
     write_bin_len(&mut writer, img_size as u32).unwrap();
-    decoder
-        .read_image(&mut writer.into_inner()[len - img_size as usize..])
-        .unwrap();
+    let dst_slice = &mut writer.into_inner()[len - img_size as usize..];
+    let mut dst = Mat::default();
+    cvt_color(&image, &mut dst, COLOR_BGR2RGB, 0).unwrap();
+    assert_eq!((dst.channels(), dst.rows(), dst.cols()), (image.channels(), image.rows(), image.cols()));
+    let raw = dst.data_mut();
+    unsafe {
+        let slice: &[u8] = from_raw_parts(raw, img_size);
+        dst_slice.copy_from_slice(slice);
+    };
     log::debug!("Read and decode data {:?} at {:?} in lmdb", id, idx);
     sender.send((data_idx, idx as u64)).unwrap();
 }
@@ -346,8 +356,12 @@ mod tests {
             pool: Arc::new(Mutex::new(ThreadPool::new(POOL_SIZE))),
         });
         let mut batch_data = HashMap::new();
-        batch_data.insert(0u32, (0usize, 1usize));
-        dataset.read_batch(cache, batch_data);
+        batch_data.insert(10u32, (0usize, 1usize));
+        batch_data.insert(20u32, (0usize, 1usize));
+        batch_data.insert(30u32, (0usize, 1usize));
+        batch_data.insert(40u32, (0usize, 1usize));
+        batch_data.insert(50u32, (0usize, 1usize));
+        dataset.read_decode_batch(cache, batch_data);
     }
     #[test]
     fn test_lmdb() {
