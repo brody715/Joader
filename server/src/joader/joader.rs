@@ -180,7 +180,8 @@ impl Joader {
             }
         }
         // let time1 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-        let ret = self.dataset.read_batch(cache.clone(), batch_data);
+        // let ret = self.dataset.read_batch(cache.clone(), batch_data);
+        let ret = self.dataset.read_decode_batch(cache.clone(), batch_data);
         for (data_idx, addr) in &ret {
             for (idx, id) in loader_table[data_idx].iter().enumerate() {
                 log::debug!("Joader load data {:} at {:?} to {:?}", data_idx, addr, id);
