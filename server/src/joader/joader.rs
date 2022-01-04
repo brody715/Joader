@@ -180,8 +180,8 @@ impl Joader {
             }
         }
         // let time1 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-        let ret = self.dataset.read_batch(cache.clone(), batch_data);
-        // let ret = self.dataset.read_decodebatch(cache.clone(), batch_data);
+        // let ret = self.dataset.read_batch(cache.clone(), batch_data);
+        let ret = self.dataset.read_decode_batch(cache.clone(), batch_data);
         for (data_idx, addr) in &ret {
             for (idx, id) in loader_table[data_idx].iter().enumerate() {
                 log::debug!("Joader load data {:} at {:?} to {:?}", data_idx, addr, id);
@@ -232,6 +232,24 @@ impl Joader {
         );
         let loader = self.loader_table.get_mut(&loader_id).unwrap();
         loader.add_data_sender(data_sender);
+        if loader.ready() {
+            log::debug!("loader id {} ready", loader_id);
+            self.sampler_tree
+                .lock()
+                .unwrap()
+                .insert(self.dataset.get_indices(), loader_id);
+            self.cond.notify();
+            self.empty = false;
+        }
+    }
+
+    pub fn reset_dataloader(&mut self, loader_id: u64) {
+        log::debug!(
+            "Reset a datasender {} at {}",
+            loader_id,
+            self.dataset.get_id()
+        );
+        let loader = self.loader_table.get_mut(&loader_id).unwrap();
         if loader.ready() {
             log::debug!("loader id {} ready", loader_id);
             self.sampler_tree

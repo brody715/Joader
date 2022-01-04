@@ -39,7 +39,7 @@ struct LmdbDataset {
     db: Database,
     pool: Arc<Mutex<ThreadPool>>,
 }
-pub const POOL_SIZE: usize = 16;
+pub const POOL_SIZE: usize = 32;
 pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
     let location = request.location;
     let items = request.items;
@@ -346,6 +346,65 @@ mod tests {
                 batch_data.insert(idx as u32, (0usize, 1usize));
             }
             dataset.read_batch(cache.clone(), batch_data);
+        }
+        let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
+        println!("total{} avg{}", time, time / (len as f32));
+    }
+    #[test]
+    fn test_read_decode_bacth() {
+        println!(
+            "{:?} {:?}",
+            Command::new("dd")
+                .arg("if=/home/xiej/nfs/lmdb-imagenet/ILSVRC-train.lmdb")
+                .arg("iflag=nocache")
+                .arg("count=0")
+                .output()
+                .expect("cmd exec error!"),
+            Command::new("dd")
+                .arg("if=/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb")
+                .arg("iflag=nocache")
+                .arg("count=0")
+                .output()
+                .expect("cmd exec error!")
+        );
+        log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+        let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
+        let len = 32 * 128;
+        let name = "DLCache".to_string();
+        let cache = Arc::new(Mutex::new(Cache::new(2048 * 1024 * 1024, &name, 2048)));
+        let mut items = Vec::new();
+        for i in 0..len as usize {
+            items.push(DataItem {
+                keys: vec![i.to_string()],
+            })
+        }
+        let p = Path::new(&location);
+        let env = lmdb::Environment::new()
+            .set_flags(
+                EnvironmentFlags::NO_SUB_DIR
+                    | EnvironmentFlags::READ_ONLY
+                    | EnvironmentFlags::NO_MEM_INIT
+                    | EnvironmentFlags::NO_LOCK
+                    | EnvironmentFlags::NO_SYNC,
+            )
+            .open_with_permissions(p, 0o600)
+            .unwrap();
+        let dataset = Arc::new(LmdbDataset {
+            items,
+            id: 0,
+            db: env.open_db(None).unwrap(),
+            env: Arc::new(env),
+            pool: Arc::new(Mutex::new(ThreadPool::new(POOL_SIZE))),
+        });
+        let now = SystemTime::now();
+        let batch_size = POOL_SIZE as usize;
+
+        for i in 0..(len / batch_size as usize) {
+            let mut batch_data = HashMap::new();
+            for idx in i..(i + batch_size) {
+                batch_data.insert(idx as u32, (0usize, 1usize));
+            }
+            dataset.read_decode_batch(cache.clone(), batch_data);
         }
         let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
         println!("total{} avg{}", time, time / (len as f32));

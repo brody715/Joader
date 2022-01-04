@@ -41,6 +41,15 @@ pub struct DeleteDataloaderRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteDataloaderResponse {}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ResetDataloaderRequest {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub dataset_name: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ResetDataloaderResponse {}
 #[doc = r" Generated client implementations."]
 pub mod data_loader_svc_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
@@ -145,6 +154,21 @@ pub mod data_loader_svc_client {
                 http::uri::PathAndQuery::from_static("/dataloader.DataLoaderSvc/DeleteDataloader");
             self.inner.unary(request.into_request(), path, codec).await
         }
+        pub async fn reset_dataloader(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ResetDataloaderRequest>,
+        ) -> Result<tonic::Response<super::ResetDataloaderResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/dataloader.DataLoaderSvc/ResetDataloader");
+            self.inner.unary(request.into_request(), path, codec).await
+        }
     }
 }
 #[doc = r" Generated server implementations."]
@@ -166,6 +190,10 @@ pub mod data_loader_svc_server {
             &self,
             request: tonic::Request<super::DeleteDataloaderRequest>,
         ) -> Result<tonic::Response<super::DeleteDataloaderResponse>, tonic::Status>;
+        async fn reset_dataloader(
+            &self,
+            request: tonic::Request<super::ResetDataloaderRequest>,
+        ) -> Result<tonic::Response<super::ResetDataloaderResponse>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct DataLoaderSvcServer<T: DataLoaderSvc> {
@@ -295,6 +323,40 @@ pub mod data_loader_svc_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = DeleteDataloaderSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
+                            accept_compression_encodings,
+                            send_compression_encodings,
+                        );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/dataloader.DataLoaderSvc/ResetDataloader" => {
+                    #[allow(non_camel_case_types)]
+                    struct ResetDataloaderSvc<T: DataLoaderSvc>(pub Arc<T>);
+                    impl<T: DataLoaderSvc>
+                        tonic::server::UnaryService<super::ResetDataloaderRequest>
+                        for ResetDataloaderSvc<T>
+                    {
+                        type Response = super::ResetDataloaderResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ResetDataloaderRequest>,
+                        ) -> Self::Future {
+                            let inner = self.0.clone();
+                            let fut = async move { (*inner).reset_dataloader(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ResetDataloaderSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
                             accept_compression_encodings,
