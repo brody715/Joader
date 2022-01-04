@@ -59,7 +59,7 @@ impl JoaderTable {
     pub async fn next(&mut self) {
         for (_, joader) in self.joader_table.iter_mut() {
             if !joader.is_empty() {
-                joader.next_batch(self.cache.clone(), POOL_SIZE*4).await;
+                joader.next_batch(self.cache.clone(), POOL_SIZE).await;
             }
         }
     }

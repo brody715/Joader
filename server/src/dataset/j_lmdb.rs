@@ -15,8 +15,8 @@ use lmdb::Environment;
 use lmdb::EnvironmentFlags;
 use lmdb::Transaction;
 use opencv::imgcodecs::imdecode;
-use opencv::imgproc::COLOR_BGR2RGB;
 use opencv::imgproc::cvt_color;
+use opencv::imgproc::COLOR_BGR2RGB;
 use opencv::prelude::Mat;
 use opencv::prelude::MatTrait;
 use opencv::prelude::MatTraitConst;
@@ -39,7 +39,7 @@ struct LmdbDataset {
     db: Database,
     pool: Arc<Mutex<ThreadPool>>,
 }
-pub const POOL_SIZE: usize = 8;
+pub const POOL_SIZE: usize = 16;
 pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
     let location = request.location;
     let items = request.items;
@@ -129,7 +129,6 @@ fn read_decode_one(
     let dst_slice = &mut writer.into_inner()[len - img_size as usize..];
     let mut dst = Mat::default();
     cvt_color(&image, &mut dst, COLOR_BGR2RGB, 0).unwrap();
-    assert_eq!((dst.channels(), dst.rows(), dst.cols()), (image.channels(), image.rows(), image.cols()));
     let raw = dst.data_mut();
     unsafe {
         let slice: &[u8] = from_raw_parts(raw, img_size);
@@ -294,11 +293,26 @@ mod tests {
 
     #[test]
     fn test_read_bacth() {
+        println!(
+            "{:?} {:?}",
+            Command::new("dd")
+                .arg("if=/home/xiej/nfs/lmdb-imagenet/ILSVRC-train.lmdb")
+                .arg("iflag=nocache")
+                .arg("count=0")
+                .output()
+                .expect("cmd exec error!"),
+            Command::new("dd")
+                .arg("if=/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb")
+                .arg("iflag=nocache")
+                .arg("count=0")
+                .output()
+                .expect("cmd exec error!")
+        );
         log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
-        let location = "/home/nfs/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
-        let len = 32 * 64;
+        let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
+        let len = 32 * 128;
         let name = "DLCache".to_string();
-        let cache = Arc::new(Mutex::new(Cache::new(3096 * 1024 * 1024, &name, 2048)));
+        let cache = Arc::new(Mutex::new(Cache::new(2048 * 1024 * 1024, &name, 2048)));
         let mut items = Vec::new();
         for i in 0..len as usize {
             items.push(DataItem {
@@ -307,7 +321,13 @@ mod tests {
         }
         let p = Path::new(&location);
         let env = lmdb::Environment::new()
-            .set_flags(EnvironmentFlags::NO_SUB_DIR | EnvironmentFlags::READ_ONLY)
+            .set_flags(
+                EnvironmentFlags::NO_SUB_DIR
+                    | EnvironmentFlags::READ_ONLY
+                    | EnvironmentFlags::NO_MEM_INIT
+                    | EnvironmentFlags::NO_LOCK
+                    | EnvironmentFlags::NO_SYNC,
+            )
             .open_with_permissions(p, 0o600)
             .unwrap();
         let dataset = Arc::new(LmdbDataset {
@@ -318,7 +338,7 @@ mod tests {
             pool: Arc::new(Mutex::new(ThreadPool::new(POOL_SIZE))),
         });
         let now = SystemTime::now();
-        let batch_size = 8 as usize;
+        let batch_size = POOL_SIZE as usize;
 
         for i in 0..(len / batch_size as usize) {
             let mut batch_data = HashMap::new();

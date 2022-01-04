@@ -1,4 +1,4 @@
-use crate::dataset::DatasetRef;
+use crate::dataset::{DatasetRef, POOL_SIZE};
 use crate::joader::condition::Cond;
 use crate::loader::{DataSender, Loader};
 use crate::sampler::sampler_tree::SamplerTree;
@@ -67,7 +67,7 @@ impl Joader {
         for i in dataset.get_indices() {
             ref_table.insert(i, 0);
         }
-        let (s, r) = crossbeam::channel::bounded(64);
+        let (s, r) = crossbeam::channel::bounded(POOL_SIZE*8);
         let sampler_tree = Arc::new(Mutex::new(SamplerTree::new()));
         let cond = Arc::new(Cond::new());
         let joader = Joader {
@@ -180,8 +180,8 @@ impl Joader {
             }
         }
         // let time1 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-        // let ret = self.dataset.read_batch(cache.clone(), batch_data);
-        let ret = self.dataset.read_decode_batch(cache.clone(), batch_data);
+        let ret = self.dataset.read_batch(cache.clone(), batch_data);
+        // let ret = self.dataset.read_decodebatch(cache.clone(), batch_data);
         for (data_idx, addr) in &ret {
             for (idx, id) in loader_table[data_idx].iter().enumerate() {
                 log::debug!("Joader load data {:} at {:?} to {:?}", data_idx, addr, id);
