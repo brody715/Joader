@@ -27,6 +27,9 @@ num-traits = "0.2"
 rmp = "^0.8"
 rmp-serde = "0.15.5"
 image = "0.23.14"
+threadpool = "1.0"
+lmdb-rkv = "0.14.0"
+opencv = "0.61"
 
 [build-dependencies]
 tonic-build = "0.5"

@@ -29,6 +29,11 @@ class DataLoaderSvcStub(object):
                 request_serializer=dataloader__pb2.DeleteDataloaderRequest.SerializeToString,
                 response_deserializer=dataloader__pb2.DeleteDataloaderResponse.FromString,
                 )
+        self.ResetDataloader = channel.unary_unary(
+                '/dataloader.DataLoaderSvc/ResetDataloader',
+                request_serializer=dataloader__pb2.ResetDataloaderRequest.SerializeToString,
+                response_deserializer=dataloader__pb2.ResetDataloaderResponse.FromString,
+                )
 
 
 class DataLoaderSvcServicer(object):
@@ -52,6 +57,12 @@ class DataLoaderSvcServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ResetDataloader(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DataLoaderSvcServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -69,6 +80,11 @@ def add_DataLoaderSvcServicer_to_server(servicer, server):
                     servicer.DeleteDataloader,
                     request_deserializer=dataloader__pb2.DeleteDataloaderRequest.FromString,
                     response_serializer=dataloader__pb2.DeleteDataloaderResponse.SerializeToString,
+            ),
+            'ResetDataloader': grpc.unary_unary_rpc_method_handler(
+                    servicer.ResetDataloader,
+                    request_deserializer=dataloader__pb2.ResetDataloaderRequest.FromString,
+                    response_serializer=dataloader__pb2.ResetDataloaderResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -128,5 +144,22 @@ class DataLoaderSvc(object):
         return grpc.experimental.unary_unary(request, target, '/dataloader.DataLoaderSvc/DeleteDataloader',
             dataloader__pb2.DeleteDataloaderRequest.SerializeToString,
             dataloader__pb2.DeleteDataloaderResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ResetDataloader(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/dataloader.DataLoaderSvc/ResetDataloader',
+            dataloader__pb2.ResetDataloaderRequest.SerializeToString,
+            dataloader__pb2.ResetDataloaderResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

@@ -17,7 +17,7 @@ impl SamplerTree {
     }
 
     pub fn insert(&mut self, indices: Vec<u32>, id: u64) {
-        log::debug!("Sampler insert {:?} {:?}", indices, id);
+        log::debug!("Sampler insert {:?} data {:?}", indices.len(), id);
         let mut loader_set = HashSet::new();
         loader_set.insert(id);
         let node = Node::new(indices, loader_set);
@@ -35,6 +35,7 @@ impl SamplerTree {
     }
 
     pub fn delete(&mut self, id: u64) {
+        log::debug!("Del Sampler {}",id);
         if let Some(root) = &mut self.root {
             self.root = root.delete(id);
         }
@@ -42,6 +43,7 @@ impl SamplerTree {
         if let Some(root) = &self.root {
             root.get_loader_set(&mut self.loader_set, 0);
         }
+        log::debug!("Del Sampler {} finish.....",id);
     }
 
     pub fn get_task_values(&self, loader_id: u64) -> Vec<u32> {
@@ -104,6 +106,7 @@ impl SamplerTree {
                 *len -= 1;
             }
         }
+        self.clear_loader();
         log::debug!("Sampler get {:?}", res);
         res
     }
@@ -176,7 +179,7 @@ mod tests {
     }
     #[test]
     fn test_insert() {
-        insert(128);
+        insert(4);
     }
     fn insert(tasks: u32) {
         let mut sampler = SamplerTree::new();
@@ -184,7 +187,7 @@ mod tests {
         let mut vec_keys = Vec::<Vec<u32>>::new();
 
         for _i in 0..tasks {
-            let size = rng.gen_range(100..10000);
+            let size = rng.gen_range(100000..1000000);
             let keys = (0..size).into_iter().collect();
             vec_keys.push(keys);
         }

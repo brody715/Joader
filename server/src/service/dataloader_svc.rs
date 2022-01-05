@@ -56,12 +56,12 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         &self,
         request: Request<CreateDataloaderRequest>,
     ) -> Result<Response<CreateDataloaderResponse>, Status> {
-        log::info!("call create loader {:?}", request);
         let request = request.into_inner();
         let mut rt = self.recv_table.lock().await;
         let mut jt = self.joader_table.lock().await;
         let mut loader_id_table = self.loader_id_table.lock().await;
         let dt = self.dataset_table.lock().await;
+        log::info!("call create loader {:?}", request);
         let dataset_id;
         let length;
         let loader_id;
@@ -97,7 +97,7 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
             dataset_id = *dt
                 .get(&request.dataset_name)
                 .ok_or_else(|| Status::not_found(&request.dataset_name))?;
-
+            
             joader = jt.get_mut(dataset_id);
             // 1. Update loader id table
             if loader_id_table.contains_key(&request.name) {
@@ -115,7 +115,6 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let (ds, dr) = create_data_channel(loader_id);
         joader.add_data_sender(loader_id, ds);
         rt.insert(loader_id, dr);
-
         Ok(Response::new(CreateDataloaderResponse {
             length,
             shm_path: jt.get_shm_path(),
@@ -133,26 +132,26 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         if delete_loaders.contains(&loader_id) {
             return Err(Status::out_of_range(format!("data has used up")));
         }
+        
         let recv = rt
             .get_mut(&loader_id)
             .ok_or_else(|| Status::not_found(format!("Loader {} not found", loader_id)))?;
-        let (recv_data, empty) = recv.recv_batch(bs).await;
-        
-        // let (address, empty) = recv.
+        let (recv_data, empty) = match bs {
+            -1 => recv.recv_all().await,
+            _ => recv.recv_batch(bs as u32).await,
+        };
         if empty {
             delete_loaders.insert(loader_id);
         }
-        let mut address = Vec::with_capacity(bs as usize);
-        let mut read_off = Vec::with_capacity(bs as usize);
+        let mut address = Vec::with_capacity(recv_data.len());
+        let mut read_off = Vec::with_capacity(recv_data.len());
         for data in recv_data {
             let (a, r) = decode_addr_read_off(data);
             address.push(a);
             read_off.push(r);
         }
-        Ok(Response::new(NextResponse {
-            address,
-            read_off,
-        }))
+        
+        Ok(Response::new(NextResponse { address, read_off }))
     }
 
     async fn delete_dataloader(
@@ -161,19 +160,17 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
     ) -> Result<Response<DeleteDataloaderResponse>, Status> {
         log::info!("call delete loader {:?}", request);
         let request = request.into_inner();
+        let mut rt = self.recv_table.lock().await;
+        let mut jt = self.joader_table.lock().await;
         let mut id_table = self.loader_id_table.lock().await;
         let loader_id = id_table[&request.name];
-
-        let mut rt = self.recv_table.lock().await;
-        // 1 remove recv table
-        rt.remove(&loader_id);
-
-        // 2 remove loader
+        println!("lock success");
+        // 1 remove loader
         let dataset_id = GlobalID::parse_dataset_id(loader_id);
-        let mut jt = self.joader_table.lock().await;
         let joader = jt.get_mut(dataset_id);
         joader.del_data_sender(loader_id);
-
+        // 2 remove recv table
+        rt.remove(&loader_id);
         // 3 if all subhost have removed in loader, then remove loader_id
         if joader.is_loader_empty(loader_id) {
             id_table.remove(&request.name);
@@ -190,6 +187,22 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
                 .await
                 .unwrap();
         }
+        
         Ok(Response::new(DeleteDataloaderResponse {}))
+    }
+
+    async fn reset_dataloader(
+        &self,
+        request: Request<ResetDataloaderRequest>,
+    ) -> Result<Response<ResetDataloaderResponse>, Status> {
+        log::info!("call reset loader {:?}", request);
+        let request = request.into_inner();
+        let mut jt = self.joader_table.lock().await;
+        let id_table = self.loader_id_table.lock().await;
+        let loader_id = id_table[&request.name];
+        let dataset_id = GlobalID::parse_dataset_id(loader_id);
+        let joader = jt.get_mut(dataset_id);
+        joader.reset_dataloader(loader_id);
+        Ok(Response::new(ResetDataloaderResponse {}))
     }
 }

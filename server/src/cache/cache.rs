@@ -76,7 +76,7 @@ impl Cache {
         ref_cnt: usize,
         data_id: u64,
         loader_cnt: usize,
-    ) -> (&mut [u8], usize) {
+    ) -> (&'static mut [u8], usize) {
         // allocate data can cause gc, we should first allocate data
         let data = self.allocate_data(len as u64);
         let (head, idx) = self.allocate_head(ref_cnt);

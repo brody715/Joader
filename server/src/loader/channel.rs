@@ -66,11 +66,8 @@ where
     }
     pub async fn recv_all(&mut self) -> (Vec<T>, bool) {
         let del_sig = T::from_u32(DEL_SIG).unwrap();
-
         let mut ret = Vec::new();
-        let v = self.recv.recv().await.unwrap();
-        let mut empty = v == del_sig;
-        ret.push(v);
+        let mut empty = false;
         loop {
             match self.recv.try_recv() {
                 Ok(v) => {
