@@ -56,17 +56,23 @@ impl Dataset for DummyDataset {
     fn read_batch(
         &self,
         _cache: Arc<Mutex<Cache>>,
-        _batch_data: HashMap<u32, (usize, usize)>
+        batch_data: HashMap<u32, (usize, usize)>,
     ) -> Vec<(u32, u64)> {
-        todo!()
+        batch_data
+            .iter()
+            .map(|(&data_idx, (_, _))| (data_idx, data_idx as u64))
+            .collect::<Vec<_>>()
     }
 
     fn read_decode_batch(
         &self,
         _cache: Arc<Mutex<Cache>>,
-        _batch_data: HashMap<u32, (usize, usize)>,
+        batch_data: HashMap<u32, (usize, usize)>,
     ) -> Vec<(u32, u64)> {
-        todo!()
+        batch_data
+            .iter()
+            .map(|(&data_idx, (_, _))| (data_idx, data_idx as u64))
+            .collect::<Vec<_>>()
     }
 
     fn len(&self) -> u64 {

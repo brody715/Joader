@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x10\x64\x61taloader.proto\x12\ndataloader\x1a\x0c\x63ommon.proto\"K\n\x17\x43reateDataloaderRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\x12\x0c\n\x04nums\x18\x03 \x01(\r\"o\n\x18\x43reateDataloaderResponse\x12\x0e\n\x06length\x18\x01 \x01(\x04\x12\x10\n\x08shm_path\x18\x02 \x01(\t\x12\x11\n\tloader_id\x18\x03 \x01(\x04\x12\x1e\n\x06status\x18\x04 \x01(\x0b\x32\x0e.common.Status\"4\n\x0bNextRequest\x12\x11\n\tloader_id\x18\x01 \x01(\x04\x12\x12\n\nbatch_size\x18\x02 \x01(\x05\"1\n\x0cNextResponse\x12\x0f\n\x07\x61\x64\x64ress\x18\x02 \x03(\x04\x12\x10\n\x08read_off\x18\x03 \x03(\r\"=\n\x17\x44\x65leteDataloaderRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\"\x1a\n\x18\x44\x65leteDataloaderResponse2\x88\x02\n\rDataLoaderSvc\x12]\n\x10\x43reateDataloader\x12#.dataloader.CreateDataloaderRequest\x1a$.dataloader.CreateDataloaderResponse\x12\x39\n\x04Next\x12\x17.dataloader.NextRequest\x1a\x18.dataloader.NextResponse\x12]\n\x10\x44\x65leteDataloader\x12#.dataloader.DeleteDataloaderRequest\x1a$.dataloader.DeleteDataloaderResponseb\x06proto3'
+  serialized_pb=b'\n\x10\x64\x61taloader.proto\x12\ndataloader\x1a\x0c\x63ommon.proto\"K\n\x17\x43reateDataloaderRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\x12\x0c\n\x04nums\x18\x03 \x01(\r\"o\n\x18\x43reateDataloaderResponse\x12\x0e\n\x06length\x18\x01 \x01(\x04\x12\x10\n\x08shm_path\x18\x02 \x01(\t\x12\x11\n\tloader_id\x18\x03 \x01(\x04\x12\x1e\n\x06status\x18\x04 \x01(\x0b\x32\x0e.common.Status\"4\n\x0bNextRequest\x12\x11\n\tloader_id\x18\x01 \x01(\x04\x12\x12\n\nbatch_size\x18\x02 \x01(\x05\"1\n\x0cNextResponse\x12\x0f\n\x07\x61\x64\x64ress\x18\x02 \x03(\x04\x12\x10\n\x08read_off\x18\x03 \x03(\r\"=\n\x17\x44\x65leteDataloaderRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\"\x1a\n\x18\x44\x65leteDataloaderResponse\"<\n\x16ResetDataloaderRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\"\x19\n\x17ResetDataloaderResponse2\xe4\x02\n\rDataLoaderSvc\x12]\n\x10\x43reateDataloader\x12#.dataloader.CreateDataloaderRequest\x1a$.dataloader.CreateDataloaderResponse\x12\x39\n\x04Next\x12\x17.dataloader.NextRequest\x1a\x18.dataloader.NextResponse\x12]\n\x10\x44\x65leteDataloader\x12#.dataloader.DeleteDataloaderRequest\x1a$.dataloader.DeleteDataloaderResponse\x12Z\n\x0fResetDataloader\x12\".dataloader.ResetDataloaderRequest\x1a#.dataloader.ResetDataloaderResponseb\x06proto3'
   ,
   dependencies=[common__pb2.DESCRIPTOR,])
 
@@ -267,6 +267,70 @@ _DELETEDATALOADERRESPONSE = _descriptor.Descriptor(
   serialized_end=430,
 )
 
+
+_RESETDATALOADERREQUEST = _descriptor.Descriptor(
+  name='ResetDataloaderRequest',
+  full_name='dataloader.ResetDataloaderRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='dataloader.ResetDataloaderRequest.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='dataset_name', full_name='dataloader.ResetDataloaderRequest.dataset_name', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=432,
+  serialized_end=492,
+)
+
+
+_RESETDATALOADERRESPONSE = _descriptor.Descriptor(
+  name='ResetDataloaderResponse',
+  full_name='dataloader.ResetDataloaderResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=494,
+  serialized_end=519,
+)
+
 _CREATEDATALOADERRESPONSE.fields_by_name['status'].message_type = common__pb2._STATUS
 DESCRIPTOR.message_types_by_name['CreateDataloaderRequest'] = _CREATEDATALOADERREQUEST
 DESCRIPTOR.message_types_by_name['CreateDataloaderResponse'] = _CREATEDATALOADERRESPONSE
@@ -274,6 +338,8 @@ DESCRIPTOR.message_types_by_name['NextRequest'] = _NEXTREQUEST
 DESCRIPTOR.message_types_by_name['NextResponse'] = _NEXTRESPONSE
 DESCRIPTOR.message_types_by_name['DeleteDataloaderRequest'] = _DELETEDATALOADERREQUEST
 DESCRIPTOR.message_types_by_name['DeleteDataloaderResponse'] = _DELETEDATALOADERRESPONSE
+DESCRIPTOR.message_types_by_name['ResetDataloaderRequest'] = _RESETDATALOADERREQUEST
+DESCRIPTOR.message_types_by_name['ResetDataloaderResponse'] = _RESETDATALOADERRESPONSE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 CreateDataloaderRequest = _reflection.GeneratedProtocolMessageType('CreateDataloaderRequest', (_message.Message,), {
@@ -318,6 +384,20 @@ DeleteDataloaderResponse = _reflection.GeneratedProtocolMessageType('DeleteDatal
   })
 _sym_db.RegisterMessage(DeleteDataloaderResponse)
 
+ResetDataloaderRequest = _reflection.GeneratedProtocolMessageType('ResetDataloaderRequest', (_message.Message,), {
+  'DESCRIPTOR' : _RESETDATALOADERREQUEST,
+  '__module__' : 'dataloader_pb2'
+  # @@protoc_insertion_point(class_scope:dataloader.ResetDataloaderRequest)
+  })
+_sym_db.RegisterMessage(ResetDataloaderRequest)
+
+ResetDataloaderResponse = _reflection.GeneratedProtocolMessageType('ResetDataloaderResponse', (_message.Message,), {
+  'DESCRIPTOR' : _RESETDATALOADERRESPONSE,
+  '__module__' : 'dataloader_pb2'
+  # @@protoc_insertion_point(class_scope:dataloader.ResetDataloaderResponse)
+  })
+_sym_db.RegisterMessage(ResetDataloaderResponse)
+
 
 
 _DATALOADERSVC = _descriptor.ServiceDescriptor(
@@ -327,8 +407,8 @@ _DATALOADERSVC = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=433,
-  serialized_end=697,
+  serialized_start=522,
+  serialized_end=878,
   methods=[
   _descriptor.MethodDescriptor(
     name='CreateDataloader',
@@ -357,6 +437,16 @@ _DATALOADERSVC = _descriptor.ServiceDescriptor(
     containing_service=None,
     input_type=_DELETEDATALOADERREQUEST,
     output_type=_DELETEDATALOADERRESPONSE,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+  _descriptor.MethodDescriptor(
+    name='ResetDataloader',
+    full_name='dataloader.DataLoaderSvc.ResetDataloader',
+    index=3,
+    containing_service=None,
+    input_type=_RESETDATALOADERREQUEST,
+    output_type=_RESETDATALOADERRESPONSE,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),

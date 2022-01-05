@@ -50,6 +50,6 @@ args:
         takes_value: true
     - cache_capacity:
         long: capacity
-        default_value: "4294967296"
+        default_value: "1073741824"
         value_name: cache_capacity
         takes_value: true

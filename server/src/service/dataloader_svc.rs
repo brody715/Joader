@@ -203,8 +203,6 @@ impl DataLoaderSvc for DataLoaderSvcImpl {
         let dataset_id = GlobalID::parse_dataset_id(loader_id);
         let joader = jt.get_mut(dataset_id);
         joader.reset_dataloader(loader_id);
-        joader.del_data_sender(loader_id);
-        
         Ok(Response::new(ResetDataloaderResponse {}))
     }
 }

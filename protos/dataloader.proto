@@ -37,8 +37,16 @@ message DeleteDataloaderRequest {
 
 message DeleteDataloaderResponse {}
 
+message ResetDataloaderRequest {
+    string name = 1;
+    string dataset_name = 2;
+}
+
+message ResetDataloaderResponse {}
+
 service DataLoaderSvc {
     rpc CreateDataloader(CreateDataloaderRequest) returns (CreateDataloaderResponse);
     rpc Next(NextRequest) returns (NextResponse);
     rpc DeleteDataloader(DeleteDataloaderRequest) returns (DeleteDataloaderResponse);
+    rpc ResetDataloader(ResetDataloaderRequest) returns (ResetDataloaderResponse);
 }
