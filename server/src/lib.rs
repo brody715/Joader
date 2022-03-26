@@ -9,7 +9,7 @@ pub mod proto;
 pub mod sampler;
 pub mod service;
 pub mod process;
-
+pub mod local_cache;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Role {
