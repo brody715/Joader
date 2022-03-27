@@ -48,7 +48,7 @@ impl BitmapOff {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ValueSet {
     set: Vec<BitmapOff>,
     size: usize,
@@ -203,13 +203,17 @@ impl ValueSet {
         if self.set[choice_idx].is_empty() {
             self.set.remove(choice_idx);
         }
+        self.size -= 1;
         res
     }
 
-    pub fn reset(&mut self, v: usize) {
-        match self.set.binary_search_by_key(&(v / BASE), |&bm| bm.off) {
+    pub fn reset(&mut self, v: u32) {
+        match self
+            .set
+            .binary_search_by_key(&((v as usize / BASE) * BASE), |&bm| bm.off)
+        {
             Ok(idx) => {
-                self.set[idx].reset(v);
+                self.set[idx].reset(v as usize);
                 if self.set[idx].is_empty() {
                     self.set.remove(idx);
                 }
@@ -219,16 +223,34 @@ impl ValueSet {
         self.size -= 1;
     }
 
-    pub fn set(&mut self, v: usize) {
-        match self.set.binary_search_by_key(&(v / BASE), |&bm| bm.off) {
-            Ok(idx) => self.set[idx].set(v),
+    pub fn set(&mut self, v: u32) {
+        match self
+            .set
+            .binary_search_by_key(&((v as usize / BASE) * BASE), |&bm| bm.off)
+        {
+            Ok(idx) => self.set[idx].set(v as usize),
             Err(idx) => {
-                let mut bm = BitmapOff::new((v / BASE) * BASE);
-                bm.set(v);
+                let mut bm = BitmapOff::new((v as usize / BASE) * BASE);
+                bm.set(v as usize);
                 self.set.insert(idx, bm);
             }
         }
         self.size += 1;
+    }
+
+    pub fn as_vec(&self) -> Vec<u32> {
+        let mut res = Vec::with_capacity(self.size);
+        for &bm in self.set.iter() {
+            for v in bm.bm.into_iter() {
+                res.push(v as u32);
+            }
+        }
+        assert_eq!(res.len(), self.size);
+        res
+    }
+
+    pub fn len(&self) -> usize {
+        self.size
     }
 }
 

@@ -10,6 +10,13 @@ appenders:
     encoder:
       # log 信息模式
       pattern: "{d} - {m}{n}"
+  sampler_bitmap:
+    kind: file
+    path: "./log/sampler.log"
+    append: false
+    encoder:
+      # log 信息模式
+      pattern: "{d} - {m}{n}"
   joader:
     kind: file
     path: "./log/joader.log"
@@ -48,6 +55,10 @@ loggers:
     appenders:
       - sampler
     additive: false
+  joader::sampler_bitmap:
+    level: trace
+    appenders:
+      - sampler
   joader::joader:
     level: debug
     appenders:

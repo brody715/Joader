@@ -1,10 +1,9 @@
-use super::decision::Decision;
+use super::{decision::Decision, values_set::ValueSet};
 use rand::{distributions::WeightedIndex, prelude::Distribution, thread_rng};
 use std::{collections::HashSet, iter::FromIterator, sync::Arc};
 #[derive(Clone, Debug)]
 pub struct Node {
-    values: Vec<u32>,
-    values_set: HashSet<u32>,
+    values_set: ValueSet,
     // The LoaderId set which hold the data in the Node
     loader_id: HashSet<u64>,
     // The left is smaller task, and the right is larger
@@ -31,8 +30,7 @@ impl Node {
 
     pub fn new(values: Vec<u32>, loader_id: HashSet<u64>) -> NodeRef {
         Arc::new(Node {
-            values_set: values.iter().map(|x| *x).collect::<HashSet<u32>>(),
-            values,
+            values_set: ValueSet::init(values.len()),
             loader_id,
             left: None,
             right: None,
@@ -44,7 +42,7 @@ impl Node {
     }
 
     fn len(&self) -> usize {
-        return self.values.len();
+        return self.values_set.len();
     }
 
     fn min_task_length(&self) -> usize {
@@ -55,39 +53,16 @@ impl Node {
         l
     }
 
-    fn append_value(&mut self, value: u32) {
-        self.values.push(value);
-        self.values_set.insert(value);
-    }
-
-    fn remove_value(&mut self, value: u32) {
-        for (idx, v) in self.values.iter().enumerate() {
-            if *v == value {
-                self.values.remove(idx);
-                break;
-            }
-        }
-        self.values_set.remove(&value);
-    }
-
     fn intersect_update(&mut self, other: &mut Node) -> NodeRef {
-        let values_set = self
-            .values_set
-            .intersection(&other.values_set)
-            .cloned()
-            .collect::<HashSet<u32>>();
-        let values = values_set.iter().cloned().collect::<Vec<_>>();
+        let values_set = self.values_set.intersection(&other.values_set);
         let loader_id = self
             .loader_id
             .union(&other.loader_id)
             .cloned()
             .collect::<HashSet<_>>();
-        for v in &values_set {
-            self.remove_value(*v);
-            other.remove_value(*v);
-        }
+        self.values_set = self.values_set.difference(&values_set);
+        other.values_set = other.values_set.difference(&values_set);
         Arc::new(Node {
-            values,
             values_set,
             loader_id,
             left: None,
@@ -98,10 +73,10 @@ impl Node {
     fn pushdown(&mut self) -> (Option<NodeRef>, Option<NodeRef>) {
         let mut left = self.left.clone().unwrap();
         let mut right = self.right.clone().unwrap();
-        for v in &self.values_set {
-            left.get_mut_unchecked().append_value(*v);
-            right.get_mut_unchecked().append_value(*v);
-        }
+        let l = left.get_mut_unchecked();
+        l.values_set = l.values_set.union(&self.values_set);
+        let r = right.get_mut_unchecked();
+        r.values_set = r.values_set.union(&self.values_set);
         return (Some(left), Some(right));
     }
 
@@ -131,7 +106,7 @@ impl Node {
     pub fn get_loader_values(&self, loader_id: u64) -> Vec<u32> {
         let mut res = Vec::<u32>::new();
         if self.loader_id.contains(&loader_id) {
-            res.append(&mut self.values.clone());
+            res.append(&mut self.values_set.as_vec());
             if let Some(left) = &self.left {
                 let mut left_v = left.get_loader_values(loader_id);
                 res.append(&mut left_v);
@@ -171,13 +146,7 @@ impl Node {
 
         if let Some(mut right) = mut_ref.right.clone() {
             if let None = mut_ref.left {
-                mut_ref.values.append(&mut right.values.clone());
-                mut_ref.values_set = mut_ref
-                    .values_set
-                    .union(&right.values_set)
-                    .into_iter()
-                    .cloned()
-                    .collect::<HashSet<u32>>();
+                mut_ref.values_set = mut_ref.values_set.union(&right.values_set);
                 mut_ref.right = right.right.clone();
                 mut_ref.left = right.left.clone();
             } else {
@@ -231,9 +200,10 @@ impl Node {
             let mut loader_set = HashSet::new();
             loader_set.insert(loaders[0].0);
             log::trace!(
-                "Dicide: {:?} decide node [{:?}]",
+                "Dicide: {:?} decide node [{:?}, {:?}]",
                 loader_set,
-                self.left.as_ref().unwrap().get_loader_id()
+                self.left.as_ref().unwrap().get_loader_id(),
+                self.left.as_ref().unwrap().values_set.as_vec(),
             );
             loaders.remove(0);
             let decision = Decision::new(self.left.clone().unwrap(), loader_set);
@@ -266,28 +236,23 @@ impl Node {
         }
         let intersection = node_set[random_weight(&weights)].clone();
         log::trace!(
-            "Dicide: {:?} decide node [{:?}]",
+            "Dicide: {:?} decide node [{:?}, {:?}]",
             loader_set,
-            intersection.get_loader_id()
+            intersection.get_loader_id(),
+            intersection.values_set.as_vec()
         );
         let decision = Decision::new(intersection, loader_set);
         decisions.push(decision);
     }
 
     pub fn random_choose(&mut self, loader_ids: HashSet<u64>) -> (u32, HashSet<u64>) {
-        let len = self.values.len();
-        let choice_idx = (random_probility() * (len as f32)) as usize;
-        let choice_item = self.values[choice_idx];
-
+        let choice_item = self.values_set.random_pick();
         log::trace!(
-            "Choose: {:?} choose {:} from node [{:?}:{:?}]",
+            "Choose: {:?} choose {:} from node [{:?}]",
             loader_ids,
             choice_item,
             self.loader_id,
-            self.values
         );
-        self.values.remove(choice_idx);
-        self.values_set.remove(&choice_item);
         let compensation: HashSet<_> =
             HashSet::from_iter(self.loader_id.difference(&loader_ids).cloned());
         (choice_item, compensation)
@@ -299,13 +264,11 @@ impl Node {
         }
         if self.loader_id.is_subset(comp) {
             // We should complent in next turn to avoild sample it in this turn
-            self.values.push(item as u32);
-            self.values_set.insert(item as u32);
+            self.values_set.set(item as u32);
             log::trace!(
-                "Complent: {:?} in node [{:?}:{:?}] with compset {:?}",
+                "Complent: {:?} in node [{:?}] with compset {:?}",
                 item,
                 self.loader_id,
-                self.values,
                 comp
             );
             for task in &self.loader_id {

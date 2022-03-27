@@ -35,7 +35,7 @@ impl SamplerTree {
     }
 
     pub fn delete(&mut self, id: u64) {
-        log::debug!("Del Sampler {}",id);
+        log::debug!("Del Sampler {}", id);
         if let Some(root) = &mut self.root {
             self.root = root.delete(id);
         }
@@ -43,7 +43,7 @@ impl SamplerTree {
         if let Some(root) = &self.root {
             root.get_loader_set(&mut self.loader_set, 0);
         }
-        log::debug!("Del Sampler {} finish.....",id);
+        log::debug!("Del Sampler {} finish.....", id);
     }
 
     pub fn get_task_values(&self, loader_id: u64) -> Vec<u32> {
@@ -73,7 +73,7 @@ impl SamplerTree {
         del_loader
     }
 
-    pub fn sample(&mut self) -> HashMap<u32, HashSet<u64>> {
+    pub fn sample(&mut self, _task_set: HashSet<u64>) -> HashMap<u32, HashSet<u64>> {
         let mut loaders = Vec::new();
         for loader in &self.loader_set {
             if loader.1 != 0 {
@@ -135,9 +135,9 @@ mod tests {
     use rand::Rng;
     use std::{iter::FromIterator, time::Instant};
     #[test]
-    fn test_sampler() {
+    fn test_bm_sampler() {
         // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
-        sample(100);
+        sample(16);
     }
 
     fn sample(tasks: u64) {
@@ -146,9 +146,9 @@ mod tests {
         let mut vec_keys = Vec::<HashSet<u32>>::new();
         let mut map: HashMap<u64, HashSet<u32>> = HashMap::new();
 
-        // let sizes = [1, 2, 4, 8, 16];
+        // let sizes = [1, 2, 4, 8, 16, 32];
         for id in 0..tasks {
-            let size = rng.gen_range(1..10001);
+            let size = rng.gen_range(100000..1000000);
             // let size = sizes[id as usize];
             let keys = (0..size).into_iter().collect::<Vec<u32>>();
             vec_keys.push(HashSet::from_iter(keys.iter().cloned()));
@@ -160,7 +160,7 @@ mod tests {
         loop {
             let now = Instant::now();
             sampler.clear_loader();
-            let res = sampler.sample();
+            let res = sampler.sample(HashSet::new());
             time = now.elapsed().as_secs_f32();
             if res.is_empty() {
                 break;
@@ -179,7 +179,7 @@ mod tests {
     }
     #[test]
     fn test_insert() {
-        insert(4);
+        insert(2);
     }
     fn insert(tasks: u32) {
         let mut sampler = SamplerTree::new();
@@ -187,7 +187,7 @@ mod tests {
         let mut vec_keys = Vec::<Vec<u32>>::new();
 
         for _i in 0..tasks {
-            let size = rng.gen_range(100000..1000000);
+            let size = rng.gen_range(2..10);
             let keys = (0..size).into_iter().collect();
             vec_keys.push(keys);
         }
@@ -230,7 +230,7 @@ mod tests {
         let mut time;
         loop {
             let now = Instant::now();
-            let res = sampler.sample();
+            let res = sampler.sample(HashSet::new());
             time = now.elapsed().as_secs_f32();
             if res.is_empty() {
                 break;
