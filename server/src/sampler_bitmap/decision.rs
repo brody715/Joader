@@ -44,11 +44,11 @@ impl Decision {
         ret
     }
 
-    pub fn complent(&mut self) -> bool {
+    pub fn complent(&mut self, mut root: NodeRef) -> bool {
         if self.compensation.is_empty() {
             return false;
         }
-        self.node
+        root
             .get_mut_unchecked()
             .complent(&mut self.compensation, self.item)
     }

@@ -319,7 +319,6 @@ fn remake(node: &mut Node, new_vs: ValueSet, new_loader_id: HashSet<u64>) {
             for id in &new_loader_id {
                 node.loader_id.insert(*id);
             }
-            let vs = node.values_set.clone();
             let diff = node.values_set.difference(&new_vs);
             node.values_set = node.values_set.intersection(&new_vs);
             l.values_set = new_vs.difference(&node.values_set);

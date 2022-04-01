@@ -103,7 +103,7 @@ impl SamplerTree {
 
         let mut reload = false;
         for decision in decisions.iter_mut() {
-            reload |= decision.complent();
+            reload |= decision.complent(self.root.clone().unwrap());
         }
         for (id, len) in self.loader_set.iter_mut() {
             if !mask.contains(id) && *len != 0 {
@@ -146,11 +146,12 @@ mod tests {
     use std::{iter::FromIterator, time::Instant};
     #[test]
     fn test_bm_mask() {
-        log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+        // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
         let mut mask = HashSet::new();
         mask.insert(1);
+        mask.insert(2);
         mask.insert(3);
-        sample_mask(4, &mask);
+        sample_mask(8, &mask);
     }
 
     fn sample_mask(tasks: u64, mask: &HashSet<u64>) {
@@ -159,10 +160,10 @@ mod tests {
         let mut vec_keys = Vec::<HashSet<u32>>::new();
         let mut map: HashMap<u64, HashSet<u32>> = HashMap::new();
 
-        let sizes = [1, 2, 3, 4, 16, 32];
+        // let sizes = [1, 2, 3, 4, 16, 32];
         for id in 0..tasks {
-            // let size = rng.gen_range(1..10);
-            let size = sizes[id as usize];
+            let size = rng.gen_range(100000..1000000);
+            // let size = sizes[id as usize];
             let keys = (0..size).into_iter().collect::<Vec<u32>>();
             vec_keys.push(HashSet::from_iter(keys.iter().cloned()));
             sampler.insert(keys, id);
