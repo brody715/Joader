@@ -73,7 +73,7 @@ impl SamplerTree {
         del_loader
     }
 
-    pub fn sample(&mut self, _task_set: HashSet<u64>) -> HashMap<u32, HashSet<u64>> {
+    pub fn sample(&mut self, mask: &HashSet<u64>) -> HashMap<u32, HashSet<u64>> {
         let mut loaders = Vec::new();
         for loader in &self.loader_set {
             if loader.1 != 0 {
@@ -89,21 +89,31 @@ impl SamplerTree {
         }
 
         for decision in decisions.iter_mut() {
-            let ret = decision.execute();
+            let ret = decision.execute(mask);
             if let Some(loader_set) = res.get_mut(&ret) {
                 for loader in decision.get_loaders() {
                     loader_set.insert(loader);
                 }
             } else {
-                res.insert(ret, decision.get_loaders());
+                if !decision.get_loaders().is_empty() {
+                    res.insert(ret, decision.get_loaders());
+                }
             }
         }
+
+        let mut reload = false;
         for decision in decisions.iter_mut() {
-            decision.complent();
+            reload |= decision.complent();
         }
-        for (_, len) in self.loader_set.iter_mut() {
-            if *len != 0 {
+        for (id, len) in self.loader_set.iter_mut() {
+            if !mask.contains(id) && *len != 0 {
                 *len -= 1;
+            }
+        }
+        if reload {
+            self.loader_set.clear();
+            if let Some(root) = &self.root {
+                root.get_loader_set(&mut self.loader_set, 0);
             }
         }
         self.clear_loader();
@@ -135,6 +145,80 @@ mod tests {
     use rand::Rng;
     use std::{iter::FromIterator, time::Instant};
     #[test]
+    fn test_bm_mask() {
+        log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+        let mut mask = HashSet::new();
+        mask.insert(1);
+        mask.insert(3);
+        sample_mask(4, &mask);
+    }
+
+    fn sample_mask(tasks: u64, mask: &HashSet<u64>) {
+        let mut sampler = SamplerTree::new();
+        let mut rng = rand::thread_rng();
+        let mut vec_keys = Vec::<HashSet<u32>>::new();
+        let mut map: HashMap<u64, HashSet<u32>> = HashMap::new();
+
+        let sizes = [1, 2, 3, 4, 16, 32];
+        for id in 0..tasks {
+            // let size = rng.gen_range(1..10);
+            let size = sizes[id as usize];
+            let keys = (0..size).into_iter().collect::<Vec<u32>>();
+            vec_keys.push(HashSet::from_iter(keys.iter().cloned()));
+            sampler.insert(keys, id);
+            map.insert(id, HashSet::new());
+        }
+
+        let mut time;
+        loop {
+            let now = Instant::now();
+            sampler.clear_loader();
+            let res = sampler.sample(mask);
+            time = now.elapsed().as_secs_f32();
+            if res.is_empty() {
+                break;
+            }
+            for (x, tasks) in &res {
+                for task in tasks {
+                    map.get_mut(task).unwrap().insert(*x);
+                }
+            }
+        }
+        
+        println!("time cost in one turn: {}", time);
+        for (task, set) in &map {
+            if mask.contains(task) {
+                assert_eq!(&HashSet::new(), set);
+            } else {
+                let keys = &vec_keys[(*task) as usize];
+                assert_eq!(keys, set, "task {} with len {}",*task, vec_keys[(*task) as usize].len());
+            }
+        }
+
+        let mut time;
+        loop {
+            let now = Instant::now();
+            sampler.clear_loader();
+            let res = sampler.sample(&HashSet::new());
+            time = now.elapsed().as_secs_f32();
+            if res.is_empty() {
+                break;
+            }
+            for (x, tasks) in &res {
+                for task in tasks {
+                    map.get_mut(task).unwrap().insert(*x);
+                }
+            }
+        }
+        println!("time cost in one turn: {}", time);
+        for (task, set) in &map {
+            let keys = &vec_keys[(*task) as usize];
+            assert_eq!(keys, set);
+        }
+
+    }
+
+    #[test]
     fn test_bm_sampler() {
         // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
         sample(16);
@@ -160,7 +244,7 @@ mod tests {
         loop {
             let now = Instant::now();
             sampler.clear_loader();
-            let res = sampler.sample(HashSet::new());
+            let res = sampler.sample(&HashSet::new());
             time = now.elapsed().as_secs_f32();
             if res.is_empty() {
                 break;
@@ -179,7 +263,7 @@ mod tests {
     }
     #[test]
     fn test_insert() {
-        insert(2);
+        insert(16);
     }
     fn insert(tasks: u32) {
         let mut sampler = SamplerTree::new();
@@ -187,14 +271,16 @@ mod tests {
         let mut vec_keys = Vec::<Vec<u32>>::new();
 
         for _i in 0..tasks {
-            let size = rng.gen_range(2..10);
+            let size = rng.gen_range(500000..2000000);
             let keys = (0..size).into_iter().collect();
             vec_keys.push(keys);
         }
 
         let vec_tasks = Vec::new();
         for (idx, keys) in vec_keys.iter().enumerate() {
+            let now = Instant::now();
             sampler.insert(keys.clone(), idx as u64);
+            println!("inserting {:} elements costs {:}", keys.len() ,now.elapsed().as_secs_f32());
         }
 
         for task in vec_tasks {
@@ -230,7 +316,7 @@ mod tests {
         let mut time;
         loop {
             let now = Instant::now();
-            let res = sampler.sample(HashSet::new());
+            let res = sampler.sample(&HashSet::new());
             time = now.elapsed().as_secs_f32();
             if res.is_empty() {
                 break;

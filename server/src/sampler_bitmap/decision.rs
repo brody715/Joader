@@ -1,6 +1,7 @@
 use super::sampler_node::NodeRef;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
+use std::iter::FromIterator;
 
 #[derive(Clone)]
 pub struct Decision {
@@ -34,21 +35,22 @@ impl Decision {
         }
     }
 
-    pub fn execute(&mut self) -> u32 {
+    pub fn execute(&mut self, mask: &HashSet<u64>) -> u32 {
         let mut_ref = self.node.get_mut_unchecked();
-        let (ret, comp) = mut_ref.random_choose(self.loader_ids.clone());
+        self.loader_ids = HashSet::from_iter(self.loader_ids.difference(mask).cloned());
+        let (ret, comp) = mut_ref.random_choose(&self.loader_ids);
         self.compensation = comp;
         self.item = ret;
         ret
     }
 
-    pub fn complent(&mut self) {
+    pub fn complent(&mut self) -> bool {
         if self.compensation.is_empty() {
-            return;
+            return false;
         }
         self.node
             .get_mut_unchecked()
-            .complent(&mut self.compensation, self.item);
+            .complent(&mut self.compensation, self.item)
     }
 
     pub fn get_loaders(&self) -> HashSet<u64> {

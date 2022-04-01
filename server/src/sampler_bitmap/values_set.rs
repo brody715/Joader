@@ -313,4 +313,28 @@ mod tests {
         }
         assert_eq!(l.difference(&r), v);
     }
+
+    #[test]
+    fn test_difference_2() {
+        let mut l = ValueSet::init(0);
+        let mut r = ValueSet::init(0);
+        r.set(1);
+        l.set(2);
+        l.set(3);
+        assert_eq!(l.difference(&r), l);
+    }
+
+    #[test]
+    fn test_() {
+        let mut l = ValueSet::init(0);
+        let mut r = ValueSet::init(0);
+        l.set(0);
+        r.set(1);
+
+        let mut target = ValueSet::init(0);
+        target.set(0);
+        target.set(1);
+
+        assert_eq!(l.union(&r), target);
+    }
 }

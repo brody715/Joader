@@ -245,7 +245,7 @@ impl Node {
         decisions.push(decision);
     }
 
-    pub fn random_choose(&mut self, loader_ids: HashSet<u64>) -> (u32, HashSet<u64>) {
+    pub fn random_choose(&mut self, loader_ids: &HashSet<u64>) -> (u32, HashSet<u64>) {
         let choice_item = self.values_set.random_pick();
         log::trace!(
             "Choose: {:?} choose {:} from node [{:?}]",
@@ -254,13 +254,14 @@ impl Node {
             self.loader_id,
         );
         let compensation: HashSet<_> =
-            HashSet::from_iter(self.loader_id.difference(&loader_ids).cloned());
+            HashSet::from_iter(self.loader_id.difference(loader_ids).cloned());
+
         (choice_item, compensation)
     }
 
-    pub fn complent(&mut self, comp: &mut HashSet<u64>, item: u32) {
+    pub fn complent(&mut self, comp: &mut HashSet<u64>, item: u32) -> bool {
         if comp.is_empty() {
-            return;
+            return false;
         }
         if self.loader_id.is_subset(comp) {
             // We should complent in next turn to avoild sample it in this turn
@@ -275,9 +276,56 @@ impl Node {
                 comp.remove(task);
             }
         }
+        let mut res = false;
         if let (Some(left), Some(right)) = (&mut self.left, &mut self.right) {
-            left.get_mut_unchecked().complent(comp, item);
-            right.get_mut_unchecked().complent(comp, item);
+            let l = left.get_mut_unchecked();
+            res |= l.complent(comp, item);
+            let r = right.get_mut_unchecked();
+            res |= r.complent(comp, item);
+            log::debug!("{:?} len: {}, {:?} len: {}", l.get_loader_id(), l.min_task_length(), r.get_loader_id(), r.min_task_length());
+            if l.min_task_length() > r.min_task_length() {
+                res = true;
+                match (&mut r.left, &mut r.right) {
+                    (Some(rl), Some(_)) => {
+                        let lid_set = l.loader_id.clone();
+                        let lvs = l.values_set.clone();
+                        l.values_set = r.values_set.union(&rl.values_set);
+                        l.loader_id = rl.loader_id.clone();
+                        remake(r, lvs, lid_set);
+                    }
+                    (None, None) => {
+                        let temp = self.left.clone();
+                        self.left = self.right.clone();
+                        self.right = temp;
+                    }
+                    _ => unreachable!(),
+                }
+            }
         }
+        // if remake, we need to reload task_set
+        res
+    }
+}
+
+fn remake(node: &mut Node, new_vs: ValueSet, new_loader_id: HashSet<u64>) {
+    match (&mut node.left, &mut node.right) {
+        (Some(left), Some(right)) => {
+            let l = left.get_mut_unchecked();
+            let r = right.get_mut_unchecked();
+            log::debug!("swap {:?} {:?}", l.get_loader_id(), r.get_loader_id());
+            for lid in &l.loader_id {
+                node.loader_id.remove(lid);
+            }
+            for id in &new_loader_id {
+                node.loader_id.insert(*id);
+            }
+            let vs = node.values_set.clone();
+            let diff = node.values_set.difference(&new_vs);
+            node.values_set = node.values_set.intersection(&new_vs);
+            l.values_set = new_vs.difference(&node.values_set);
+            l.loader_id = new_loader_id;
+            r.values_set = r.values_set.union(&diff);
+        }
+        _ => unreachable!(),
     }
 }
