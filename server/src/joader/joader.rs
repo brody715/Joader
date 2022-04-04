@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
+use threadpool::ThreadPool;
 #[derive(Debug)]
 pub struct Joader {
     dataset: DatasetRef,

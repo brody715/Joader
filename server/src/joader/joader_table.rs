@@ -5,7 +5,7 @@ use std::{
 // casue aysnc trait has not been supported, we use thread pool
 use crate::{cache::cache::Cache, proto::distributed::SampleResult, service::GlobalID, dataset::POOL_SIZE};
 use std::sync::Mutex;
-
+use threadpool::ThreadPool;
 use super::joader::Joader;
 
 #[derive(Debug)]
@@ -15,6 +15,7 @@ pub struct JoaderTable {
     cache: Arc<Mutex<Cache>>,
     hash_key: u32,
     shm_path: String,
+    pool: ThreadPool,
 }
 
 impl JoaderTable {
@@ -24,6 +25,7 @@ impl JoaderTable {
             cache,
             hash_key: 1,
             shm_path,
+            pool: ThreadPool::new(32),
         }
     }
 

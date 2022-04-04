@@ -24,7 +24,11 @@ impl Job {
         self.queue.is_full()
     }
 
-    pub fn queue(&self) -> &ArrayQueue<Arc<Vec<u8>>> {
-        &self.queue
+    pub fn push(&self, v: Arc<Vec<u8>>) {
+        self.queue.push(v);
+    }
+
+    pub fn get(&self) -> Option<Arc<Vec<u8>>> {
+        self.queue.pop()
     }
 }
