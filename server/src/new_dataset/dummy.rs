@@ -1,11 +1,7 @@
 use super::Dataset;
 use super::DatasetRef;
-use crate::{
-    cache::cache::Cache,
-    proto::dataset::{CreateDatasetRequest, DataItem},
-};
-use std::collections::HashMap;
-use std::sync::Mutex;
+use crate::proto::job::{Data, data::DataType};
+use crate::proto::dataset::{CreateDatasetRequest, DataItem};
 use std::{fmt::Debug, sync::Arc};
 
 #[derive(Clone, Default, Debug)]
@@ -53,27 +49,13 @@ impl Dataset for DummyDataset {
         (start..end).collect::<Vec<_>>()
     }
 
-    // fn read_batch(
-    //     &self,
-    //     _cache: Arc<Mutex<Cache>>,
-    //     batch_data: HashMap<u32, (usize, usize)>,
-    // ) -> Vec<(u32, u64)> {
-    //     batch_data
-    //         .iter()
-    //         .map(|(&data_idx, (_, _))| (data_idx, data_idx as u64))
-    //         .collect::<Vec<_>>()
-    // }
-
-    // fn read_decode_batch(
-    //     &self,
-    //     _cache: Arc<Mutex<Cache>>,
-    //     batch_data: HashMap<u32, (usize, usize)>,
-    // ) -> Vec<(u32, u64)> {
-    //     batch_data
-    //         .iter()
-    //         .map(|(&data_idx, (_, _))| (data_idx, data_idx as u64))
-    //         .collect::<Vec<_>>()
-    // }
+    fn read(&self, idx: u32) -> Arc<Vec<Data>> {
+        let data = Data {
+            bs: idx.to_be_bytes().to_vec(),
+            ty: DataType::Uint32 as i32,
+        };
+        Arc::new(vec![data])
+    }
 
     fn len(&self) -> u64 {
         self.items.len() as u64

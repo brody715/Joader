@@ -1,16 +1,11 @@
 use super::Dataset;
 use super::DatasetRef;
-use crate::process::get_array_head_size;
-use crate::process::get_bin_size_from_len;
-use crate::process::get_int_size;
-use crate::process::msg_unpack;
 use crate::process::MsgObject;
-use crate::{
-    cache::cache::Cache,
-    proto::dataset::{CreateDatasetRequest, DataItem},
-};
+use crate::process::msg_unpack;
+use crate::proto::job::Data;
+use crate::proto::job::data::DataType;
+use crate::proto::dataset::{CreateDatasetRequest, DataItem};
 use lmdb::Database;
-use lmdb::Environment;
 use lmdb::EnvironmentFlags;
 use lmdb::Transaction;
 use opencv::imgcodecs::imdecode;
@@ -19,26 +14,17 @@ use opencv::imgproc::COLOR_BGR2RGB;
 use opencv::prelude::Mat;
 use opencv::prelude::MatTrait;
 use opencv::prelude::MatTraitConst;
-use rmp::encode::write_array_len;
-use rmp::encode::write_bin_len;
-use rmp::encode::write_uint;
-use std::collections::HashMap;
-use std::io::Cursor;
 use std::path::Path;
 use std::slice::from_raw_parts;
-use std::sync::mpsc::Sender;
-use std::sync::Mutex;
 use std::{fmt::Debug, sync::Arc};
-use threadpool::ThreadPool;
 #[derive(Debug)]
 struct LmdbDataset {
     items: Vec<DataItem>,
     id: u32,
     env: Arc<lmdb::Environment>,
-    db: Database,
-    pool: Arc<Mutex<ThreadPool>>,
+    db: Database
 }
-pub const POOL_SIZE: usize = 32;
+
 pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
     let location = request.location;
     let items = request.items;
@@ -58,7 +44,6 @@ pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
         id,
         db: env.open_db(None).unwrap(),
         env: Arc::new(env),
-        pool: Arc::new(Mutex::new(ThreadPool::new(POOL_SIZE))),
     })
 }
 
@@ -87,79 +72,6 @@ fn decode<'a>(data: &'a [u8]) -> (u64, Mat) {
     (label, image)
 }
 
-fn read_decode_one(
-    id: u64,
-    ref_cnt: usize,
-    loader_cnt: usize,
-    cache: Arc<Mutex<Cache>>,
-    sender: Sender<(u32, u64)>,
-    db: Database,
-    env: Arc<Environment>,
-    data_idx: u32,
-    key: String,
-) {
-    let txn = env.begin_ro_txn().unwrap();
-    let data: &[u8] = txn.get(db, &key.to_string()).unwrap();
-    let (label, image) = decode(data.as_ref());
-    let h = image.rows();
-    let w = image.cols();
-    let img_size = (h * w * image.channels()) as usize;
-    // |array [label, w, h, image]
-    let array_size = 4;
-    let array_head = get_array_head_size(array_size);
-
-    let label_len = get_int_size(label);
-    let width_len = get_int_size(w as u64);
-    let height_len = get_int_size(h as u64);
-    let bin_len = get_bin_size_from_len(img_size as usize);
-
-    let len = array_head + bin_len + label_len + width_len + height_len;
-    let (block_slice, idx) = {
-        let mut locked_cache = cache.lock().unwrap();
-        locked_cache.allocate(len, ref_cnt, id, loader_cnt)
-    };
-    assert_eq!(block_slice.len(), len);
-    let mut writer = Cursor::new(block_slice);
-    write_array_len(&mut writer, array_size as u32).unwrap();
-    write_uint(&mut writer, label).unwrap();
-    write_uint(&mut writer, w as u64).unwrap();
-    write_uint(&mut writer, h as u64).unwrap();
-    write_bin_len(&mut writer, img_size as u32).unwrap();
-    let dst_slice = &mut writer.into_inner()[len - img_size as usize..];
-    let mut dst = Mat::default();
-    cvt_color(&image, &mut dst, COLOR_BGR2RGB, 0).unwrap();
-    let raw = dst.data_mut();
-    unsafe {
-        let slice: &[u8] = from_raw_parts(raw, img_size);
-        dst_slice.copy_from_slice(slice);
-    };
-    log::debug!("Read and decode data {:?} at {:?} in lmdb", id, idx);
-    sender.send((data_idx, idx as u64)).unwrap();
-}
-
-fn read_one(
-    id: u64,
-    ref_cnt: usize,
-    loader_cnt: usize,
-    cache: Arc<Mutex<Cache>>,
-    sender: Sender<(u32, u64)>,
-    db: Database,
-    env: Arc<Environment>,
-    data_idx: u32,
-    key: String,
-) {
-    let txn = env.begin_ro_txn().unwrap();
-    let data: &[u8] = txn.get(db, &key.to_string()).unwrap();
-    let len = data.len();
-    let (block_slice, idx) = {
-        let mut cache = cache.lock().unwrap();
-        cache.allocate(len, ref_cnt, id, loader_cnt)
-    };
-    block_slice.copy_from_slice(data);
-    log::debug!("Read data {:?} at {:?} in lmdb", id, idx);
-    sender.send((data_idx, idx as u64)).unwrap();
-}
-
 impl Dataset for LmdbDataset {
     fn get_id(&self) -> u32 {
         self.id
@@ -171,107 +83,37 @@ impl Dataset for LmdbDataset {
         (start..end).collect::<Vec<_>>()
     }
 
-    // fn read_batch(
-    //     &self,
-    //     cache: Arc<Mutex<Cache>>,
-    //     batch_data: HashMap<u32, (usize, usize)>, // idx, ref_cnt, loader_cnt
-    // ) -> Vec<(u32, u64)> {
-    //     let mut ret = Vec::new();
-    //     let (sender, receiver) = std::sync::mpsc::channel();
-    //     let mut producer_num = 0;
-    //     // let now = SystemTime::now();
-    //     let pool = self.pool.lock().unwrap();
-    //     for (idx, (ref_cnt, loader_cnt)) in batch_data {
-    //         let data_id = data_id(self.id, idx);
-    //         {
-    //             let mut cache = cache.lock().unwrap();
-    //             if let Some(head_idx) = cache.contains_data(data_id) {
-    //                 cache.mark_unreaded(head_idx, loader_cnt);
-    //                 log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
-    //                 ret.push((idx, head_idx as u64));
-    //                 continue;
-    //             }
-    //         }
-    //         let thread_cache = cache.clone();
-    //         let thread_sender = sender.clone();
-    //         let key = self.items[idx as usize].keys[0].clone();
-    //         let env = self.env.clone();
-    //         let db = self.db;
-    //         pool.execute(move || {
-    //             read_one(
-    //                 data_id,
-    //                 ref_cnt,
-    //                 loader_cnt,
-    //                 thread_cache,
-    //                 thread_sender,
-    //                 db,
-    //                 env,
-    //                 idx,
-    //                 key,
-    //             )
-    //         });
-    //         producer_num += 1;
-    //     }
-    //     // let time1 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-    //     for _ in 0..producer_num {
-    //         let item = receiver.recv().unwrap();
-    //         ret.push(item);
-    //     }
-    //     // let time2 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-    //     // println!("{} {}", time1, time2 - time1);
-    //     ret
-    // }
+    fn read(&self, idx: u32) -> Arc<Vec<Data>> {
+        let txn = self.env.begin_ro_txn().unwrap();
+        let key = self.items[idx as usize].keys[0].clone();
+        let data: &[u8] = txn.get(self.db, &key.to_string()).unwrap();
+        let (label, image) = decode(data.as_ref());
 
-    // fn read_decode_batch(
-    //     &self,
-    //     cache: Arc<Mutex<Cache>>,
-    //     batch_data: HashMap<u32, (usize, usize)>, // idx, ref_cnt, loader_cnt
-    // ) -> Vec<(u32, u64)> {
-    //     let mut ret = Vec::new();
-    //     let (sender, receiver) = std::sync::mpsc::channel();
-    //     let mut producer_num = 0;
-    //     // let now = SystemTime::now();
-    //     let pool = self.pool.lock().unwrap();
-    //     for (idx, (ref_cnt, loader_cnt)) in batch_data {
-    //         let data_id = data_id(self.id, idx);
-    //         {
-    //             let mut cache = cache.lock().unwrap();
-    //             if let Some(head_idx) = cache.contains_data(data_id) {
-    //                 cache.mark_unreaded(head_idx, loader_cnt);
-    //                 log::debug!("Hit data {:?} at {:?} in lmdb", idx, head_idx);
-    //                 ret.push((idx, head_idx as u64));
-    //                 continue;
-    //             }
-    //         }
-    //         let thread_cache = cache.clone();
-    //         let thread_sender = sender.clone();
-    //         let key = self.items[idx as usize].keys[0].clone();
-    //         let env = self.env.clone();
-    //         let db = self.db;
-    //         pool.execute(move || {
-    //             read_decode_one(
-    //                 data_id,
-    //                 ref_cnt,
-    //                 loader_cnt,
-    //                 thread_cache,
-    //                 thread_sender,
-    //                 db,
-    //                 env,
-    //                 idx,
-    //                 key,
-    //             )
-    //         });
-    //         producer_num += 1;
-    //     }
-    //     // let time1 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-    //     for _ in 0..producer_num {
-    //         let item = receiver.recv().unwrap();
-    //         ret.push(item);
-    //     }
-    //     // let time2 = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-    //     // println!("{} {}", time1, time2 - time1);
-    //     ret
-    // }
+        let mut dst = Mat::default();
+        cvt_color(&image, &mut dst, COLOR_BGR2RGB, 0).unwrap();
+        let h = image.rows();
+        let w = image.cols();
+        let img_size = (h * w * image.channels()) as usize;
+        let mut data = unsafe { 
+            let raw = dst.data_mut();
+            from_raw_parts(raw, img_size).to_vec()
+        };
+        let mut h = h.to_be_bytes().to_vec();
+        let mut w = w.to_be_bytes().to_vec();
+        data.append(&mut h);
+        data.append(&mut w);
+        data.push(image.channels() as u8);
+        
+        let label = Data {
+            bs: label.to_be_bytes().to_vec(),
+            ty: DataType::Uint64 as i32,
+        };
+        let data = Data {
+            bs: data,
+            ty: DataType::Image as i32
+        };
+        Arc::new(vec![label, data])
+    }
 
     fn len(&self) -> u64 {
         self.items.len() as u64

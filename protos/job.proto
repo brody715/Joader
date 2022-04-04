@@ -1,0 +1,47 @@
+syntax = "proto3";
+package job;
+
+message Data {
+    enum data_type {
+        INT32 = 0;
+        INT64 = 1;
+        IMAGE = 2;
+        UINT32 = 3;
+        UINT64 = 4;
+    }
+    bytes bs = 1;
+    data_type ty = 2;
+}
+
+message CreateJobRequest {
+    string name = 1;
+    string dataset_name = 2;
+}
+
+message CreateJobResponse {
+    uint64 length = 1;
+    uint64 loader_id = 3;
+}
+
+
+message NextRequest {
+    uint64 loader_id = 1;
+    int32 batch_size = 2;
+}
+
+message NextResponse {
+    repeated Data data = 1;
+}
+
+message DeleteJobRequest {
+    string name = 1;
+    string dataset_name = 2;
+}
+
+message DeleteJobResponse {}
+
+service JobSvc {
+    rpc CreateJob(CreateJobRequest) returns (CreateJobResponse);
+    rpc Next(NextRequest) returns (NextResponse);
+    rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse);
+}

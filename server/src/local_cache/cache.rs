@@ -4,12 +4,14 @@
 use std::{collections::HashMap, sync::Arc};
 use cached::{UnboundCache, Cached};
 
+use crate::proto::job::Data;
+
 use super::policy::{RefCnt, Policy};
 
 #[derive(Debug)]
 pub struct Cache {
     refs: HashMap::<String, usize>,
-    cache: UnboundCache<String, Arc<Vec<u8>>>,
+    cache: UnboundCache<String, Arc<Vec<Data>>>,
     capacity: usize,
     size: usize,
     policy: RefCnt,
@@ -36,7 +38,7 @@ impl Cache {
         }
     }
 
-    pub fn set(&mut self, key: &str, value: Arc<Vec<u8>>, ref_cnt: usize) {
+    pub fn set(&mut self, key: &str, value: Arc<Vec<Data>>, ref_cnt: usize) {
         while !self.check_valid(value.len()) {
             self.evict()
         }
@@ -46,7 +48,7 @@ impl Cache {
         self.refs.insert(key.to_string(), ref_cnt);
     }
 
-    pub fn get(&mut self, key: &String)-> Option<&Arc<Vec<u8>>> {
+    pub fn get(&mut self, key: &String)-> Option<&Arc<Vec<Data>>> {
         self.cache.cache_get(key)
     }
     fn check_valid(&self, l: usize)-> bool {

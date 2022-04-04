@@ -1,11 +1,13 @@
 use crossbeam::queue::ArrayQueue;
 use std::sync::Arc;
+
+use crate::proto::job::Data;
 // Loader store the information of schema, dataset and filter
 
 #[derive(Debug)]
 pub struct Job {
     id: u64,
-    queue: ArrayQueue<Arc<Vec<u8>>>
+    queue: ArrayQueue<Arc<Vec<Data>>>
 }
 
 impl Job {
@@ -24,11 +26,11 @@ impl Job {
         self.queue.is_full()
     }
 
-    pub fn push(&self, v: Arc<Vec<u8>>) {
+    pub fn push(&self, v: Arc<Vec<Data>>) {
         self.queue.push(v);
     }
 
-    pub fn get(&self) -> Option<Arc<Vec<u8>>> {
+    pub fn get(&self) -> Option<Arc<Vec<Data>>> {
         self.queue.pop()
     }
 }

@@ -6,7 +6,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let proto_files = vec![
       "dataloader",
       "dataset",
-      "distributed"
+      "distributed",
+      "job"
     ];
     let protos: Vec<String> = proto_files
       .iter()
