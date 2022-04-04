@@ -11,6 +11,7 @@ pub mod service;
 pub mod process;
 pub mod local_cache;
 pub mod sampler_bitmap;
+pub mod service_sync;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Role {
