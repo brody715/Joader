@@ -62,7 +62,7 @@ async fn test_joader_dummy() {
         .unwrap();
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_joader_lmdb() {
     // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
     let cache = Arc::new(Mutex::new(Cache::new()));
