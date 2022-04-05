@@ -5,7 +5,6 @@ use crate::sampler_bitmap::sampler_tree::SamplerTree;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use threadpool::ThreadPool;
 #[derive(Debug)]
 pub struct Joader {
     dataset: DatasetRef,
@@ -54,10 +53,10 @@ impl Joader {
         joader
     }
 
-    pub async fn next(&mut self, pool: &mut ThreadPool, cache: Arc<Mutex<Cache>>) {
+    pub async fn next(&mut self, cache: Arc<Mutex<Cache>>) {
         let mut mask = HashSet::new();
         for (id, job) in self.job_table.iter() {
-            if job.allocate() == false {
+            if job.is_full() == true {
                 mask.insert(*id);
             }
         }
@@ -77,7 +76,6 @@ impl Joader {
             tokio::spawn(async move {
                 read(data_idx, ref_cnt, clone_cache, dataset, job_set).await;
             });
-            // pool.execute(move || read(data_idx, ref_cnt, clone_cache, dataset, job_set))
         }
     }
 

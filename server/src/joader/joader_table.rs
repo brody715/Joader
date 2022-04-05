@@ -5,7 +5,6 @@ use std::{
 // casue aysnc trait has not been supported, we use thread pool
 use crate::{cache::cache::Cache, proto::distributed::SampleResult, service::GlobalID, dataset::POOL_SIZE};
 use std::sync::Mutex;
-use threadpool::ThreadPool;
 use super::joader::Joader;
 
 #[derive(Debug)]

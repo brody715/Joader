@@ -1,27 +1,21 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 // casue aysnc trait has not been supported, we use thread pool
 use super::joader::Joader;
 use crate::local_cache::cache::Cache;
 use tokio::sync::Mutex;
-use threadpool::ThreadPool;
 
 #[derive(Debug)]
 pub struct JoaderTable {
     // Joader is hash by the name of dataset
     joader_table: HashMap<u32, Joader>,
-    cache: Arc<Mutex<Cache>>,
-    pool: ThreadPool,
+    cache: Arc<Mutex<Cache>>
 }
 
 impl JoaderTable {
     pub fn new(cache: Arc<Mutex<Cache>>) -> JoaderTable {
         JoaderTable {
             joader_table: HashMap::new(),
-            cache,
-            pool: ThreadPool::new(2),
+            cache
         }
     }
 
@@ -53,7 +47,7 @@ impl JoaderTable {
         let mut cnt = 0;
         for (_, joader) in self.joader_table.iter_mut() {
             if !joader.is_empty() {
-                joader.next(&mut self.pool, self.cache.clone()).await;
+                joader.next( self.cache.clone()).await;
                 cnt += 1;
             }
         }

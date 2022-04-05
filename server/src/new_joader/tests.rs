@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::Receiver;
 use tokio::sync::Mutex;
 
 use super::joader::*;
@@ -11,13 +11,16 @@ use crate::{
     new_joader::joader_table::JoaderTable,
 };
 
-async fn write(mut jt: JoaderTable) {
+async fn write(mut jt: JoaderTable, len: usize) {
+    let mut cnt = 0;
     loop {
-        println!("write");
-        if jt.next().await == 0 {
+        jt.next().await;
+        cnt += 1;
+        if cnt == len {
             break;
         }
     }
+    assert_eq!(cnt, len);
 }
 
 async fn read(mut recv: Receiver<Arc<Vec<Data>>>, len: usize) -> Vec<Arc<Vec<Data>>> {
@@ -28,16 +31,16 @@ async fn read(mut recv: Receiver<Arc<Vec<Data>>>, len: usize) -> Vec<Arc<Vec<Dat
             Some(data) => res.push(data),
             None => continue,
         }
-        println!("get {:}", res.len());
         if res.len() == len {
             break;
         }
     }
+    assert_eq!(res.len(), len);
     res
 }
 
 #[tokio::test]
-async fn test_joader() {
+async fn test_joader_dummy() {
     // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
     let cache = Arc::new(Mutex::new(Cache::new()));
     let mut jt = JoaderTable::new(cache);
@@ -49,7 +52,7 @@ async fn test_joader() {
     let (job, recv) = Job::new(0);
     joader.add_job(job.clone()).await;
     jt.add_joader(joader);
-    tokio::spawn(async { write(jt).await });
+    tokio::spawn(async move { write(jt, len).await });
     tokio::spawn(async move{ read(recv, len).await }).await.unwrap();
 }
 

@@ -9,7 +9,7 @@ use crate::proto::job::Data;
 pub trait Dataset: Sync + Send + Debug {
     fn get_id(&self) -> u32;
     fn get_indices(&self) -> Vec<u32>;
-    fn read(&self, idx: u32) -> Arc<Vec<Data>> {todo!()}
+    fn read(&self, _idx: u32) -> Arc<Vec<Data>> {todo!()}
     fn len(&self) -> u64;
 }
 pub type DatasetRef = Arc<dyn Dataset>;
