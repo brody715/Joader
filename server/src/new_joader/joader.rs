@@ -79,8 +79,8 @@ impl Joader {
         }
     }
 
-    pub async fn del_loader(&mut self, id: u64) {
-        log::debug!("Del loader {}", id);
+    pub async fn del_job(&mut self, id: u64) {
+        log::debug!("Del job {}", id);
         let mut sampler_tree = self.sampler_tree.lock().await;
         let valuse = sampler_tree.get_loader_values(id);
         sampler_tree.delete(id);

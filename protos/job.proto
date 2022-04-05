@@ -20,7 +20,7 @@ message CreateJobRequest {
 
 message CreateJobResponse {
     uint64 length = 1;
-    uint64 loader_id = 3;
+    uint64 job_id = 3;
 }
 
 

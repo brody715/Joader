@@ -14,6 +14,7 @@ pub mod sampler_bitmap;
 pub mod service;
 pub mod new_joader;
 pub mod new_dataset;
+pub mod new_service;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Role {

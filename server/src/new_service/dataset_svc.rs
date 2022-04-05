@@ -1,24 +1,25 @@
+use crate::new_dataset::build_dataset;
+use crate::new_joader::joader::Joader;
 use crate::new_joader::joader_table::JoaderTable;
 use crate::proto::dataset::dataset_svc_server::DatasetSvc;
 use crate::proto::dataset::*;
-use crate::new_joader::joader::Joader;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::{async_trait, Request, Response, Status};
 
-use super::{IdGenerator, IDTable};
+use super::{IDTable, IdGenerator};
 #[derive(Debug)]
 pub struct DatasetSvcImpl {
     joader_table: Arc<Mutex<JoaderTable>>,
     dataset_id_table: IDTable,
-    id_gen: IdGenerator
+    id_gen: IdGenerator,
 }
 
 impl DatasetSvcImpl {
     pub fn new(
         joader_table: Arc<Mutex<JoaderTable>>,
         dataset_id_table: IDTable,
-        id_gen: IdGenerator
+        id_gen: IdGenerator,
     ) -> DatasetSvcImpl {
         Self {
             joader_table,
@@ -45,10 +46,10 @@ impl DatasetSvc for DatasetSvcImpl {
         }
 
         log::debug!("Create dataset {:?}", request);
-        let id = self.id_gen.get_dataset_id().await;
+        let id = self.id_gen.get_dataset_id();
         dt.insert(request.name.clone(), id);
         // insert dataset to dataset table
-        let joader = Joader::new(dataset::build_dataset(request.clone(), id));
+        let joader = Joader::new(build_dataset(request.clone(), id));
         jt.add_joader(joader);
         Ok(Response::new(CreateDatasetResponse { status: None }))
     }

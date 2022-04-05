@@ -29,7 +29,7 @@ pub struct CreateJobResponse {
     #[prost(uint64, tag = "1")]
     pub length: u64,
     #[prost(uint64, tag = "3")]
-    pub loader_id: u64,
+    pub job_id: u64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct NextRequest {
