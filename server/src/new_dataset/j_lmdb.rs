@@ -20,12 +20,12 @@ use std::{fmt::Debug, sync::Arc};
 #[derive(Debug)]
 struct LmdbDataset {
     items: Vec<DataItem>,
-    id: u32,
+    id: u64,
     env: Arc<lmdb::Environment>,
     db: Database
 }
 
-pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
+pub fn from_proto(request: CreateDatasetRequest, id: u64) -> DatasetRef {
     let location = request.location;
     let items = request.items;
     let p = Path::new(&location);
@@ -73,7 +73,7 @@ fn decode<'a>(data: &'a [u8]) -> (u64, Mat) {
 }
 
 impl Dataset for LmdbDataset {
-    fn get_id(&self) -> u32 {
+    fn get_id(&self) -> u64 {
         self.id
     }
 
@@ -115,8 +115,8 @@ impl Dataset for LmdbDataset {
         Arc::new(vec![label, data])
     }
 
-    fn len(&self) -> u64 {
-        self.items.len() as u64
+    fn len(&self) -> usize {
+        self.items.len() as usize
     }
 }
 

@@ -104,7 +104,7 @@ impl Joader {
         }
     }
 
-    pub fn get_id(&self) -> u32 {
+    pub fn get_id(&self) -> u64 {
         self.dataset.get_id()
     }
 
@@ -112,7 +112,7 @@ impl Joader {
         self.job_table.is_empty() || self.empty
     }
 
-    pub fn len(&self) -> u64 {
+    pub fn len(&self) -> usize {
         self.dataset.len()
     }
 }

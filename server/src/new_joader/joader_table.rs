@@ -7,7 +7,7 @@ use tokio::sync::Mutex;
 #[derive(Debug)]
 pub struct JoaderTable {
     // Joader is hash by the name of dataset
-    joader_table: HashMap<u32, Joader>,
+    joader_table: HashMap<u64, Joader>,
     cache: Arc<Mutex<Cache>>
 }
 
@@ -25,12 +25,12 @@ impl JoaderTable {
         self.joader_table.insert(id, joader);
     }
 
-    pub fn del_joader(&mut self, id: u32) {
+    pub fn del_joader(&mut self, id: u64) {
         log::debug!("Del joader {:?}", id);
         self.joader_table.remove(&id);
     }
 
-    pub fn get_mut(&mut self, id: u32) -> &mut Joader {
+    pub fn get_mut(&mut self, id: u64) -> &mut Joader {
         log::debug!("Get joader {:?}", id);
         self.joader_table.get_mut(&id).unwrap()
     }
@@ -54,7 +54,7 @@ impl JoaderTable {
         cnt
     }
 
-    pub fn contains_dataset(&self, id: u32) -> bool {
+    pub fn contains_dataset(&self, id: u64) -> bool {
         self.joader_table.contains_key(&id)
     }
 }
