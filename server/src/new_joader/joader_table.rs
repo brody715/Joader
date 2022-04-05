@@ -5,7 +5,7 @@ use std::{
 // casue aysnc trait has not been supported, we use thread pool
 use super::joader::Joader;
 use crate::local_cache::cache::Cache;
-use std::sync::Mutex;
+use tokio::sync::Mutex;
 use threadpool::ThreadPool;
 
 #[derive(Debug)]
@@ -21,11 +21,11 @@ impl JoaderTable {
         JoaderTable {
             joader_table: HashMap::new(),
             cache,
-            pool: ThreadPool::new(32),
+            pool: ThreadPool::new(2),
         }
     }
 
-    pub fn add_joader(&mut self, mut joader: Joader) {
+    pub fn add_joader(&mut self, joader: Joader) {
         log::debug!("Add Joader {:?}", joader.get_id());
         let id = joader.get_id();
         self.joader_table.insert(id, joader);
@@ -49,12 +49,15 @@ impl JoaderTable {
         empty
     }
 
-    pub async fn next(&mut self) {
+    pub async fn next(&mut self) -> i32 {
+        let mut cnt = 0;
         for (_, joader) in self.joader_table.iter_mut() {
             if !joader.is_empty() {
-                let res = joader.next(&mut self.pool, self.cache.clone()).await;
+                joader.next(&mut self.pool, self.cache.clone()).await;
+                cnt += 1;
             }
         }
+        cnt
     }
 
     pub fn contains_dataset(&self, id: u32) -> bool {

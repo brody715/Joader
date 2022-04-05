@@ -1,78 +1,57 @@
-// use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
+use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::Mutex;
 
-// use std::sync::Mutex;
+use super::joader::*;
+use crate::proto::job::Data;
+use crate::{
+    local_cache::cache::Cache,
+    new_dataset::new_dummy,
+    job::Job,
+    new_joader::joader_table::JoaderTable,
+};
 
-// use super::joader::*;
-// use crate::service::decode_addr_read_off;
-// use crate::{
-//     cache::cache::Cache,
-//     dataset::new_dummy,
-//     loader::{create_data_channel, create_idx_channel, DataReceiver, IdxReceiver},
-// };
+async fn write(mut jt: JoaderTable) {
+    loop {
+        println!("write");
+        if jt.next().await == 0 {
+            break;
+        }
+    }
+}
 
-// async fn read_data(mut r: DataReceiver) -> Vec<u64> {
-//     let mut res = Vec::new();
-//     loop {
-//         let (indices, empty) = r.recv_all().await;
-//         let mut indices = indices.iter().map(|x| decode_addr_read_off(*x).0).collect::<Vec<_>>();
-//         res.append(&mut indices);
-//         if empty {
-//             r.close();
-//             break;
-//         }
-//     }
-//     return res;
-// }
+async fn read(mut recv: Receiver<Arc<Vec<Data>>>, len: usize) -> Vec<Arc<Vec<Data>>> {
+    let mut res = Vec::new();
+    loop {
+        let data = recv.recv().await;
+        match data {
+            Some(data) => res.push(data),
+            None => continue,
+        }
+        println!("get {:}", res.len());
+        if res.len() == len {
+            break;
+        }
+    }
+    res
+}
 
-// async fn read_indices(mut r: IdxReceiver) -> Vec<u32> {
-//     let mut res = Vec::new();
-//     loop {
-//         let (mut indices, empty) = r.recv_all().await;
-//         res.append(&mut indices);
-//         if empty {
-//             r.close();
-//             break;
-//         }
-//     }
-//     return res;
-// }
-
-// async fn write_batch(mut joader: Joader, cache: Arc::<Mutex::<Cache>>) {
-//     loop {
-//         joader.next_batch(cache.clone(), 32).await;
-//         if joader.is_empty() {
-//             break;
-//         }
-//     }
-// }
-
-// async fn write(mut joader: Joader, cache: Arc::<Mutex::<Cache>>) {
-//     loop {
-//         joader.next_batch(cache.clone(), 1).await;
-//         if joader.is_empty() {
-//             break;
-//         }
-//     }
-// }
-
-// #[tokio::test]
-// async fn test_1_loader_batch_read() {
-//     log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
-//     let len = 4096;
-//     let name = "dummy".to_string();
-//     let dataset = new_dummy(len, name.clone());
-//     let mut joader = Joader::new(dataset);
-//     let (s, r) = create_data_channel(0);
-//     joader.add_loader(0, 1);
-//     joader.add_data_sender(0, s);
-//     let cache = Arc::new(Mutex::new(Cache::new(256, &name, 1)));
-//     tokio::spawn(async move { write_batch(joader, cache).await });
-//     let mut res = tokio::spawn(async move { read_data(r).await })
-//         .await
-//         .unwrap();
-//     res.sort();
-//     assert_eq!(res, (0..len).map(|x| x as u64).collect::<Vec<_>>());
-// }
+#[tokio::test]
+async fn test_joader() {
+    // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+    let cache = Arc::new(Mutex::new(Cache::new()));
+    let mut jt = JoaderTable::new(cache);
+    
+    let len = 4096;
+    let name = "dummy".to_string();
+    let dataset = new_dummy(len, name.clone());
+    let mut joader = Joader::new(dataset);
+    let (job, recv) = Job::new(0);
+    joader.add_job(job.clone()).await;
+    jt.add_joader(joader);
+    tokio::spawn(async { write(jt).await });
+    tokio::spawn(async move{ read(recv, len).await }).await.unwrap();
+}
 
 // #[tokio::test]
 // async fn test_1_loader() {

@@ -15,7 +15,6 @@ pub struct JoaderTable {
     cache: Arc<Mutex<Cache>>,
     hash_key: u32,
     shm_path: String,
-    pool: ThreadPool,
 }
 
 impl JoaderTable {
@@ -24,8 +23,7 @@ impl JoaderTable {
             joader_table: HashMap::new(),
             cache,
             hash_key: 1,
-            shm_path,
-            pool: ThreadPool::new(32),
+            shm_path
         }
     }
 
