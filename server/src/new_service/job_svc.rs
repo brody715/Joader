@@ -66,7 +66,7 @@ impl JobSvc for JobSvcImpl {
 
     async fn next(&self, request: Request<NextRequest>) -> Result<Response<NextResponse>, Status> {
         let request = request.into_inner();
-        let loader_id = request.loader_id;
+        let loader_id = request.job_id;
         let mut rt = self.recv_table.lock().await;
 
         let recv = rt

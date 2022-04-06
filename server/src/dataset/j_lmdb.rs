@@ -64,7 +64,7 @@ pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
 }
 
 #[inline]
-fn decode<'a>(data: &'a [u8]) -> (u64, Mat) {
+fn process<'a>(data: &'a [u8]) -> (u64, Mat) {
     let data = msg_unpack(data);
     let data = match &data[0] {
         MsgObject::Array(data) => data,
@@ -101,7 +101,7 @@ fn read_decode_one(
 ) {
     let txn = env.begin_ro_txn().unwrap();
     let data: &[u8] = txn.get(db, &key.to_string()).unwrap();
-    let (label, image) = decode(data.as_ref());
+    let (label, image) = process(data.as_ref());
     let h = image.rows();
     let w = image.cols();
     let img_size = (h * w * image.channels()) as usize;

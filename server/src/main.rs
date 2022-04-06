@@ -13,8 +13,6 @@ use tokio::time::sleep;
 use tonic::transport::Server;
 
 async fn run(joader_table: Arc<Mutex<JoaderTable>>) {
-    log::info!("start leader service ....");
-    // sleep(Duration::from_secs_f32(0.1)).await;
     loop {
         {
             let mut joader_table = joader_table.lock().await;
@@ -52,7 +50,7 @@ async fn start_server(ip: &str, port: &str) -> Result<(), Box<dyn std::error::Er
         dataset_id_table.clone(),
     );
     log::info!("start joader at {:?}......", addr);
-    tokio::spawn(async move { run(joader_table) });
+    tokio::spawn(async move { run(joader_table).await });
     let server = Server::builder()
         .add_service(DatasetSvcServer::new(dataset_svc))
         .add_service(JobSvcServer::new(job_svc))

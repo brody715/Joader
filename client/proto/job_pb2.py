@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\tjob.proto\x12\x03job\"^\n\x04\x44\x61ta\x12\n\n\x02\x62s\x18\x01 \x01(\x0c\x12\x1f\n\x02ty\x18\x02 \x01(\x0e\x32\x13.job.Data.data_type\")\n\tdata_type\x12\x08\n\x04UINT\x10\x00\x12\x07\n\x03INT\x10\x01\x12\t\n\x05IMAGE\x10\x02\"6\n\x10\x43reateJobRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\"3\n\x11\x43reateJobResponse\x12\x0e\n\x06length\x18\x01 \x01(\x04\x12\x0e\n\x06job_id\x18\x03 \x01(\x04\"4\n\x0bNextRequest\x12\x11\n\tloader_id\x18\x01 \x01(\x04\x12\x12\n\nbatch_size\x18\x02 \x01(\x05\"\'\n\x0cNextResponse\x12\x17\n\x04\x64\x61ta\x18\x01 \x03(\x0b\x32\t.job.Data\"6\n\x10\x44\x65leteJobRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\"\x13\n\x11\x44\x65leteJobResponse2\xad\x01\n\x06JobSvc\x12:\n\tCreateJob\x12\x15.job.CreateJobRequest\x1a\x16.job.CreateJobResponse\x12+\n\x04Next\x12\x10.job.NextRequest\x1a\x11.job.NextResponse\x12:\n\tDeleteJob\x12\x15.job.DeleteJobRequest\x1a\x16.job.DeleteJobResponseb\x06proto3'
+  serialized_pb=b'\n\tjob.proto\x12\x03job\"^\n\x04\x44\x61ta\x12\n\n\x02\x62s\x18\x01 \x01(\x0c\x12\x1f\n\x02ty\x18\x02 \x01(\x0e\x32\x13.job.Data.data_type\")\n\tdata_type\x12\x08\n\x04UINT\x10\x00\x12\x07\n\x03INT\x10\x01\x12\t\n\x05IMAGE\x10\x02\"6\n\x10\x43reateJobRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\"3\n\x11\x43reateJobResponse\x12\x0e\n\x06length\x18\x01 \x01(\x04\x12\x0e\n\x06job_id\x18\x03 \x01(\x04\"\x1d\n\x0bNextRequest\x12\x0e\n\x06job_id\x18\x01 \x01(\x04\"\'\n\x0cNextResponse\x12\x17\n\x04\x64\x61ta\x18\x01 \x03(\x0b\x32\t.job.Data\"6\n\x10\x44\x65leteJobRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\"\x13\n\x11\x44\x65leteJobResponse2\xad\x01\n\x06JobSvc\x12:\n\tCreateJob\x12\x15.job.CreateJobRequest\x1a\x16.job.CreateJobResponse\x12+\n\x04Next\x12\x10.job.NextRequest\x1a\x11.job.NextResponse\x12:\n\tDeleteJob\x12\x15.job.DeleteJobRequest\x1a\x16.job.DeleteJobResponseb\x06proto3'
 )
 
 
@@ -182,15 +182,8 @@ _NEXTREQUEST = _descriptor.Descriptor(
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='loader_id', full_name='job.NextRequest.loader_id', index=0,
+      name='job_id', full_name='job.NextRequest.job_id', index=0,
       number=1, type=4, cpp_type=4, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='batch_size', full_name='job.NextRequest.batch_size', index=1,
-      number=2, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -208,7 +201,7 @@ _NEXTREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=223,
-  serialized_end=275,
+  serialized_end=252,
 )
 
 
@@ -239,8 +232,8 @@ _NEXTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=277,
-  serialized_end=316,
+  serialized_start=254,
+  serialized_end=293,
 )
 
 
@@ -278,8 +271,8 @@ _DELETEJOBREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=318,
-  serialized_end=372,
+  serialized_start=295,
+  serialized_end=349,
 )
 
 
@@ -303,8 +296,8 @@ _DELETEJOBRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=374,
-  serialized_end=393,
+  serialized_start=351,
+  serialized_end=370,
 )
 
 _DATA.fields_by_name['ty'].enum_type = _DATA_DATA_TYPE
@@ -377,8 +370,8 @@ _JOBSVC = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=396,
-  serialized_end=569,
+  serialized_start=373,
+  serialized_end=546,
   methods=[
   _descriptor.MethodDescriptor(
     name='CreateJob',

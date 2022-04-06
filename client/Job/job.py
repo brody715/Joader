@@ -10,8 +10,11 @@ class Job(object):
     def __init__(self, ip, length: int, job_name: str, dataset_name: str, job_id):
         self.length = length
         self.job_id = job_id
-        self.client = grpc.insecure_channel(
-            ip, options=(('grpc.enable_http_proxy', 0),))
+        channel = grpc.insecure_channel(
+            ip, options=[
+                ('grpc.enable_http_proxy', 0),
+                ('grpc.max_receive_message_length', 1024*1024*25),])
+        self.client = job_pb2_grpc.JobSvcStub(channel)
         self.job_name = job_name
         self.dataset_name = dataset_name
 
@@ -33,15 +36,16 @@ class Job(object):
         elif data.ty == job_pb2.Data.INT:
             return int.from_bytes(data.bs, 'big', signed=True)
         elif data.ty == job_pb2.Data.IMAGE:
-            w = int.from_bytes(data.bs[-4:])
-            h = int.from_bytes(data.bs[-8:-4])
-            return np.array(data.bs[:-8]).reshape(-1, w, h)
+            w = int.from_bytes(data.bs[-4:], 'big', signed=True)
+            h = int.from_bytes(data.bs[-8:-4], 'big', signed=True)
+            image = np.frombuffer(data.bs, dtype=np.uint8, count = len(data.bs)-8).reshape(-1, w, h)
+            return image
         else:
             assert False
 
     def next(self):
-        request = job_pb2.NextRequest(loader_id=self.loader_id)
-        data_list = self.client.Next(request)
+        request = job_pb2.NextRequest(job_id=self.job_id)
+        data_list = self.client.Next(request).data
         res = []
         for data in data_list:
             res.append(self.transform(data))

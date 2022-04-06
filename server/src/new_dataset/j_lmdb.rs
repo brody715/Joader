@@ -102,11 +102,10 @@ impl Dataset for LmdbDataset {
         let mut w = w.to_be_bytes().to_vec();
         data.append(&mut h);
         data.append(&mut w);
-        data.push(image.channels() as u8);
         
         let label = Data {
             bs: label.to_be_bytes().to_vec(),
-            ty: DataType::Uint64 as i32,
+            ty: DataType::Uint as i32,
         };
         let data = Data {
             bs: data,

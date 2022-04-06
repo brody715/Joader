@@ -52,7 +52,7 @@ impl Dataset for DummyDataset {
     fn read(&self, idx: u32) -> Arc<Vec<Data>> {
         let data = Data {
             bs: idx.to_be_bytes().to_vec(),
-            ty: DataType::Uint32 as i32,
+            ty: DataType::Uint as i32,
         };
         Arc::new(vec![data])
     }

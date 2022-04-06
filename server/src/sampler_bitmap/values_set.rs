@@ -207,21 +207,21 @@ impl ValueSet {
         res
     }
 
-    // pub fn reset(&mut self, v: u32) {
-    //     match self
-    //         .set
-    //         .binary_search_by_key(&((v as usize / BASE) * BASE), |&bm| bm.off)
-    //     {
-    //         Ok(idx) => {
-    //             self.set[idx].reset(v as usize);
-    //             if self.set[idx].is_empty() {
-    //                 self.set.remove(idx);
-    //             }
-    //         }
-    //         Err(_) => unreachable!(format!("try reset {:} \n", v)),
-    //     }
-    //     self.size -= 1;
-    // }
+    pub fn reset(&mut self, v: u32) {
+        match self
+            .set
+            .binary_search_by_key(&((v as usize / BASE) * BASE), |&bm| bm.off)
+        {
+            Ok(idx) => {
+                self.set[idx].reset(v as usize);
+                if self.set[idx].is_empty() {
+                    self.set.remove(idx);
+                }
+            }
+            Err(_) => unreachable!(format!("try reset {:} \n", v)),
+        }
+        self.size -= 1;
+    }
 
     pub fn set(&mut self, v: u32) {
         match self

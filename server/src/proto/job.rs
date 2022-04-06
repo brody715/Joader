@@ -10,11 +10,9 @@ pub mod data {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum DataType {
-        Int32 = 0,
-        Int64 = 1,
+        Uint = 0,
+        Int = 1,
         Image = 2,
-        Uint32 = 3,
-        Uint64 = 4,
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -34,9 +32,7 @@ pub struct CreateJobResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct NextRequest {
     #[prost(uint64, tag = "1")]
-    pub loader_id: u64,
-    #[prost(int32, tag = "2")]
-    pub batch_size: i32,
+    pub job_id: u64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct NextResponse {

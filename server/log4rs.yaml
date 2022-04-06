@@ -56,7 +56,7 @@ loggers:
       - sampler
     additive: false
   joader::sampler_bitmap:
-    level: trace
+    level: info
     appenders:
       - sampler
   joader::joader:
