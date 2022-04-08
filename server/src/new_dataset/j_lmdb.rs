@@ -3,6 +3,7 @@ use super::DatasetRef;
 use crate::process::decode_from_memory;
 use crate::process::msg_unpack;
 use crate::process::random_crop;
+use crate::process::resize;
 use crate::process::MsgObject;
 use crate::proto::dataset::{CreateDatasetRequest, DataItem};
 use crate::proto::job::data::DataType;
@@ -10,9 +11,9 @@ use crate::proto::job::Data;
 use lmdb::Database;
 use lmdb::EnvironmentFlags;
 use lmdb::Transaction;
-use opencv::imgcodecs::imdecode;
-use opencv::prelude::Mat;
 use opencv::prelude::MatTrait;
+use opencv::prelude::MatTraitConst;
+use opencv::prelude::MatTraitConstManual;
 use std::path::Path;
 use std::slice::from_raw_parts;
 use std::{fmt::Debug, sync::Arc};
@@ -67,10 +68,12 @@ fn preprocess<'a>(data: &'a [u8]) -> (u64, Vec<u8>) {
         MsgObject::Bin(bin) => bin,
         _ => unimplemented!(),
     };
-    let mut image = decode_from_memory(data);
-    random_crop(&mut image);
-    image.resize(224).unwrap();
-    let data = unsafe { from_raw_parts(image.data_mut(), 224 * 224 * 3).to_vec() };
+    // let mut image = decode_from_memory(data);
+    // random_crop(&mut image);
+    // let mut image = resize(&mut image, 224, 224);
+    // let data = unsafe { from_raw_parts(image.data_mut(), 224 * 224 * 3).to_vec() };
+    let mut image = load_image_and_resize224_from_memory(data).unwrap();
+    let data = unsafe { from_raw_parts(image.data_ptr() as *mut u8, 224 * 224 * 3).to_vec() };
     (label, data)
 }
 

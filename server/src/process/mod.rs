@@ -4,3 +4,5 @@ mod decode;
 pub use decode::*;
 mod random_crop;
 pub use random_crop::*;
+mod resize;
+pub use resize::*;

@@ -1,4 +1,3 @@
-use clap::load_yaml;
 use ::joader::local_cache::cache::Cache;
 use ::joader::new_joader::joader_table::JoaderTable;
 use joader::new_service::{DatasetSvcImpl, IdGenerator, JobSvcImpl};
