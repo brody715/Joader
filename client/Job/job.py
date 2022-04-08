@@ -36,9 +36,7 @@ class Job(object):
         elif data.ty == job_pb2.Data.INT:
             return int.from_bytes(data.bs, 'big', signed=True)
         elif data.ty == job_pb2.Data.IMAGE:
-            w = int.from_bytes(data.bs[-4:], 'big', signed=True)
-            h = int.from_bytes(data.bs[-8:-4], 'big', signed=True)
-            image = np.frombuffer(data.bs, dtype=np.uint8, count = len(data.bs)-8).reshape(-1, w, h)
+            image = np.frombuffer(data.bs, dtype=np.uint8, count = len(data.bs)-8).reshape(-1, 224, 224)
             return image
         else:
             assert False
