@@ -32,6 +32,7 @@ lmdb-rkv = "0.14.0"
 opencv = "0.61"
 cached = "0.34.0"
 bitmaps = "3.1.0"
+tch = "0.7.0"
 
 [build-dependencies]
 tonic-build = "0.5"
