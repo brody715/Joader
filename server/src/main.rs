@@ -1,6 +1,6 @@
+use clap::load_yaml;
 use ::joader::local_cache::cache::Cache;
 use ::joader::new_joader::joader_table::JoaderTable;
-use clap::{load_yaml, App};
 use joader::new_service::{DatasetSvcImpl, IdGenerator, JobSvcImpl};
 use joader::proto::dataset::dataset_svc_server::DatasetSvcServer;
 use joader::proto::job::job_svc_server::JobSvcServer;
@@ -61,12 +61,9 @@ async fn start_server(ip: &str, port: &str) -> Result<(), Box<dyn std::error::Er
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let yaml = load_yaml!("cli.yaml");
-    let matches = App::from(yaml).get_matches();
-    let log4rs_config = matches.value_of("log4rs_config").unwrap();
-    let ip = matches.value_of("ip").unwrap();
-    let port = matches.value_of("port").unwrap();
-    let _cache_capacity: usize = matches.value_of("cache_capacity").unwrap().parse().unwrap();
+    let log4rs_config = "log4rs.yaml";
+    let ip = "0.0.0.0";
+    let port = "4321";
     log4rs::init_file(log4rs_config, Default::default()).unwrap();
     //start server
     start_server(ip, port).await?;
