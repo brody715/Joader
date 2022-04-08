@@ -235,9 +235,15 @@ dependencies = [
 
 [[package]]
 name = "clang-sys"
+<<<<<<< HEAD
 version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4cc00842eed744b858222c4c9faf7243aafc6d33f92f96935263ef4d8a41ce21"
+=======
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa66045b9cb23c2e9c1520732030608b02ee07e5cfaa5a521ec15ded7fa24c90"
+>>>>>>> fbaa9b76ae7df778f3159ef9d8427f09f44e0676
 dependencies = [
  "glob",
  "libc",
@@ -835,7 +841,10 @@ dependencies = [
  "rand",
  "rmp",
  "rmp-serde",
+<<<<<<< HEAD
  "tch",
+=======
+>>>>>>> fbaa9b76ae7df778f3159ef9d8427f09f44e0676
  "threadpool",
  "tokio",
  "tonic",
@@ -914,9 +923,15 @@ dependencies = [
 
 [[package]]
 name = "lmdb-rkv-sys"
+<<<<<<< HEAD
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61b9ce6b3be08acefa3003c57b7565377432a89ec24476bbe72e11d101f852fe"
+=======
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b27470ac25167b3afdfb6af8fcd3bc1be67de50ffbdaf4073378cfded6ae24a5"
+>>>>>>> fbaa9b76ae7df778f3159ef9d8427f09f44e0676
 dependencies = [
  "cc",
  "libc",
@@ -992,6 +1007,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
+<<<<<<< HEAD
 name = "matrixmultiply"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1001,6 +1017,8 @@ dependencies = [
 ]
 
 [[package]]
+=======
+>>>>>>> fbaa9b76ae7df778f3159ef9d8427f09f44e0676
 name = "memchr"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1200,6 +1218,7 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "openssl-probe"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1219,6 +1238,8 @@ dependencies = [
 ]
 
 [[package]]
+=======
+>>>>>>> fbaa9b76ae7df778f3159ef9d8427f09f44e0676
 name = "ordered-float"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1526,9 +1547,15 @@ dependencies = [
 
 [[package]]
 name = "regex"
+<<<<<<< HEAD
 version = "1.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a11647b6b25ff05a515cb92c365cec08801e83423a235b51e231e1808747286"
+=======
+version = "1.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d07a8629359eb56f1e2fb1652bb04212c072a87ba68546a04065d525673ac461"
+>>>>>>> fbaa9b76ae7df778f3159ef9d8427f09f44e0676
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1601,9 +1628,15 @@ checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 
 [[package]]
 name = "semver"
+<<<<<<< HEAD
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4a3381e03edd24287172047536f20cabde766e2cd3e65e6b00fb3af51c4f38d"
+=======
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "568a8e6258aa33c13358f81fd834adb854c6f7c9468520910a9b1e8fac068012"
+>>>>>>> fbaa9b76ae7df778f3159ef9d8427f09f44e0676
 
 [[package]]
 name = "serde"

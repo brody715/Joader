@@ -179,7 +179,7 @@ mod tests {
     }
     #[test]
     fn test_insert() {
-        insert(16);
+        insert(4);
     }
     fn insert(tasks: u32) {
         let mut sampler = SamplerTree::new();

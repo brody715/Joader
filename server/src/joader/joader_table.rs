@@ -22,7 +22,7 @@ impl JoaderTable {
             joader_table: HashMap::new(),
             cache,
             hash_key: 1,
-            shm_path
+            shm_path,
         }
     }
 
