@@ -3,7 +3,7 @@ use image::imageops::FilterType::Triangle;
 use opencv::{
     core::{Range, Vector, CV_8UC3},
     imgproc::{resize, INTER_LINEAR},
-    prelude::{Boxed, Mat, MatTraitConst, MatTraitConstManual},
+    prelude::{Mat, MatTraitConst, MatTraitConstManual},
 };
 use rand::distributions::{Distribution, Uniform};
 use std::slice::from_raw_parts;
