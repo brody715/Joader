@@ -282,7 +282,7 @@ impl Node {
             res |= l.complent(comp, item);
             let r = right.get_mut_unchecked();
             res |= r.complent(comp, item);
-            log::debug!("{:?} len: {}, {:?} len: {}", l.get_loader_id(), l.min_task_length(), r.get_loader_id(), r.min_task_length());
+            log::trace!("{:?} len: {}, {:?} len: {}", l.get_loader_id(), l.min_task_length(), r.get_loader_id(), r.min_task_length());
             if l.min_task_length() > r.min_task_length() {
                 res = true;
                 match (&mut r.left, &mut r.right) {
@@ -312,7 +312,7 @@ fn remake(node: &mut Node, new_vs: ValueSet, new_loader_id: HashSet<u64>) {
         (Some(left), Some(right)) => {
             let l = left.get_mut_unchecked();
             let r = right.get_mut_unchecked();
-            log::debug!("swap {:?} {:?}", l.get_loader_id(), r.get_loader_id());
+            log::trace!("swap {:?} {:?}", l.get_loader_id(), r.get_loader_id());
             for lid in &l.loader_id {
                 node.loader_id.remove(lid);
             }

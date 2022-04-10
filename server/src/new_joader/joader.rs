@@ -12,7 +12,6 @@ pub struct Joader {
     // map loader id to loader
     job_table: HashMap<u64, Arc<Job>>,
     ref_table: HashMap<u32, usize>,
-    empty: bool,
 }
 
 async fn read(
@@ -47,8 +46,7 @@ impl Joader {
             dataset,
             sampler_tree: sampler_tree.clone(),
             job_table: HashMap::new(),
-            ref_table,
-            empty: false,
+            ref_table
         };
         joader
     }
@@ -64,8 +62,8 @@ impl Joader {
             let mut sampler_tree_lock = self.sampler_tree.lock().await;
             sampler_tree_lock.sample(&mask)
         };
-        self.empty = sample_res.is_empty();
         for (data_idx, job_id_set) in sample_res {
+            log::debug!("read data {:} for job {:?}", data_idx, job_id_set);
             let ref_cnt = self.get_ref_cnt(data_idx, job_id_set.len());
             let dataset = self.dataset.clone();
             let clone_cache = cache.clone();
@@ -109,7 +107,7 @@ impl Joader {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.job_table.is_empty() || self.empty
+        self.job_table.is_empty()
     }
 
     pub fn len(&self) -> usize {

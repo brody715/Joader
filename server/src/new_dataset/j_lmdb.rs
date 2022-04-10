@@ -1,9 +1,9 @@
 use super::Dataset;
 use super::DatasetRef;
-use crate::process::decode_from_memory;
+use crate::process::decode_resize_224_image;
+use crate::process::decode_resize_224_opencv;
+use crate::process::decode_resize_224_tch;
 use crate::process::msg_unpack;
-use crate::process::random_crop;
-use crate::process::resize;
 use crate::process::MsgObject;
 use crate::proto::dataset::{CreateDatasetRequest, DataItem};
 use crate::proto::job::data::DataType;
@@ -11,13 +11,8 @@ use crate::proto::job::Data;
 use lmdb::Database;
 use lmdb::EnvironmentFlags;
 use lmdb::Transaction;
-use opencv::prelude::MatTrait;
-use opencv::prelude::MatTraitConst;
-use opencv::prelude::MatTraitConstManual;
 use std::path::Path;
-use std::slice::from_raw_parts;
 use std::{fmt::Debug, sync::Arc};
-use tch::vision::imagenet::load_image_and_resize224_from_memory;
 #[derive(Debug)]
 struct LmdbDataset {
     items: Vec<DataItem>,
@@ -68,13 +63,7 @@ fn preprocess<'a>(data: &'a [u8]) -> (u64, Vec<u8>) {
         MsgObject::Bin(bin) => bin,
         _ => unimplemented!(),
     };
-    // let mut image = decode_from_memory(data);
-    // random_crop(&mut image);
-    // let mut image = resize(&mut image, 224, 224);
-    // let data = unsafe { from_raw_parts(image.data_mut(), 224 * 224 * 3).to_vec() };
-    let mut image = load_image_and_resize224_from_memory(data).unwrap();
-    let data = unsafe { from_raw_parts(image.data_ptr() as *mut u8, 224 * 224 * 3).to_vec() };
-    (label, data)
+    (label, decode_resize_224_opencv(data))
 }
 
 impl Dataset for LmdbDataset {
@@ -111,9 +100,15 @@ impl Dataset for LmdbDataset {
 
 #[cfg(test)]
 mod tests {
+    use test::Bencher;
     use super::*;
     use crate::new_dataset::build_dataset;
-    use std::time::SystemTime;
+    extern crate test;
+    #[bench]
+    fn test_bench(b: &mut Bencher) {
+        b.iter(|| test_tensor());
+    }
+
     #[test]
     fn test_tensor() {
         let len = 4096;
@@ -132,9 +127,6 @@ mod tests {
             weights: vec![0],
         };
         let dataset = build_dataset(proto, 0);
-        let now = SystemTime::now();
         dataset.read(0);
-        let time = SystemTime::now().duration_since(now).unwrap().as_secs_f32();
-        println!("{:}", time);
     }
 }

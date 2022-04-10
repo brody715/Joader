@@ -6,3 +6,6 @@ mod random_crop;
 pub use random_crop::*;
 mod resize;
 pub use resize::*;
+
+mod imagenet;
+pub use imagenet::*;
