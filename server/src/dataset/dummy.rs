@@ -1,18 +1,14 @@
 use super::Dataset;
 use super::DatasetRef;
-use crate::{
-    cache::cache::Cache,
-    proto::dataset::{CreateDatasetRequest, DataItem},
-};
-use std::collections::HashMap;
-use std::sync::Mutex;
+use crate::proto::job::{Data, data::DataType};
+use crate::proto::dataset::{CreateDatasetRequest, DataItem};
 use std::{fmt::Debug, sync::Arc};
 
 #[derive(Clone, Default, Debug)]
 struct DummyDataset {
     _magic: u8,
     items: Vec<DataItem>,
-    id: u32,
+    id: u64,
 }
 
 pub fn new_dummy(len: usize, _name: String) -> DatasetRef {
@@ -29,7 +25,7 @@ pub fn new_dummy(len: usize, _name: String) -> DatasetRef {
     })
 }
 
-pub fn from_proto(request: CreateDatasetRequest, id: u32) -> DatasetRef {
+pub fn from_proto(request: CreateDatasetRequest, id: u64) -> DatasetRef {
     let items = request.items;
     Arc::new(DummyDataset {
         items,
@@ -43,7 +39,7 @@ fn _len() -> usize {
 }
 
 impl Dataset for DummyDataset {
-    fn get_id(&self) -> u32 {
+    fn get_id(&self) -> u64 {
         self.id
     }
 
@@ -53,29 +49,15 @@ impl Dataset for DummyDataset {
         (start..end).collect::<Vec<_>>()
     }
 
-    fn read_batch(
-        &self,
-        _cache: Arc<Mutex<Cache>>,
-        batch_data: HashMap<u32, (usize, usize)>,
-    ) -> Vec<(u32, u64)> {
-        batch_data
-            .iter()
-            .map(|(&data_idx, (_, _))| (data_idx, data_idx as u64))
-            .collect::<Vec<_>>()
+    fn read(&self, idx: u32) -> Arc<Vec<Data>> {
+        let data = Data {
+            bs: idx.to_be_bytes().to_vec(),
+            ty: DataType::Uint as i32,
+        };
+        Arc::new(vec![data])
     }
 
-    fn read_decode_batch(
-        &self,
-        _cache: Arc<Mutex<Cache>>,
-        batch_data: HashMap<u32, (usize, usize)>,
-    ) -> Vec<(u32, u64)> {
-        batch_data
-            .iter()
-            .map(|(&data_idx, (_, _))| (data_idx, data_idx as u64))
-            .collect::<Vec<_>>()
-    }
-
-    fn len(&self) -> u64 {
-        self.items.len() as u64
+    fn len(&self) -> usize {
+        self.items.len()
     }
 }

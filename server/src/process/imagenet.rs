@@ -44,7 +44,7 @@ pub fn random_crop(image: &Mat) -> Mat {
         if in_ratio < ratio[0] {
             crop_w = w;
             crop_h = (w as f32 / ratio[0]).round() as i32;
-        } else if (in_ratio > ratio[1]) {
+        } else if in_ratio > ratio[1] {
             crop_h = h;
             crop_w = (h as f32 * ratio[1]).round() as i32;
         } else {

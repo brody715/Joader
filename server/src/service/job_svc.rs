@@ -1,6 +1,6 @@
 use super::{IDTable, IdGenerator};
 use crate::job::Job;
-use crate::new_joader::joader_table::JoaderTable;
+use crate::joader::joader_table::JoaderTable;
 use crate::proto::job::job_svc_server::JobSvc;
 use crate::proto::job::Data;
 use crate::proto::job::*;

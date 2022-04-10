@@ -1,6 +1,6 @@
-use ::joader::local_cache::cache::Cache;
-use ::joader::new_joader::joader_table::JoaderTable;
-use joader::new_service::{DatasetSvcImpl, IdGenerator, JobSvcImpl};
+use ::joader::cache::cache::Cache;
+use ::joader::joader::joader_table::JoaderTable;
+use joader::service::{DatasetSvcImpl, IdGenerator, JobSvcImpl};
 use joader::proto::dataset::dataset_svc_server::DatasetSvcServer;
 use joader::proto::job::job_svc_server::JobSvcServer;
 use std::collections::HashMap;
