@@ -37,8 +37,6 @@ class Job(object):
             return int.from_bytes(data.bs, 'big', signed=True)
         elif data.ty == job_pb2.Data.IMAGE:
             image = np.frombuffer(data.bs, dtype=np.uint8, count = len(data.bs)).reshape(224, 224, -1)
-            import cv2
-            cv2.imwrite("a.jpg", image)
             return image
         else:
             assert False
