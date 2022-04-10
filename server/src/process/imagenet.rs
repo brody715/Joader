@@ -58,7 +58,7 @@ pub fn random_crop(image: &Mat) -> Mat {
     let h = image.rows();
     let w = image.cols();
     let (i, j, h, w) = random_parame(h, w, &[0.08, 1.0], &[0.75, 1.3333333333333333]);
-    println!("{:} {:} {:} {:}", i, j, h, w);
+    // println!("{:} {:} {:} {:}", i, j, h, w);
     let h_range = Range::new(i, i + h).unwrap();
     let w_range = Range::new(j, j + w).unwrap();
     Mat::ranges(image, &Vector::from(vec![h_range, w_range])).unwrap()
@@ -66,23 +66,17 @@ pub fn random_crop(image: &Mat) -> Mat {
 
 pub fn decode_resize_224_opencv(data: &[u8]) -> Vec<u8> {
     let mut image = decode_from_memory(data);
-    opencv::imgcodecs::imwrite(
-        "a.jpg",
-        &image,
-        &vec![opencv::imgcodecs::IMWRITE_PNG_STRATEGY].into(),
-    )
-    .unwrap();
     let mut image = random_crop(&mut image);
-    opencv::imgcodecs::imwrite(
-        "crop.jpg",
-        &image,
-        &vec![opencv::imgcodecs::IMWRITE_PNG_STRATEGY].into(),
-    )
-    .unwrap();
+    // opencv::imgcodecs::imwrite(
+    //     "crop.jpg",
+    //     &image,
+    //     &vec![opencv::imgcodecs::IMWRITE_PNG_STRATEGY].into(),
+    // )
+    // .unwrap();
     let mut dst = unsafe { Mat::new_rows_cols(224, 224, CV_8UC3).unwrap() };
     let size = dst.size().unwrap();
     resize(&mut image, &mut dst, size, 0.0, 0.0, INTER_LINEAR).unwrap();
-    unsafe { from_raw_parts(dst.as_raw_mut() as *mut u8, 224 * 224 * 3).to_vec() }
+    dst.data_bytes().unwrap().to_vec()
 }
 
 pub fn decode_resize_224_tch(data: &[u8]) -> Vec<u8> {
