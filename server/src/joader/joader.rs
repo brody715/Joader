@@ -11,8 +11,9 @@ pub struct Joader {
     sampler_tree: Arc<Mutex<SamplerTree>>,
     // map loader id to loader
     job_table: HashMap<u64, Arc<Job>>,
-    ref_table: HashMap<u32, usize>,
+    ref_table: HashMap<u32, usize>
 }
+
 
 async fn read(
     idx: u32,
@@ -26,9 +27,7 @@ async fn read(
     let mut cache_lock = cache.lock().await;
     cache_lock.set(&key, data.clone(), ref_cnt);
     for job in job_set {
-        log::debug!("Before job {:} with cap {:}", job.get_id(), job.capacity());
         job.push(data.clone()).await;
-        log::debug!("After job {:} with cap {:}", job.get_id(), job.capacity());
     }
 }
 

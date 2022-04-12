@@ -18,7 +18,7 @@ async fn write(mut jt: JoaderTable, len: usize) {
     loop {
         jt.next().await;
         cnt += 1;
-        if cnt == len {
+        if cnt == 2*len {
             break;
         }
     }
@@ -31,7 +31,6 @@ async fn read(_job_id: u64, mut recv: Receiver<Arc<Vec<Data>>>, len: usize, dur:
     loop {
         let data = recv.recv().await;
         sleep(dur).await;
-        println!("read {}", res.len());
         match data {
             Some(data) => res.push(data),
             None => continue,
@@ -71,7 +70,7 @@ async fn test_joader_lmdb() {
     let cache = Arc::new(Mutex::new(Cache::new()));
     let mut jt = JoaderTable::new(cache);
 
-    let len = 4096;
+    let len = 2048;
     let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
     let name = "lmdb".to_string();
     let items = (0..len)
