@@ -19,7 +19,7 @@ class Job(object):
         self.dataset_name = dataset_name
 
     @staticmethod
-    def new(dataset_name: str, name: str, ip: str, nums: int = 1):
+    def new(dataset_name: str, name: str, ip: str):
         channel = grpc.insecure_channel(
             ip, options=(('grpc.enable_http_proxy', 0),))
         client = job_pb2_grpc.JobSvcStub(channel)

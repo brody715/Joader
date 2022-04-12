@@ -67,12 +67,6 @@ pub fn random_crop(image: &Mat) -> Mat {
 pub fn decode_resize_224_opencv(data: &[u8]) -> Vec<u8> {
     let mut image = decode_from_memory(data);
     let mut image = random_crop(&mut image);
-    // opencv::imgcodecs::imwrite(
-    //     "crop.jpg",
-    //     &image,
-    //     &vec![opencv::imgcodecs::IMWRITE_PNG_STRATEGY].into(),
-    // )
-    // .unwrap();
     let mut dst = unsafe { Mat::new_rows_cols(224, 224, CV_8UC3).unwrap() };
     let size = dst.size().unwrap();
     resize(&mut image, &mut dst, size, 0.0, 0.0, INTER_LINEAR).unwrap();

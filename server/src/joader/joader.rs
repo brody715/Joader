@@ -22,11 +22,13 @@ async fn read(
     job_set: Vec<Arc<Job>>,
 ) {
     let data = dataset.read(idx);
-    let mut cache_lock = cache.lock().await;
     let key = dataset.get_id().to_string() + &idx.to_string();
+    let mut cache_lock = cache.lock().await;
     cache_lock.set(&key, data.clone(), ref_cnt);
     for job in job_set {
+        log::debug!("Before job {:} with cap {:}", job.get_id(), job.capacity());
         job.push(data.clone()).await;
+        log::debug!("After job {:} with cap {:}", job.get_id(), job.capacity());
     }
 }
 
@@ -54,7 +56,7 @@ impl Joader {
     pub async fn next(&mut self, cache: Arc<Mutex<Cache>>) {
         let mut mask = HashSet::new();
         for (id, job) in self.job_table.iter() {
-            if job.is_full() == true {
+            if job.can_push() == true {
                 mask.insert(*id);
             }
         }
@@ -62,8 +64,8 @@ impl Joader {
             let mut sampler_tree_lock = self.sampler_tree.lock().await;
             sampler_tree_lock.sample(&mask)
         };
+        log::debug!("sampling result (data_set, job_set){:?} with mask {:?}", sample_res, mask);
         for (data_idx, job_id_set) in sample_res {
-            log::debug!("read data {:} for job {:?}", data_idx, job_id_set);
             let ref_cnt = self.get_ref_cnt(data_idx, job_id_set.len());
             let dataset = self.dataset.clone();
             let clone_cache = cache.clone();

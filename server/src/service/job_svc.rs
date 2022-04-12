@@ -1,6 +1,6 @@
 use super::{IDTable, IdGenerator};
-use crate::job::Job;
 use crate::joader::joader_table::JoaderTable;
+use crate::job::Job;
 use crate::proto::job::job_svc_server::JobSvc;
 use crate::proto::job::Data;
 use crate::proto::job::*;
@@ -66,12 +66,13 @@ impl JobSvc for JobSvcImpl {
 
     async fn next(&self, request: Request<NextRequest>) -> Result<Response<NextResponse>, Status> {
         let request = request.into_inner();
-        let loader_id = request.job_id;
-        let mut rt = self.recv_table.lock().await;
+        let job_id = request.job_id;
 
+        let mut rt = self.recv_table.lock().await;
         let recv = rt
-            .get_mut(&loader_id)
-            .ok_or_else(|| Status::not_found(format!("Loader {} not found", loader_id)))?;
+            .get_mut(&job_id)
+            .ok_or_else(|| Status::not_found(format!("Loader {:} not found", job_id)))?;
+
         let data = recv.recv().await;
         match data {
             Some(data) => Ok(Response::new(NextResponse {
