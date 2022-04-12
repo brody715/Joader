@@ -13,16 +13,13 @@ use crate::{
     joader::joader_table::JoaderTable,
 };
 
-async fn write(mut jt: JoaderTable, len: usize) {
-    let mut cnt = 0;
+async fn write(mut jt: JoaderTable, _len: usize) {
     loop {
         jt.next().await;
-        cnt += 1;
-        if cnt == 2*len {
+        if jt.is_empty() {
             break;
         }
     }
-    assert_eq!(cnt, len);
 }
 
 async fn read(_job_id: u64, mut recv: Receiver<Arc<Vec<Data>>>, len: usize, dur: Duration) -> Vec<Arc<Vec<Data>>> {
@@ -102,7 +99,7 @@ async fn test_joader_multi_lmdb() {
     let cache = Arc::new(Mutex::new(Cache::new()));
     let mut jt = JoaderTable::new(cache);
 
-    let len = 2048;
+    let len = 32*256;
     let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
     let name = "lmdb".to_string();
     let items = (0..len)
@@ -126,7 +123,7 @@ async fn test_joader_multi_lmdb() {
         reader.push(tokio::spawn(async move { read(i, recv, len, Duration::from_millis(i)).await }));
     }
     jt.add_joader(joader);
-    tokio::spawn(async move { write(jt, len).await }).await.unwrap();
+    tokio::spawn(async move { write(jt, len).await });
     for r in reader {
         r.await.unwrap();
     }

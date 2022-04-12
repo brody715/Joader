@@ -52,8 +52,3 @@ class Job(object):
     def len(self):
         return self.length
 
-    def delete(self):
-        request = job_pb2.DeleteJobRequest(
-            dataset_name=self.dataset_name, name=self.name)
-        resp = self.client.DeleteJob(request)
-        return resp

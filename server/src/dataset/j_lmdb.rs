@@ -42,7 +42,7 @@ pub fn from_proto(request: CreateDatasetRequest, id: u64) -> DatasetRef {
 }
 
 #[inline]
-fn preprocess<'a>(data: &'a [u8]) -> (u64, Vec<u8>) {
+fn preprocess<'a>(data: &'a [u8], key: &str) -> (u64, Vec<u8>) {
     let data = msg_unpack(data);
     let data = match &data[0] {
         MsgObject::Array(data) => data,
@@ -51,11 +51,11 @@ fn preprocess<'a>(data: &'a [u8]) -> (u64, Vec<u8>) {
     let image = &data[0];
     let label = match data[1].as_ref() {
         &MsgObject::UInt(b) => b,
-        _ => unimplemented!(),
+        _ => unimplemented!("label error, key: {} {:?}",key, data[0]),
     };
     let content = match image.as_ref() {
         MsgObject::Map(map) => &map["data"],
-        err => unimplemented!("{:?}", err),
+        err => unimplemented!("image error, key:{} {:?}",key, err),
     };
     let data = match *content.as_ref() {
         MsgObject::Bin(bin) => bin,
@@ -79,7 +79,7 @@ impl Dataset for LmdbDataset {
         let txn = self.env.begin_ro_txn().unwrap();
         let key = self.items[idx as usize].keys[0].clone();
         let data: &[u8] = txn.get(self.db, &key.to_string()).unwrap();
-        let (label, image) = preprocess(data.as_ref());
+        let (label, image) = preprocess(data.as_ref(), &key);
         let label = Data {
             bs: label.to_be_bytes().to_vec(),
             ty: DataType::Uint as i32,

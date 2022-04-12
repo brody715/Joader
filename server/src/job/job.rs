@@ -11,7 +11,7 @@ const CAP: usize = 1024;
 pub struct Job {
     id: u64,
     sender: Sender<Arc<Vec<Data>>>,
-    capacity: AtomicUsize,
+    pending: AtomicUsize,
 }
 
 impl Job {
@@ -21,7 +21,7 @@ impl Job {
             Arc::new(Job {
                 id,
                 sender: s,
-                capacity: AtomicUsize::new(CAP),
+                pending: AtomicUsize::new(0),
             }),
             r,
         )
@@ -36,15 +36,17 @@ impl Job {
     }
 
     pub async fn push(&self, v: Arc<Vec<Data>>) {
+        log::debug!("{} push- data with pending {:?} capacity {}", self.id, self.pending.load(Ordering::SeqCst), self.sender.capacity());
         self.sender.send(v).await.unwrap();
-        self.capacity.fetch_sub(1, Ordering::SeqCst);
+        self.pending.fetch_sub(1, Ordering::SeqCst);
     }
 
     pub fn can_push(&self) -> bool {
-        if self.sender.capacity() <= self.capacity.load(Ordering::SeqCst) {
+        if self.pending.load(Ordering::SeqCst) >= self.sender.capacity() {
             return false;
         }
-        self.capacity.fetch_add(1, Ordering::SeqCst);
+        log::debug!("{} try push data with pending {:?} capacity: {}", self.id, self.pending.load(Ordering::SeqCst), self.sender.capacity());
+        self.pending.fetch_add(1, Ordering::SeqCst);
         true
     }
 

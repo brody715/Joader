@@ -1,6 +1,6 @@
-use crate::job::Job;
 use crate::cache::cache::Cache;
 use crate::dataset::DatasetRef;
+use crate::job::Job;
 use crate::sampler::sampler_tree::SamplerTree;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -11,9 +11,9 @@ pub struct Joader {
     sampler_tree: Arc<Mutex<SamplerTree>>,
     // map loader id to loader
     job_table: HashMap<u64, Arc<Job>>,
-    ref_table: HashMap<u32, usize>
+    ref_table: HashMap<u32, usize>,
+    size: usize,
 }
-
 
 async fn read(
     idx: u32,
@@ -34,6 +34,7 @@ async fn read(
 impl Joader {
     fn get_ref_cnt(&mut self, idx: u32, count: usize) -> usize {
         *self.ref_table.get_mut(&idx).unwrap() -= count;
+        self.size -= count;
         self.ref_table[&idx]
     }
 
@@ -47,15 +48,17 @@ impl Joader {
             dataset,
             sampler_tree: sampler_tree.clone(),
             job_table: HashMap::new(),
-            ref_table
+            ref_table,
+            size: 0,
         };
         joader
     }
 
     pub async fn next(&mut self, cache: Arc<Mutex<Cache>>) {
+        // shadown the job
         let mut mask = HashSet::new();
         for (id, job) in self.job_table.iter() {
-            if job.can_push() == true {
+            if job.can_push() == false {
                 mask.insert(*id);
             }
         }
@@ -63,7 +66,11 @@ impl Joader {
             let mut sampler_tree_lock = self.sampler_tree.lock().await;
             sampler_tree_lock.sample(&mask)
         };
-        log::debug!("sampling result (data_set, job_set){:?} with mask {:?}", sample_res, mask);
+        log::debug!(
+            "sampling result (data_set, job_set){:?} with mask {:?}",
+            sample_res,
+            mask
+        );
         for (data_idx, job_id_set) in sample_res {
             let ref_cnt = self.get_ref_cnt(data_idx, job_id_set.len());
             let dataset = self.dataset.clone();
@@ -85,6 +92,7 @@ impl Joader {
         sampler_tree.delete(id);
         // Todo(xj): clear cache
         for v in valuse.iter() {
+            self.size -= 1;
             *self.ref_table.get_mut(v).unwrap() -= 1;
         }
         self.job_table.remove(&id);
@@ -100,6 +108,7 @@ impl Joader {
         self.job_table.insert(job_id, job);
         for (_, cnt) in self.ref_table.iter_mut() {
             *cnt += 1;
+            self.size += 1;
         }
     }
 
@@ -108,7 +117,7 @@ impl Joader {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.job_table.is_empty()
+        self.size == 0
     }
 
     pub fn len(&self) -> usize {
