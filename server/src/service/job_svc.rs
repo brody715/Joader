@@ -16,7 +16,7 @@ pub struct JobSvcImpl {
     joader_table: Arc<Mutex<JoaderTable>>,
     job_id_table: IDTable,
     dataset_id_table: IDTable,
-    recv_table: Arc<Mutex<HashMap<u64, Receiver<Arc<Vec<Data>>>>>>,
+    recv_table: Arc<Mutex<HashMap<u64, Arc<Mutex<Receiver<Arc<Vec<Data>>>>>>>>,
 }
 
 impl JobSvcImpl {
@@ -56,7 +56,7 @@ impl JobSvc for JobSvcImpl {
         let job_id = self.id_gen.get_job_id();
         let (job, r) = Job::new(job_id);
         joader.add_job(job).await;
-        rt.insert(job_id, r);
+        rt.insert(job_id, Arc::new(Mutex::new(r)));
         job_id_table.insert(request.name.clone(), job_id);
         Ok(Response::new(CreateJobResponse {
             length: joader.len() as u64,
@@ -68,11 +68,12 @@ impl JobSvc for JobSvcImpl {
         let request = request.into_inner();
         let job_id = request.job_id;
 
-        let mut rt = self.recv_table.lock().await;
-        let recv = rt
-            .get_mut(&job_id)
-            .ok_or_else(|| Status::not_found(format!("Loader {:} not found", job_id)))?;
-
+        let recv = {
+            let rt = self.recv_table.lock().await;
+            let recv = rt.get(&job_id).cloned();
+            recv.ok_or_else(|| Status::not_found(format!("Loader {:} not found", job_id)))
+        }?;
+        let mut recv = recv.lock().await;
         let data = recv.recv().await;
         match data {
             Some(data) => Ok(Response::new(NextResponse {

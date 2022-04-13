@@ -42,12 +42,12 @@ impl Job {
     }
 
     pub fn can_push(&self) -> bool {
-        if self.pending.load(Ordering::SeqCst) >= self.sender.capacity() {
-            return false;
-        }
         log::debug!("{} try push data with pending {:?} capacity: {}", self.id, self.pending.load(Ordering::SeqCst), self.sender.capacity());
+        self.pending.load(Ordering::SeqCst) < self.sender.capacity()
+    }
+
+    pub fn add_pending(&self) {
         self.pending.fetch_add(1, Ordering::SeqCst);
-        true
     }
 
     pub fn capacity(&self) -> usize {

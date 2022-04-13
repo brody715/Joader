@@ -54,11 +54,53 @@ impl Joader {
         joader
     }
 
+    pub async fn atomic_next(&mut self, cache: Arc<Mutex<Cache>>) {
+        // shadown the job
+        let mask = HashSet::new();
+        let mut can_push = true;
+        for (_, job) in self.job_table.iter() {
+            // if all job read in the same order, then we stop it when a buffer is full
+            can_push &= job.can_push();
+        }
+        if !can_push {
+            return;
+        }
+        for (_, job) in self.job_table.iter() {
+            // if all job read in the same order, then we stop it when a buffer is full
+            job.add_pending();
+        }
+        let sample_res = {
+            let mut sampler_tree_lock = self.sampler_tree.lock().await;
+            sampler_tree_lock.sample(&mask)
+        };
+        log::debug!(
+            "sampling result (data_set, job_set){:?} with mask {:?}",
+            sample_res,
+            mask
+        );
+        for (data_idx, job_id_set) in sample_res {
+            let ref_cnt = self.get_ref_cnt(data_idx, job_id_set.len());
+            let dataset = self.dataset.clone();
+            let clone_cache = cache.clone();
+            let mut job_set = Vec::new();
+            for job_id in job_id_set {
+                job_set.push(self.job_table[&job_id].clone());
+            }
+            tokio::spawn(async move {
+                read(data_idx, ref_cnt, clone_cache, dataset, job_set).await;
+            });
+        }
+    }
+
     pub async fn next(&mut self, cache: Arc<Mutex<Cache>>) {
         // shadown the job
         let mut mask = HashSet::new();
         for (id, job) in self.job_table.iter() {
-            if job.can_push() == false {
+            // if all job read in the same order, then we stop it when a buffer is full
+            if job.can_push() {
+                // return;
+                job.add_pending();
+            } else {
                 mask.insert(*id);
             }
         }
