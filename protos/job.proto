@@ -1,6 +1,7 @@
 syntax = "proto3";
 package job;
 
+import "dataset.proto";
 message Data {
     enum data_type {
         UINT = 0;
@@ -14,6 +15,7 @@ message Data {
 message CreateJobRequest {
     string name = 1;
     string dataset_name = 2;
+    repeated dataset.DataItem items = 3;
 }
 
 message CreateJobResponse {
