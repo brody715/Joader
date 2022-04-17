@@ -141,18 +141,21 @@ impl Joader {
         self.job_table.remove(&id);
     }
 
-    pub async fn add_job(&mut self, job: Arc<Job>, condition: Option<Condition>) {
+    pub async fn add_job(&mut self, job: Arc<Job>, condition: Option<Condition>) -> usize {
         log::debug!("Add a loader {} at {}", job.get_id(), self.dataset.get_id());
+        let indices  = self.dataset.get_indices(condition);
+        let len = indices.len();
         self.sampler_tree
             .lock()
             .await
-            .insert(self.dataset.get_indices(condition), job.get_id());
+            .insert(indices, job.get_id());
         let job_id = job.get_id();
         self.job_table.insert(job_id, job);
         for (_, cnt) in self.ref_table.iter_mut() {
             *cnt += 1;
             self.size += 1;
         }
+        len
     }
 
     pub fn get_id(&self) -> u64 {

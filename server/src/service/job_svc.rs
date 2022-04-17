@@ -55,13 +55,10 @@ impl JobSvc for JobSvcImpl {
 
         let job_id = self.id_gen.get_job_id();
         let (job, r) = Job::new(job_id);
-        joader.add_job(job, request.condition).await;
+        let length = joader.add_job(job, request.condition).await as u64;
         rt.insert(job_id, Arc::new(Mutex::new(r)));
         job_id_table.insert(request.name.clone(), job_id);
-        Ok(Response::new(CreateJobResponse {
-            length: joader.len() as u64,
-            job_id,
-        }))
+        Ok(Response::new(CreateJobResponse { length, job_id }))
     }
 
     async fn next(&self, request: Request<NextRequest>) -> Result<Response<NextResponse>, Status> {
