@@ -5,6 +5,7 @@ use crate::process::msg_unpack;
 use crate::process::MsgObject;
 use crate::proto::dataset::{CreateDatasetRequest, DataItem};
 use crate::proto::job::data::DataType;
+use crate::proto::job::Condition;
 use crate::proto::job::Data;
 use lmdb::Database;
 use lmdb::EnvironmentFlags;
@@ -51,11 +52,11 @@ fn preprocess<'a>(data: &'a [u8], key: &str) -> (u64, Vec<u8>) {
     let image = &data[0];
     let label = match data[1].as_ref() {
         &MsgObject::UInt(b) => b,
-        _ => unimplemented!("label error, key: {} {:?}",key, data[0]),
+        _ => unimplemented!("label error, key: {} {:?}", key, data[0]),
     };
     let content = match image.as_ref() {
         MsgObject::Map(map) => &map["data"],
-        err => unimplemented!("image error, key:{} {:?}",key, err),
+        err => unimplemented!("image error, key:{} {:?}", key, err),
     };
     let data = match *content.as_ref() {
         MsgObject::Bin(bin) => bin,
@@ -69,10 +70,15 @@ impl Dataset for LmdbDataset {
         self.id
     }
 
-    fn get_indices(&self) -> Vec<u32> {
+    fn get_indices(&self, cond: Option<Condition>) -> Vec<u32> {
         let start = 0u32;
         let end = self.items.len() as u32;
-        (start..end).collect::<Vec<_>>()
+        match cond {
+            Some(cond) => (start..end)
+                .filter(|x| cond.eval(self.items[*x as usize].keys[0].as_str()))
+                .collect::<Vec<_>>(),
+            None => (start..end).collect::<Vec<_>>(),
+        }
     }
 
     fn read(&self, idx: u32) -> Arc<Vec<Data>> {
@@ -98,9 +104,9 @@ impl Dataset for LmdbDataset {
 
 #[cfg(test)]
 mod tests {
-    use test::Bencher;
     use super::*;
     use crate::dataset::build_dataset;
+    use test::Bencher;
     extern crate test;
     #[bench]
     fn test_bench(b: &mut Bencher) {

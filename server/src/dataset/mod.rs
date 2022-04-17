@@ -1,14 +1,13 @@
-
 mod j_lmdb;
 pub use j_lmdb::*;
 mod dummy;
-use crate::proto::dataset::{create_dataset_request::Type, CreateDatasetRequest};
+use crate::proto::{dataset::{create_dataset_request::Type, CreateDatasetRequest}, job::Condition};
 pub use dummy::*;
 use std::{fmt::Debug, sync::Arc};
 use crate::proto::job::Data;
 pub trait Dataset: Sync + Send + Debug {
     fn get_id(&self) -> u64;
-    fn get_indices(&self) -> Vec<u32>;
+    fn get_indices(&self, cond: Option<Condition>) -> Vec<u32>;
     fn read(&self, _idx: u32) -> Arc<Vec<Data>> {todo!()}
     fn len(&self) -> usize;
 }

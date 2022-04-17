@@ -1,5 +1,6 @@
 use super::Dataset;
 use super::DatasetRef;
+use crate::proto::job::Condition;
 use crate::proto::job::{Data, data::DataType};
 use crate::proto::dataset::{CreateDatasetRequest, DataItem};
 use std::{fmt::Debug, sync::Arc};
@@ -43,7 +44,7 @@ impl Dataset for DummyDataset {
         self.id
     }
 
-    fn get_indices(&self) -> Vec<u32> {
+    fn get_indices(&self, cond: Option<Condition>) -> Vec<u32> {
         let start = 0u32;
         let end = self.items.len() as u32;
         (start..end).collect::<Vec<_>>()

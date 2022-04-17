@@ -1,6 +1,7 @@
 use crate::cache::cache::Cache;
 use crate::dataset::DatasetRef;
 use crate::job::Job;
+use crate::proto::job::Condition;
 use crate::sampler::sampler_tree::SamplerTree;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -40,7 +41,7 @@ impl Joader {
 
     pub fn new(dataset: DatasetRef) -> Joader {
         let mut ref_table = HashMap::new();
-        for i in dataset.get_indices() {
+        for i in dataset.get_indices(None) {
             ref_table.insert(i, 0);
         }
         let sampler_tree = Arc::new(Mutex::new(SamplerTree::new()));
@@ -140,12 +141,12 @@ impl Joader {
         self.job_table.remove(&id);
     }
 
-    pub async fn add_job(&mut self, job: Arc<Job>) {
+    pub async fn add_job(&mut self, job: Arc<Job>, condition: Option<Condition>) {
         log::debug!("Add a loader {} at {}", job.get_id(), self.dataset.get_id());
         self.sampler_tree
             .lock()
             .await
-            .insert(self.dataset.get_indices(), job.get_id());
+            .insert(self.dataset.get_indices(condition), job.get_id());
         let job_id = job.get_id();
         self.job_table.insert(job_id, job);
         for (_, cnt) in self.ref_table.iter_mut() {
