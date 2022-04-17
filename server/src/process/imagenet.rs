@@ -1,4 +1,4 @@
-use super::decode_from_memory;
+use super::decode_rgb_from_memory;
 use image::imageops::FilterType::Triangle;
 use opencv::{
     core::{Range, Vector, CV_8UC3},
@@ -65,7 +65,7 @@ pub fn random_crop(image: &Mat) -> Mat {
 }
 
 pub fn decode_resize_224_opencv(data: &[u8]) -> Vec<u8> {
-    let mut image = decode_from_memory(data);
+    let mut image = decode_rgb_from_memory(data);
     let mut image = random_crop(&mut image);
     let mut dst = unsafe { Mat::new_rows_cols(224, 224, CV_8UC3).unwrap() };
     let size = dst.size().unwrap();

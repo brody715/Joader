@@ -21,6 +21,8 @@ pub struct CreateJobRequest {
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
     pub dataset_name: ::prost::alloc::string::String,
+    #[prost(message, repeated, tag = "3")]
+    pub items: ::prost::alloc::vec::Vec<super::dataset::DataItem>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateJobResponse {

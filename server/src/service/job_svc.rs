@@ -54,7 +54,7 @@ impl JobSvc for JobSvcImpl {
         let joader = jt.get_mut(dataset_id);
 
         let job_id = self.id_gen.get_job_id();
-        let (job, r) = Job::new(job_id);
+        let (job, r) = Job::new(job_id, request.items);
         joader.add_job(job).await;
         rt.insert(job_id, Arc::new(Mutex::new(r)));
         job_id_table.insert(request.name.clone(), job_id);
