@@ -4,34 +4,34 @@ use std::collections::{HashMap, HashSet};
 #[derive(Clone, Default, Debug)]
 pub struct SamplerTree {
     root: Option<NodeRef>,
-    // (loader_id, loader size)
-    loader_set: Vec<(u64, usize)>,
+    // (job_id, loader size)
+    job_set: Vec<(u64, usize)>,
 }
 
 impl SamplerTree {
     pub fn new() -> Self {
         SamplerTree {
             root: None,
-            loader_set: Vec::new(),
+            job_set: Vec::new(),
         }
     }
 
     pub fn insert(&mut self, indices: Vec<u32>, id: u64) {
         log::debug!("Sampler insert {:?} data {:?}", indices.len(), id);
-        let mut loader_set = HashSet::new();
-        loader_set.insert(id);
-        let node = Node::new(indices, loader_set);
+        let mut job_set = HashSet::new();
+        job_set.insert(id);
+        let node = Node::new(indices, job_set);
         if let Some(mut root) = self.root.clone() {
             self.root = Some(root.insert(node));
         } else {
             self.root = Some(node);
         }
-        self.loader_set.clear();
+        self.job_set.clear();
         // keep order
         self.root
             .clone()
             .unwrap()
-            .get_loader_set(&mut self.loader_set, 0);
+            .get_job_set(&mut self.job_set, 0);
     }
 
     pub fn delete(&mut self, id: u64) {
@@ -39,28 +39,28 @@ impl SamplerTree {
         if let Some(root) = &mut self.root {
             self.root = root.delete(id);
         }
-        self.loader_set.clear();
+        self.job_set.clear();
         if let Some(root) = &self.root {
-            root.get_loader_set(&mut self.loader_set, 0);
+            root.get_job_set(&mut self.job_set, 0);
         }
         log::debug!("Del Sampler {} finish.....", id);
     }
 
-    pub fn get_task_values(&self, loader_id: u64) -> Vec<u32> {
+    pub fn get_task_values(&self, job_id: u64) -> Vec<u32> {
         if let Some(root) = &self.root {
-            return root.get_loader_values(loader_id);
+            return root.get_job_values(job_id);
         }
         Vec::new()
     }
 
     pub fn clear_loader(&mut self) -> Vec<u64> {
-        let mut new_loader_set = Vec::new();
+        let mut new_job_set = Vec::new();
         let mut del_loader = Vec::new();
-        for loader in &self.loader_set {
+        for loader in &self.job_set {
             if loader.1 == 0 {
                 del_loader.push(loader.0);
             } else {
-                new_loader_set.push(loader.clone());
+                new_job_set.push(loader.clone());
             }
         }
         if let Some(mut root) = self.root.clone() {
@@ -69,34 +69,35 @@ impl SamplerTree {
             }
         }
 
-        self.loader_set = new_loader_set;
+        self.job_set = new_job_set;
         del_loader
     }
 
     pub fn sample(&mut self, mask: &HashSet<u64>) -> HashMap<u32, HashSet<u64>> {
-        let mut loaders = Vec::new();
-        for loader in &self.loader_set {
+        let mut jobs = Vec::new();
+        for loader in &self.job_set {
             if loader.1 != 0 {
-                loaders.push(loader.clone())
+                jobs.push(loader.clone())
             }
         }
-        log::debug!("Sampler sample {:?}", loaders);
+        log::debug!("Sampler sample {:?}", jobs);
         let mut decisions = Vec::new();
         let mut res = HashMap::<u32, HashSet<u64>>::new();
         match self.root.clone() {
-            Some(mut root) => root.decide(&mut loaders, &mut decisions, vec![]),
+            Some(mut root) => root.decide(&mut jobs, &mut decisions, vec![]),
             None => return res,
         }
 
+        // get the kv job_id: sample
         for decision in decisions.iter_mut() {
             let ret = decision.execute(mask);
-            if let Some(loader_set) = res.get_mut(&ret) {
-                for loader in decision.get_loaders() {
-                    loader_set.insert(loader);
+            if let Some(job_set) = res.get_mut(&ret) {
+                for loader in decision.get_jobs() {
+                    job_set.insert(loader);
                 }
             } else {
-                if !decision.get_loaders().is_empty() {
-                    res.insert(ret, decision.get_loaders());
+                if !decision.get_jobs().is_empty() {
+                    res.insert(ret, decision.get_jobs());
                 }
             }
         }
@@ -105,15 +106,63 @@ impl SamplerTree {
         for decision in decisions.iter_mut() {
             reload |= decision.complent(self.root.clone().unwrap());
         }
-        for (id, len) in self.loader_set.iter_mut() {
+        for (id, len) in self.job_set.iter_mut() {
             if !mask.contains(id) && *len != 0 {
                 *len -= 1;
             }
         }
         if reload {
-            self.loader_set.clear();
+            self.job_set.clear();
             if let Some(root) = &self.root {
-                root.get_loader_set(&mut self.loader_set, 0);
+                root.get_job_set(&mut self.job_set, 0);
+            }
+        }
+        self.clear_loader();
+        log::debug!("Sampler get {:?}", res);
+        res
+    }
+
+    pub fn sample_with_buffer(&mut self, mask: &HashSet<u64>) -> HashMap<u32, HashSet<u64>> {
+        let mut jobs = Vec::new();
+        for loader in &self.job_set {
+            if loader.1 != 0 {
+                jobs.push(loader.clone())
+            }
+        }
+        log::debug!("Sampler sample with buffer {:?}", jobs);
+        let mut decisions = Vec::new();
+        let mut res = HashMap::<u32, HashSet<u64>>::new();
+        match self.root.clone() {
+            Some(mut root) => root.decide(&mut jobs, &mut decisions, vec![]),
+            None => return res,
+        }
+
+        for decision in decisions.iter_mut() {
+            let ret = decision.execute(&HashSet::new());
+            if let Some(job_set) = res.get_mut(&ret) {
+                for loader in decision.get_jobs() {
+                    job_set.insert(loader);
+                }
+            } else {
+                if !decision.get_jobs().is_empty() {
+                    res.insert(ret, decision.get_jobs());
+                }
+            }
+        }
+
+        let mut reload = false;
+        for decision in decisions.iter_mut() {
+            reload |= decision.complent(self.root.clone().unwrap());
+        }
+        for (id, len) in self.job_set.iter_mut() {
+            if !mask.contains(id) && *len != 0 {
+                *len -= 1;
+            }
+        }
+        if reload {
+            self.job_set.clear();
+            if let Some(root) = &self.root {
+                root.get_job_set(&mut self.job_set, 0);
             }
         }
         self.clear_loader();
@@ -122,18 +171,18 @@ impl SamplerTree {
     }
 
     pub fn is_empty(&self) -> bool {
-        let mut loaders = Vec::new();
-        for loader in &self.loader_set {
+        let mut jobs = Vec::new();
+        for loader in &self.job_set {
             if loader.1 != 0 {
-                loaders.push(loader.clone())
+                jobs.push(loader.clone())
             }
         }
-        loaders.is_empty()
+        jobs.is_empty()
     }
 
-    pub fn get_loader_values(&self, loader_id: u64) -> Vec<u32> {
+    pub fn get_job_values(&self, job_id: u64) -> Vec<u32> {
         if let Some(root) = self.root.as_ref() {
-            return root.get_loader_values(loader_id);
+            return root.get_job_values(job_id);
         }
         Vec::default()
     }
