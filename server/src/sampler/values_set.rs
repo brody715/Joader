@@ -55,6 +55,13 @@ pub struct ValueSet {
 }
 
 impl ValueSet {
+    pub fn new() -> Self {
+        Self {
+            set: Vec::new(),
+            size: 0,
+        }
+    }
+
     pub fn init(size: usize) -> Self {
         let mut set = Vec::with_capacity(size / BASE);
         for i in 0..(size / BASE) {

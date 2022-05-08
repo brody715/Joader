@@ -114,6 +114,9 @@ impl Joader {
             sample_res,
             mask
         );
+        if sample_res.is_empty() {
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
         for (data_idx, job_id_set) in sample_res {
             let ref_cnt = self.get_ref_cnt(data_idx, job_id_set.len());
             let dataset = self.dataset.clone();
@@ -142,8 +145,8 @@ impl Joader {
     }
 
     pub async fn add_job(&mut self, job: Arc<Job>, condition: Option<Condition>) -> usize {
-        log::debug!("Add a loader {} at {}", job.get_id(), self.dataset.get_id());
         let indices  = self.dataset.get_indices(condition);
+        log::debug!("Add a loader {} at {}: {:?}", job.get_id(), self.dataset.get_id(), indices);
         let len = indices.len();
         self.sampler_tree
             .lock()

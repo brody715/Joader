@@ -29,8 +29,12 @@ impl Node {
     }
 
     pub fn new(values: Vec<u32>, loader_id: HashSet<u64>) -> NodeRef {
+        let mut values_set = ValueSet::new();
+        for v in values {
+            values_set.set(v);
+        }
         Arc::new(Node {
-            values_set: ValueSet::init(values.len()),
+            values_set,
             loader_id,
             left: None,
             right: None,
@@ -282,7 +286,13 @@ impl Node {
             res |= l.complent(comp, item);
             let r = right.get_mut_unchecked();
             res |= r.complent(comp, item);
-            log::trace!("{:?} len: {}, {:?} len: {}", l.get_loader_id(), l.min_task_length(), r.get_loader_id(), r.min_task_length());
+            log::trace!(
+                "{:?} len: {}, {:?} len: {}",
+                l.get_loader_id(),
+                l.min_task_length(),
+                r.get_loader_id(),
+                r.min_task_length()
+            );
             if l.min_task_length() > r.min_task_length() {
                 res = true;
                 match (&mut r.left, &mut r.right) {

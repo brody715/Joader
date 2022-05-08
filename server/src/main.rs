@@ -58,7 +58,7 @@ async fn start_server(ip: &str, port: &str) -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 16)]
+#[tokio::main(flavor = "multi_thread", worker_threads = 8)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let log4rs_config = "/home/xiej/ATC/DLCache/server/log4rs.yaml";
     let ip = "0.0.0.0";

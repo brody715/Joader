@@ -44,7 +44,7 @@ impl Dataset for DummyDataset {
         self.id
     }
 
-    fn get_indices(&self, cond: Option<Condition>) -> Vec<u32> {
+    fn get_indices(&self, _cond: Option<Condition>) -> Vec<u32> {
         let start = 0u32;
         let end = self.items.len() as u32;
         (start..end).collect::<Vec<_>>()
