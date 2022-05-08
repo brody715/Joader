@@ -1,3 +1,4 @@
+from multiprocessing import Condition
 import numpy as np
 import proto.job_pb2 as job_pb2
 import proto.job_pb2_grpc as job_pb2_grpc
@@ -19,12 +20,19 @@ class Job(object):
         self.dataset_name = dataset_name
 
     @staticmethod
-    def new(dataset_name: str, name: str, ip: str):
+    def new(dataset_name: str, name: str, ip: str, start="", end=""):
+        expr_list = []
+        if start != "":
+            expr_list.append(job_pb2.Expr(op=job_pb2.Expr.GEQ, rhs=start))
+        if end != "":
+            expr_list.append(job_pb2.Expr(op=job_pb2.Expr.LT, rhs=end))
+
         channel = grpc.insecure_channel(
             ip, options=(('grpc.enable_http_proxy', 0),))
         client = job_pb2_grpc.JobSvcStub(channel)
+        cond = job_pb2.Condition(exprs=expr_list)
         request = job_pb2.CreateJobRequest(
-            dataset_name=dataset_name, name=name)
+            dataset_name=dataset_name, name=name, condition=cond)
         resp = client.CreateJob(request)
         job_id = resp.job_id
         length = resp.length
