@@ -266,6 +266,38 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
+name = "coordl"
+version = "0.1.0"
+dependencies = [
+ "bitmaps",
+ "bytes",
+ "cached",
+ "clap",
+ "coz",
+ "crossbeam",
+ "ctrlc",
+ "image",
+ "libc",
+ "lmdb-rkv",
+ "lmdb-zero",
+ "log",
+ "log4rs",
+ "num-traits",
+ "opencv",
+ "prost",
+ "prost-types",
+ "protobuf",
+ "rand",
+ "rmp",
+ "rmp-serde",
+ "tch",
+ "threadpool",
+ "tokio",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
 name = "coz"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -797,38 +829,6 @@ name = "itoa"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aab8fc367588b89dcee83ab0fd66b72b50b72fa1904d7095045ace2b0c81c35"
-
-[[package]]
-name = "joader"
-version = "0.1.0"
-dependencies = [
- "bitmaps",
- "bytes",
- "cached",
- "clap",
- "coz",
- "crossbeam",
- "ctrlc",
- "image",
- "libc",
- "lmdb-rkv",
- "lmdb-zero",
- "log",
- "log4rs",
- "num-traits",
- "opencv",
- "prost",
- "prost-types",
- "protobuf",
- "rand",
- "rmp",
- "rmp-serde",
- "tch",
- "threadpool",
- "tokio",
- "tonic",
- "tonic-build",
-]
 
 [[package]]
 name = "jobserver"
