@@ -39,16 +39,17 @@ impl SamplerTree {
 
     pub fn sample(&mut self, mask: &HashSet<u64>) -> HashMap<u32, HashSet<u64>> {
         let mut res = HashMap::new();
-        
         for (id, size) in self.job_set.iter_mut() {
-            if mask.contains(id) {
+            if mask.contains(id) || *size == 0 {
                 continue;
             }
             *size -= 1;
             let sample_res = random_choose(&mut self.root.get_mut(id).unwrap());
-            let mut v = HashSet::new();
-            v.insert(*id);
-            res.insert(sample_res, v);
+            if !res.contains_key(&sample_res) {
+                res.insert(sample_res, HashSet::new());
+            }
+            res.get_mut(&sample_res).unwrap().insert(*id);
+            
         }
         res
     }
@@ -57,7 +58,7 @@ impl SamplerTree {
         let mut res = HashMap::new();
         
         for (id, size) in self.job_set.iter_mut() {
-            if mask.contains(id) {
+            if mask.contains(id) || *size == 0 {
                 continue;
             }
             *size -= 1;
