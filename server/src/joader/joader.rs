@@ -2,7 +2,7 @@ use crate::cache::cache::Cache;
 use crate::dataset::DatasetRef;
 use crate::job::Job;
 use crate::proto::job::Condition;
-use crate::sampler::sampler_tree::SamplerTree;
+use crate::sampler::isa_sampler_tree::SamplerTree;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::Mutex;
