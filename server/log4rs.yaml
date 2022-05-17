@@ -61,11 +61,6 @@ loggers:
     level: info
     appenders:
       - sampler
-    additive: false
-  joader::sampler:
-    level: info
-    appenders:
-      - sampler
   joader::joader:
     level: info
     appenders:

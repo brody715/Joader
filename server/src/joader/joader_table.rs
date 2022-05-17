@@ -47,8 +47,8 @@ impl JoaderTable {
         let mut cnt = 0;
         for (_, joader) in self.joader_table.iter_mut() {
             if !joader.is_empty() {
-                joader.next( self.cache.clone()).await;
-                // joader.atomic_next(self.cache.clone()).await;
+                // joader.next( self.cache.clone()).await;
+                joader.atomic_next(self.cache.clone()).await;
                 cnt += 1;
             }
         }

@@ -1,11 +1,12 @@
 use super::sampler_node::{Node, NodeRef};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Clone, Default, Debug)]
 pub struct SamplerTree {
     root: Option<NodeRef>,
     // (job_id, loader size)
     job_set: Vec<(u64, usize)>,
+    job_buffer: HashMap<u64, VecDeque<u32>>
 }
 
 impl SamplerTree {
@@ -13,6 +14,7 @@ impl SamplerTree {
         SamplerTree {
             root: None,
             job_set: Vec::new(),
+            job_buffer: HashMap::new(),
         }
     }
 
@@ -32,6 +34,7 @@ impl SamplerTree {
             .clone()
             .unwrap()
             .get_job_set(&mut self.job_set, 0);
+        self.job_buffer.insert(id, VecDeque::new());
     }
 
     pub fn delete(&mut self, id: u64) {
@@ -88,7 +91,7 @@ impl SamplerTree {
             None => return res,
         }
 
-        // get the kv job_id: sample
+        
         for decision in decisions.iter_mut() {
             let ret = decision.execute(mask);
             if let Some(job_set) = res.get_mut(&ret) {
@@ -123,47 +126,47 @@ impl SamplerTree {
     }
 
     pub fn sample_with_buffer(&mut self, mask: &HashSet<u64>) -> HashMap<u32, HashSet<u64>> {
+        // get the kv job_id: sample
+        let mut sampling_res_table = HashMap::new();
         let mut jobs = Vec::new();
-        for loader in &self.job_set {
-            if loader.1 != 0 {
-                jobs.push(loader.clone())
+        let mut sample_job = HashSet::new();
+        for job in &self.job_set {
+            jobs.push(job.clone());
+            sample_job.insert(job.0);
+        }
+        for (job_id, buffer) in self.job_buffer.iter_mut() {
+            if !mask.contains(job_id) && !sample_job.contains(job_id) {
+                match buffer.pop_front() {
+                    Some(v) => sampling_res_table.insert(*job_id, v),
+                    _ => continue,
+                };
             }
         }
-        log::debug!("Sampler sample with buffer {:?}", jobs);
+        log::debug!("Sampler sample {:?} with buffer {:?}", jobs, self.job_buffer);
         let mut decisions = Vec::new();
         let mut res = HashMap::<u32, HashSet<u64>>::new();
         match self.root.clone() {
             Some(mut root) => root.decide(&mut jobs, &mut decisions, vec![]),
-            None => return res,
+            None => (),
         }
 
         for decision in decisions.iter_mut() {
             let ret = decision.execute(&HashSet::new());
-            if let Some(job_set) = res.get_mut(&ret) {
-                for loader in decision.get_jobs() {
-                    job_set.insert(loader);
-                }
-            } else {
-                if !decision.get_jobs().is_empty() {
-                    res.insert(ret, decision.get_jobs());
+            for job_id in decision.get_jobs() {
+                let buffer = self.job_buffer.get_mut(&job_id).unwrap();
+                buffer.push_back(ret);
+                if !mask.contains(&job_id) {
+                    sampling_res_table.insert(job_id, buffer.pop_front().unwrap());
                 }
             }
+        }
+        // reverser to sample_res : job_set
+        for (k,v) in sampling_res_table.iter() {
+            res.entry(*v).and_modify(|s| {s.insert(*k);}).or_insert(HashSet::from([*k]));
         }
 
-        let mut reload = false;
-        for decision in decisions.iter_mut() {
-            reload |= decision.complent(self.root.clone().unwrap());
-        }
-        for (id, len) in self.job_set.iter_mut() {
-            if !mask.contains(id) && *len != 0 {
-                *len -= 1;
-            }
-        }
-        if reload {
-            self.job_set.clear();
-            if let Some(root) = &self.root {
-                root.get_job_set(&mut self.job_set, 0);
-            }
+        for (_, len) in self.job_set.iter_mut() {
+            *len -= 1;
         }
         self.clear_loader();
         log::debug!("Sampler get {:?}", res);
@@ -171,13 +174,11 @@ impl SamplerTree {
     }
 
     pub fn is_empty(&self) -> bool {
-        let mut jobs = Vec::new();
-        for loader in &self.job_set {
-            if loader.1 != 0 {
-                jobs.push(loader.clone())
-            }
+        let mut capacity = 0;
+        for job in &self.job_set {
+            capacity += job.1 + self.job_buffer[&job.0].len();
         }
-        jobs.is_empty()
+        capacity != 0
     }
 
     pub fn get_job_values(&self, job_id: u64) -> Vec<u32> {
