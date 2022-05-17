@@ -107,7 +107,8 @@ impl Joader {
         }
         let sample_res = {
             let mut sampler_tree_lock = self.sampler_tree.lock().await;
-            sampler_tree_lock.sample_with_buffer(&mask)
+            // sampler_tree_lock.sample_with_buffer(&mask)
+            sampler_tree_lock.sample(&mask)
         };
         log::debug!(
             "sampling result (data_set, job_set){:?} with mask {:?}",
