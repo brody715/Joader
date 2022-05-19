@@ -70,7 +70,9 @@ pub fn decode_resize_224_opencv(data: &[u8]) -> Vec<u8> {
     let mut dst = unsafe { Mat::new_rows_cols(224, 224, CV_8UC3).unwrap() };
     let size = dst.size().unwrap();
     resize(&mut image, &mut dst, size, 0.0, 0.0, INTER_LINEAR).unwrap();
-    dst.data_bytes().unwrap().to_vec()
+    let mut dst_rgb = unsafe { Mat::new_rows_cols(224, 224, CV_8UC3).unwrap() };
+    opencv::imgproc::cvt_color(&mut dst, &mut dst_rgb, opencv::imgproc::COLOR_RGB2BGR, 0).unwrap();
+    dst_rgb.data_bytes().unwrap().to_vec()
 }
 
 pub fn decode_resize_224_tch(data: &[u8]) -> Vec<u8> {
