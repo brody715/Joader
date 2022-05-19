@@ -2,7 +2,7 @@ use super::decode_rgb_from_memory;
 use image::imageops::FilterType::Triangle;
 use opencv::{
     core::{Range, Vector, CV_8UC3},
-    imgproc::{resize, INTER_LINEAR},
+    imgproc::{resize, INTER_LINEAR, cvt_color},
     prelude::{Mat, MatTraitConst, MatTraitConstManual},
 };
 use rand::distributions::{Distribution, Uniform};
@@ -70,6 +70,8 @@ pub fn decode_resize_224_opencv(data: &[u8]) -> Vec<u8> {
     let mut dst = unsafe { Mat::new_rows_cols(224, 224, CV_8UC3).unwrap() };
     let size = dst.size().unwrap();
     resize(&mut image, &mut dst, size, 0.0, 0.0, INTER_LINEAR).unwrap();
+    let mut dst_rgb = unsafe { Mat::new_rows_cols(224, 224, CV_8UC3).unwrap() };
+    cvt_color(&mut dst, &mut dst_rgb, opencv::imgproc::COLOR_RGB2BGR, 0).unwrap();
     dst.data_bytes().unwrap().to_vec()
 }
 
