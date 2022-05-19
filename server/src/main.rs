@@ -31,7 +31,7 @@ async fn start_server(ip: &str, port: &str) -> Result<(), Box<dyn std::error::Er
     log::info!("start server");
     let id_gen = IdGenerator::new();
     let dataset_id_table = Arc::new(Mutex::new(HashMap::new()));
-    let cache = Arc::new(Mutex::new(Cache::with_capacity(224*224*3*32*(1024))));
+    let cache = Arc::new(Mutex::new(Cache::with_capacity(224*224*3*32*(128))));
     let joader_table = Arc::new(Mutex::new(JoaderTable::new(cache)));
     let ip_port = ip.to_string() + ":" + port;
     let addr: SocketAddr = ip_port.parse()?;
