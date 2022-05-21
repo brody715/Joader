@@ -10,14 +10,6 @@ use std::slice::from_raw_parts;
 use tch::vision::imagenet::load_image_and_resize224_from_memory;
 
 pub fn random_crop(image: &Mat) -> Mat {
-    // Get parameters for ``crop`` for a random sized crop.
-    // Args:
-    //     scale (list): range of scale of the origin size cropped
-    //     ratio (list): range of aspect ratio of the origin aspect ratio cropped
-
-    // Returns:
-    //     tuple: params (i, j, h, w) to be passed to ``crop`` for a random
-    //     sized crop.
     pub fn random_parame(h: i32, w: i32, scale: &[f32], ratio: &[f32]) -> (i32, i32, i32, i32) {
         let area = (h * w) as f32;
         let ratio_range = Uniform::from(ratio[0].ln()..ratio[1].ln());
@@ -71,7 +63,7 @@ pub fn decode_resize_224_opencv(data: &[u8]) -> Vec<u8> {
     let size = dst.size().unwrap();
     resize(&mut image, &mut dst, size, 0.0, 0.0, INTER_LINEAR).unwrap();
     let mut dst_rgb = unsafe { Mat::new_rows_cols(224, 224, CV_8UC3).unwrap() };
-    opencv::imgproc::cvt_color(&mut dst, &mut dst_rgb, opencv::imgproc::COLOR_RGB2BGR, 0).unwrap();
+    opencv::imgproc::cvt_color(&mut dst, &mut dst_rgb, opencv::imgproc::COLOR_BGR2RGB, 0).unwrap();
     dst_rgb.data_bytes().unwrap().to_vec()
 }
 
