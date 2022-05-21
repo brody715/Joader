@@ -46,6 +46,21 @@ impl BitmapOff {
         }
         unreachable!();
     }
+
+    pub fn random_pick(&mut self) -> u32 {
+        let len = self.bm.len();
+        let choice_idx = (rand::random::<f32>() * (len as f32)) as usize;
+        let mut idx = -1;
+        // println!("{} {}", len, choice_idx);
+        for i in 0..BASE {
+            idx += self.bm.get(i) as isize;
+            if idx == choice_idx as isize {
+                self.bm.set(i, false);
+                return (i + self.off) as u32;
+            }
+        }
+        unreachable!();
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -206,7 +221,7 @@ impl ValueSet {
         let len = self.set.len();
         let choice_idx = (rand::random::<f32>() * (len as f32)) as usize;
         assert_eq!(self.set[choice_idx].is_empty(), false);
-        let res = self.set[choice_idx].pick_first();
+        let res = self.set[choice_idx].random_pick();
         if self.set[choice_idx].is_empty() {
             self.set.remove(choice_idx);
         }

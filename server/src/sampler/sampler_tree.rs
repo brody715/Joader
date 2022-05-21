@@ -384,4 +384,27 @@ mod tests {
             assert_eq!(keys, set);
         }
     }
+
+    #[test]
+    fn rabdom_test() {
+        let mut sampler = SamplerTree::new();
+        let len = 2000u32;
+
+        sampler.insert((0..len).collect::<Vec<_>>(), 0);
+        let mut res = Vec::new();
+        res.push(Vec::new());
+        for _ in 0..len {
+            for (k, _) in sampler.sample(&HashSet::new()) {
+                res[0].push(k);
+            }
+        }
+        sampler.insert((0..len).collect::<Vec<_>>(), 0);
+        res.push(Vec::new());
+        for _ in 0..len {
+            for (k, _) in sampler.sample(&HashSet::new()) {
+                res[1].push(k);
+            }
+        }
+        println!("{:?}", res);
+    }
 }
