@@ -16,8 +16,8 @@ pub fn random_crop(image: &Mat) -> Mat {
         let scale_range = Uniform::from(scale[0]..scale[1]);
         let mut rng = rand::thread_rng();
         for _ in 0..10 {
-            let target_area = area * ratio_range.sample(&mut rng);
-            let aspect_ratio = scale_range.sample(&mut rng).exp();
+            let target_area = area * scale_range.sample(&mut rng);
+            let aspect_ratio = ratio_range.sample(&mut rng).exp();
             let crop_w = ((target_area * aspect_ratio).sqrt()).round() as i32;
             let crop_h = ((target_area / aspect_ratio).sqrt()).round() as i32;
             if crop_w > 0 && crop_w <= w && crop_h > 0 && crop_h <= h {
@@ -49,7 +49,7 @@ pub fn random_crop(image: &Mat) -> Mat {
     }
     let h = image.rows();
     let w = image.cols();
-    let (i, j, h, w) = random_parame(h, w, &[0.08, 1.0], &[0.75, 1.3333333333333333]);
+    let (i, j, h, w) = random_parame(h, w, &[0.08, 1.0], &[3.0/4.0, 4.0/3.0]);
     // println!("{:} {:} {:} {:}", i, j, h, w);
     let h_range = Range::new(i, i + h).unwrap();
     let w_range = Range::new(j, j + w).unwrap();
@@ -64,6 +64,7 @@ pub fn decode_resize_224_opencv(data: &[u8]) -> Vec<u8> {
     resize(&mut image, &mut dst, size, 0.0, 0.0, INTER_LINEAR).unwrap();
     let mut dst_rgb = unsafe { Mat::new_rows_cols(224, 224, CV_8UC3).unwrap() };
     opencv::imgproc::cvt_color(&mut dst, &mut dst_rgb, opencv::imgproc::COLOR_BGR2RGB, 0).unwrap();
+    opencv::imgcodecs::imwrite("test.jpg", &dst_rgb, &Vector::from_slice(&[opencv::imgcodecs::IMWRITE_JPEG_QUALITY ]) ).unwrap();
     dst_rgb.data_bytes().unwrap().to_vec()
 }
 
