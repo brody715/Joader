@@ -64,7 +64,7 @@ pub fn decode_resize_224_opencv(data: &[u8]) -> Vec<u8> {
     resize(&mut image, &mut dst, size, 0.0, 0.0, INTER_LINEAR).unwrap();
     let mut dst_rgb = unsafe { Mat::new_rows_cols(224, 224, CV_8UC3).unwrap() };
     opencv::imgproc::cvt_color(&mut dst, &mut dst_rgb, opencv::imgproc::COLOR_BGR2RGB, 0).unwrap();
-    opencv::imgcodecs::imwrite("test.jpg", &dst_rgb, &Vector::from_slice(&[opencv::imgcodecs::IMWRITE_JPEG_QUALITY ]) ).unwrap();
+    // opencv::imgcodecs::imwrite("test.jpg", &dst_rgb, &Vector::from_slice(&[opencv::imgcodecs::IMWRITE_JPEG_QUALITY ]) ).unwrap();
     dst_rgb.data_bytes().unwrap().to_vec()
 }
 
