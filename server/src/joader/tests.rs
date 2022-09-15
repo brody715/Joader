@@ -70,7 +70,7 @@ async fn test_joader_lmdb() {
     let mut jt = JoaderTable::new(cache);
 
     let len = 2048;
-    let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
+    let location = "/data/wgc/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
     let name = "lmdb".to_string();
     let items = (0..len)
         .map(|x| DataItem {
@@ -102,7 +102,7 @@ async fn test_joader_multi_lmdb() {
     let mut jt = JoaderTable::new(cache);
 
     let len = 2048;
-    let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
+    let location = "/data/wgc/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
     let name = "lmdb".to_string();
     let items = (0..len)
         .map(|x| DataItem {
@@ -136,7 +136,7 @@ async fn test_joader_multi_lmdb() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 32)]
 async fn test_filter() {
     let len = 2048;
-    let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
+    let location = "/data/wgc/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
     let name = "lmdb".to_string();
     let items = (0..len)
         .map(|x| DataItem {

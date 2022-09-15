@@ -2,7 +2,7 @@ use super::decode_rgb_from_memory;
 use image::imageops::FilterType::Triangle;
 use opencv::{
     core::{Range, Vector, CV_8UC3},
-    imgproc::{resize, INTER_LINEAR},
+    imgproc::resize,
     prelude::{Mat, MatTraitConst, MatTraitConstManual},
 };
 use rand::distributions::{Distribution, Uniform};
@@ -21,9 +21,9 @@ pub fn random_crop(image: &Mat) -> Mat {
             let crop_w = ((target_area * aspect_ratio).sqrt()).round() as i32;
             let crop_h = ((target_area / aspect_ratio).sqrt()).round() as i32;
             if crop_w > 0 && crop_w <= w && crop_h > 0 && crop_h <= h {
-                let w_range = Uniform::from(0..w - crop_w + 1);
                 let h_range = Uniform::from(0..h - crop_h + 1);
                 let i = h_range.sample(&mut rng);
+                let w_range = Uniform::from(0..w - crop_w + 1);
                 let j = w_range.sample(&mut rng);
                 return (i, j, crop_h, crop_w);
             }
@@ -57,15 +57,17 @@ pub fn random_crop(image: &Mat) -> Mat {
 }
 
 pub fn decode_resize_224_opencv(data: &[u8]) -> Vec<u8> {
-    let mut image = decode_rgb_from_memory(data);
-    let mut image = random_crop(&mut image);
-    let mut dst = unsafe { Mat::new_rows_cols(224, 224, CV_8UC3).unwrap() };
-    let size = dst.size().unwrap();
-    resize(&mut image, &mut dst, size, 0.0, 0.0, INTER_LINEAR).unwrap();
-    let mut dst_rgb = unsafe { Mat::new_rows_cols(224, 224, CV_8UC3).unwrap() };
-    opencv::imgproc::cvt_color(&mut dst, &mut dst_rgb, opencv::imgproc::COLOR_BGR2RGB, 0).unwrap();
+    let mut rgb = decode_rgb_from_memory(data);
+    // let mut rgb = unsafe { Mat::new_rows_cols(image.rows(), image.cols(), CV_8UC3).unwrap() };
+    // opencv::imgproc::cvt_color(&mut image, &mut rgb, opencv::imgproc::COLOR_BGR2RGB, 0).unwrap();
+    let mut cropped_rgb = random_crop(&mut rgb);
+    let mut resized_rgb = unsafe { Mat::new_rows_cols(224, 224, CV_8UC3).unwrap() };
+    let size = resized_rgb.size().unwrap();
+    resize(&mut cropped_rgb, &mut resized_rgb, size, 0.0, 0.0, opencv::imgproc::INTER_LINEAR).unwrap();
     // opencv::imgcodecs::imwrite("test.jpg", &dst_rgb, &Vector::from_slice(&[opencv::imgcodecs::IMWRITE_JPEG_QUALITY ]) ).unwrap();
-    dst_rgb.data_bytes().unwrap().to_vec()
+    let data = resized_rgb.data_bytes().unwrap().to_vec();
+    // println!("{:?}", &data[..10]);
+    data
 }
 
 pub fn decode_resize_224_tch(data: &[u8]) -> Vec<u8> {
@@ -78,4 +80,31 @@ pub fn decode_resize_224_image(data: &[u8]) -> Vec<u8> {
     let image = image::load_from_memory(data).unwrap();
     let image = image.resize(224, 224, Triangle);
     image.as_bytes().to_vec()
+}
+
+
+mod tests {
+    use super::*;
+    use crate::{dataset::build_dataset, proto::dataset::{DataItem, CreateDatasetRequest}};
+
+    #[test]
+    fn test_resize() {
+        let len = 4096;
+        let location = "/data/wgc/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
+        let name = "lmdb".to_string();
+        let items = (0..len)
+            .map(|x| DataItem {
+                keys: vec![x.to_string()],
+            })
+            .collect::<Vec<_>>();
+        let proto = CreateDatasetRequest {
+            name,
+            location,
+            r#type: crate::proto::dataset::create_dataset_request::Type::Lmdb as i32,
+            items,
+            weights: vec![0],
+        };
+        let dataset = build_dataset(proto, 0);
+        dataset.read(0);
+    }
 }

@@ -169,7 +169,7 @@ mod tests {
     use lmdb_zero as lmdb;
     #[test]
     fn test_read() {
-        let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb";
+        let location = "/data/wgc/data/lmdb-imagenet/ILSVRC-train.lmdb";
         let env = unsafe {
             lmdb::EnvBuilder::new()
                 .unwrap()
@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_decode() {
-        let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb";
+        let location = "/data/wgc/data/lmdb-imagenet/ILSVRC-train.lmdb";
         let env = unsafe {
             lmdb::EnvBuilder::new()
                 .unwrap()

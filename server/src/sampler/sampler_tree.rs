@@ -272,7 +272,7 @@ mod tests {
     #[test]
     fn test_bm_sampler() {
         // log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
-        sample(16);
+        sample(4);
     }
 
     fn sample(tasks: u64) {
@@ -283,7 +283,7 @@ mod tests {
 
         // let sizes = [1, 2, 4, 8, 16, 32];
         for id in 0..tasks {
-            let size = rng.gen_range(100000..1000000);
+            let size = rng.gen_range(1000000..2000000);
             // let size = sizes[id as usize];
             let keys = (0..size).into_iter().collect::<Vec<u32>>();
             vec_keys.push(HashSet::from_iter(keys.iter().cloned()));
@@ -291,12 +291,14 @@ mod tests {
             map.insert(id, HashSet::new());
         }
 
-        let mut time;
+        let mut time = 0f32;
+        let mut cnt = 0f32;
         loop {
             let now = Instant::now();
             sampler.clear_loader();
             let res = sampler.sample(&HashSet::new());
-            time = now.elapsed().as_secs_f32();
+            time += now.elapsed().as_secs_f32();
+            cnt += 1f32;
             if res.is_empty() {
                 break;
             }
@@ -306,7 +308,7 @@ mod tests {
                 }
             }
         }
-        println!("time cost in one turn: {}", time);
+        println!("time cost in one turn: {}", time/cnt);
         for (task, set) in &map {
             let keys = &vec_keys[(*task) as usize];
             assert_eq!(keys, set);
@@ -314,7 +316,7 @@ mod tests {
     }
     #[test]
     fn test_insert() {
-        insert(16);
+        insert(128);
     }
     fn insert(tasks: u32) {
         let mut sampler = SamplerTree::new();
@@ -322,17 +324,20 @@ mod tests {
         let mut vec_keys = Vec::<Vec<u32>>::new();
 
         for _i in 0..tasks {
-            let size = rng.gen_range(500000..2000000);
+            let size = rng.gen_range(1000000..2000000);
             let keys = (0..size).into_iter().collect();
             vec_keys.push(keys);
         }
 
         let vec_tasks = Vec::new();
+        let mut total_time = 0f32;
         for (idx, keys) in vec_keys.iter().enumerate() {
             let now = Instant::now();
             sampler.insert(keys.clone(), idx as u64);
-            println!("inserting {:} elements costs {:}", keys.len() ,now.elapsed().as_secs_f32());
+            total_time += now.elapsed().as_secs_f32();
+            println!("inserting {:}-th {:} elements costs {:}",idx,  keys.len() ,now.elapsed().as_secs_f32());
         }
+        println!("avg time {:}", total_time/tasks as f32);
 
         for task in vec_tasks {
             let mut values = sampler.get_task_values(task);

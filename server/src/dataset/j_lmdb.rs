@@ -116,7 +116,7 @@ mod tests {
     #[test]
     fn test_tensor() {
         let len = 4096;
-        let location = "/home/xiej/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
+        let location = "/data/wgc/data/lmdb-imagenet/ILSVRC-train.lmdb".to_string();
         let name = "lmdb".to_string();
         let items = (0..len)
             .map(|x| DataItem {
