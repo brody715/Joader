@@ -60,10 +60,9 @@ async fn start_server(ip: &str, port: &str) -> Result<(), Box<dyn std::error::Er
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 46)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let log4rs_config = "/data/wgc/ATC/DLCache/server/log4rs.yaml";
     let ip = "0.0.0.0";
     let port = "4321";
-    log4rs::init_file(log4rs_config, Default::default()).unwrap();
+    // log4rs::init_file(log4rs_config, Default::default()).unwrap();
     //start server
     start_server(ip, port).await?;
     Ok(())
